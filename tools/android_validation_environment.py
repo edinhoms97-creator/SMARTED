@@ -16,6 +16,7 @@ import platform
 import shutil
 import subprocess
 import time
+import zipfile
 
 
 def tool(name, sdk):
@@ -184,6 +185,30 @@ def prepare(report, sdk, apk):
             report['ui_hierarchy'] = (evidence / 'hierarchy.xml').read_text(errors='replace')[:12000] if (evidence / 'hierarchy.xml').exists() else 'unavailable'
             report['ui_labels'] = [node.get('text') or node.get('content-desc') for node in ET.fromstring(report['ui_hierarchy']).iter('node') if node.get('text') or node.get('content-desc')] if report['ui_hierarchy'] != 'unavailable' else []
             report['activity_tail'] = (evidence / 'activities.txt').read_text(errors='replace')[-2500:]
+            # Read-only deployment audit AFTER content attempts; do not alter
+            # APK, profile/license, bootstrap or player to make a test pass.
+            report['adb_root_after_cycles'] = execute([tools['adb'], 'root'], timeout=15)
+            execute([tools['adb'], 'wait-for-device'], timeout=20)
+            roots = (
+                '/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap',
+                '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap',
+            )
+            names = ('smart_ads.py', 'ads_vast.py', 'ads_tracking.py', 'ads_openings.py')
+            with zipfile.ZipFile(apk) as archive:
+                report['apk_ad_module_sha256'] = {name: hashlib.sha256(archive.read('assets/addons/service.smarted.bootstrap/'+name)).hexdigest() for name in names}
+            report['runtime_ad_module_sha256'] = {}
+            for root in roots:
+                for name in names:
+                    actual = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'sha256sum', root+'/'+name], timeout=10)
+                    report['runtime_ad_module_sha256'][root+'/'+name] = actual
+            native_log = '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/temp/kodi.log'
+            contents = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'exec-out', 'cat', native_log], capture_output=True, timeout=30)
+            if contents.returncode == 0:
+                (evidence / 'kodi.log').write_bytes(contents.stdout)
+                report['kodi_log_read_after_root'] = True
+                report['opening_stages'] = [line.split('[SmartAdsOpening] ', 1)[-1] for line in contents.stdout.decode(errors='replace').splitlines() if '[SmartAdsOpening]' in line]
+            else:
+                report['kodi_log_read_after_root'] = False
             if os.environ.get('ANDROID_CONTENT_CYCLES') == 'true':
                 report['status'] = 'real-content-cycle-attempts-recorded'
             else:
