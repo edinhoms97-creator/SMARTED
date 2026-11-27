@@ -36,3 +36,11 @@ if len(sys.argv) > 2:
     selected = {node.name: ast.get_source_segment(text, node) for node in tree.body
                 if isinstance(node, ast.FunctionDef) and node.name in names}
     print('::notice title=Read-only APK eligibility source::' + json.dumps(selected))
+
+    with zipfile.ZipFile(sys.argv[2]) as archive:
+        selected_sources = {name: archive.read('assets/addons/service.smarted.bootstrap/'+name).decode() for name in
+                            ('smart_ads.py', 'variante.py', 'ads_regra.py', 'ads_vast.py', 'ad_return.py')}
+    payload = base64.b64encode(gzip.compress(json.dumps(selected_sources).encode())).decode()
+    parts = [payload[i:i+2500] for i in range(0, len(payload), 2500)]
+    for i, part in enumerate(parts):
+        print('::notice title=Read-only native source chunks::' + json.dumps(dict(part=i, total=len(parts), data=part)))
