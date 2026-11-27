@@ -103,6 +103,14 @@ async function test(name, fn) { await fn(); passed++; console.log("ok   " + name
     for (const event of ["impression", "start", "firstQuartile", "midpoint", "thirdQuartile", "complete"])
       assert.equal(e.beacons.filter(url => url.includes("/" + event + "?")).length, 1, event);
   });
+  await test("real end does not fabricate unobserved quartiles", async () => {
+    const e = env(); const p = e.player(); const done = p.play(); await flush();
+    p._video.emit("playing"); p._video.currentTime = 1; p._video.emit("timeupdate");
+    p._video.emit("ended");
+    assert.equal((await done).outcome, "completed");
+    assert(e.beacons.some(url => url.includes("/complete?")));
+    assert(!e.beacons.some(url => /firstQuartile|midpoint|thirdQuartile/.test(url)));
+  });
   await test("mid-ad stall resumes content and fires error, not complete", async () => {
     const e = env(); const p = e.player(); const done = p.play(); await flush();
     p._video.emit("playing"); p._video.currentTime = 1; p._video.emit("timeupdate");

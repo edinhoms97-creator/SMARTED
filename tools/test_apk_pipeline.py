@@ -200,6 +200,13 @@ class Tests(unittest.TestCase):
         self.assertIn("def ui_layout(self): return 'original'", updated)
         self.assertIn('def onAVStarted(self): self._talvez_mostrar()', updated)
 
+    def test_original_ad_player_function_is_preserved_verbatim(self):
+        from patch_original_ads import replace_functions
+        original_player = "def _tocar(url, log=None):\n    return original_player(url, log)\n"
+        original = original_player + "\ndef reproduzir(anuncio): return False\n"
+        updated = replace_functions(original, "def reproduzir(anuncio): return bool(anuncio)\n")
+        self.assertIn(original_player, updated)
+
     def test_patch_fails_on_unexpected_function_contract(self):
         from patch_original_ads import replace_functions
         with self.assertRaisesRegex(ValueError, 'contract changed'):

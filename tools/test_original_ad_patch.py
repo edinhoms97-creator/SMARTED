@@ -183,7 +183,7 @@ class Tests(unittest.TestCase):
         self.env['_posicao_e_duracao'] = lambda: (clock[0] * 30, 30)
         def sleep(seconds):
             clock[0] += seconds
-            if clock[0] >= 1:
+            if clock[0] >= 1.5:
                 Player.playing = False
                 observer = Player.observer
                 if outcome == 'ended':

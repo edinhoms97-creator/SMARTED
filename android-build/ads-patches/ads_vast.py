@@ -173,27 +173,6 @@ def _media_escolhido(inline, altura_tela=0):
     return min(candidates, key=lambda pair: pair[0])[1] if candidates else None
 
 
-def _tocar(url, log=None):
-    """Native Kodi player only; no external activity, dialog or startup wait."""
-    try:
-        from urllib.parse import urlsplit
-        if urlsplit(url).scheme.lower() not in ('http', 'https'):
-            return False
-        try:
-            import xbmcgui
-            item = xbmcgui.ListItem(label='Anúncio', path=url)
-            item.setProperty('IsPlayable', 'true')
-            item.setProperty('ForceResolvePlugin', 'false')
-            item.setMimeType('video/mp4')
-            item.setContentLookup(False)
-        except ImportError:
-            item = None
-        xbmc.Player().play(url, listitem=item, windowed=False)
-        return True  # asynchronous start: only the watchdog confirms progress
-    except Exception:
-        return False
-
-
 def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None, dormir=None, anterior=''):
     """Confirm progress, own callbacks and release failed ads before fallback."""
     if not anuncio or not anuncio.get('url'):
@@ -370,10 +349,10 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                     pass
     eligible = started and reason in ('concluido', 'pulado')
     if reason == 'concluido' and started:
-        for name in ('firstQuartile', 'midpoint', 'thirdQuartile', 'complete'):
-            if name not in fired:
-                _disparar_eventos(events.get(name) or [])
-                fired.add(name)
+        # A real end callback authorizes complete, not fabricated quartiles
+        # that were never observed on the media clock.
+        _disparar_eventos(events.get('complete') or [])
+        fired.add('complete')
     elif reason == 'pulado' and started:
         _disparar_eventos(events.get('skip') or [])
         fired.add('skip')

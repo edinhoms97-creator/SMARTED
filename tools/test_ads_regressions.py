@@ -143,6 +143,7 @@ class Runtime:
         return env
 
     def play(self):
+        self.duration = 15
         env = self.env()
         ad = {'url': 'ad', 'duracao': 15, 'impressao': ['impression'], 'errors': ['error:[ERRORCODE]'],
               'eventos': {ev: [ev] for ev in ('start', 'firstQuartile', 'midpoint', 'thirdQuartile', 'complete', 'skip')}}
@@ -172,17 +173,20 @@ class Regressions(unittest.TestCase):
         self.assertLessEqual(runtime.stop_times[0] - runtime.start, 3.0)
         self.assertEqual(runtime.stops, ['ad'])
 
-    def test_default_ad_start_is_direct_native_and_has_no_independent_wait(self):
-        from unittest.mock import patch
+    def test_original_ad_player_entrypoint_is_not_replaced(self):
+        replacements = ast.parse((PATCHES / 'ads_vast.py').read_text())
+        self.assertNotIn('_tocar', [node.name for node in replacements.body if isinstance(node, ast.FunctionDef)])
+
+    def test_real_end_does_not_invent_unobserved_quartiles(self):
         runtime = Runtime()
+        runtime.duration = 25
         env = runtime.env()
-        from test_resolved_resume import Item
-        fake_gui = types.SimpleNamespace(ListItem=lambda label='', path='': Item(path=path, label=label))
-        with patch.dict(sys.modules, {'xbmcgui': fake_gui}):
-            self.assertTrue(env['_tocar']('https://ads.invalid/ad.mp4'))
-        self.assertEqual(runtime.restores, ['https://ads.invalid/ad.mp4'])
-        self.assertEqual(runtime.now, 1000.0)
-        self.assertFalse(env['_tocar']('plugin://choose-server'))
+        ad = {'url': 'ad', 'duracao': 25, 'eventos': {
+            name: [name] for name in ('firstQuartile', 'midpoint', 'thirdQuartile', 'complete')}}
+        receipt = env['reproduzir'](ad, tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(receipt['motivo'], 'concluido')
+        self.assertEqual(runtime.events.count('complete'), 1)
+        self.assertNotIn('thirdQuartile', runtime.events)  # last observed clock was 14.5/25
 
     def test_pause_at_one_resumes_without_reopening_ad_or_stealing_focus(self):
         runtime = Runtime('pause-resume')

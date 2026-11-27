@@ -429,9 +429,6 @@
         }
       });
       video.addEventListener("ended", function () {
-        self._fire("firstQuartile");
-        self._fire("midpoint");
-        self._fire("thirdQuartile");
         self._fire("complete");
         self._finish({ outcome: "completed" });
       });

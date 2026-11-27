@@ -51,7 +51,7 @@ Somente anuncios (ads_vast, smart_ads, ads_regra, ads_admob inerte, ads_resume, 
 Classes/metodos de interface originais preservados; somente helper de URL e constantes da welcome corrigidos.
 Validacao VIP, pagamento, skin e inicializacao preservados.
 Watchdog: progresso a cada 500ms; 3s sem avanco aborta; limite absoluto min(duracao+5s,35s), incluindo inicio do decoder.
-Player nativo: pausa tenta PlayPause(play=true); sem progresso por 3s faz stop e retomada direta, fechando OSD do anuncio.
+Player original preservado (_tocar sem substituicao): pausa tenta PlayPause(play=true); sem progresso por 3s faz stop e retomada direta, fechando OSD do anuncio.
 Primeiro e segundo VOD consultam a tag sem gate de retorno legado; callbacks duplicados nao repetem a oportunidade.
 MP4 progressivo conservador (ate 1080p/5000kbps), preferencia 720p AVC baseline/main quando declarado.
 Baixar/Atualizar abrem SMARTEDTV.apk oficial no Dropbox (dl=1); compartilhar envia/exibe esse mesmo link.
