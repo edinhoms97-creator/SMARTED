@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exact current release -> two authorized functions. Never restore historical APK wholesale.
+# Exact current release -> three authorized functions. Never restore historical APK wholesale.
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 BASE="$PWD/.cache/history-startup/current/SMARTEDTV-universal.apk"

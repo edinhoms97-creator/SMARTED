@@ -12,7 +12,7 @@ with zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED) as z:
         '001-003 sao chamadas ao provedor, demais sao fixtures; nenhuma impressao enviada. '
         'budget-before e audit/*budget*: HTTP LOCAL com atrasos reais / relogio virtual, NAO inventario do provedor. '
         'startup-before-after.json e teste com doubles, nao captura da UI Android. '
-        'Browser toca padrao local de teste, nao anuncio real. Ver auditoria e diferencas exatas de duas funcoes.\n')
+        'Browser toca padrao local de teste, nao anuncio real. Ver auditoria e diferencas exatas de tres funcoes.\n')
     for folder in (root/'comparison-before',root/'budget-before',root/'after/evidence'):
         for p in sorted(folder.rglob('*')):
             if p.is_file() and p.suffix not in ('.apk','.py'):

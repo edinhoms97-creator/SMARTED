@@ -1,0 +1,36 @@
+{
+  "historical": {
+    "constants": {
+      "TEMPO_MAXIMO_ANUNCIO": 45,
+      "TEMPO_TRAVAMENTO_ANUNCIO": 6.0,
+      "TEMPO_TELA_PRETA_AUDIO": 2.5,
+      "FOLGA_FIM": 1.5,
+      "TIMEOUT_HTTP": 8,
+      "PROFUNDIDADE_WRAPPER": 2
+    },
+    "scoped_excerpts": {
+      "baixar": "10:         context.minimum_version = ssl.TLSVersion.TLSv1_2\n11:         budget = min(max(float(timeout), 0.1), 8.0)\n12:         deadline = _clock.monotonic() + budget\n13:         request = Request(url, headers={\n14:             'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',\n15:             'Accept': 'application/xml,text/xml,*/*;q=0.8',\n22:             while True:\n23:                 if _clock.monotonic() >= deadline:\n24:                     return None",
+      "_aguardar_anuncio_tocar": "",
+      "reproduzir": "1: def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None, dormir=None, anterior=''):\n2:     \"\"\"Keep the original Kodi player/helpers. Never complete a failed/stopped ad.\"\"\"\n47:     reason = 'interrompido'\n48:     while _agora() - start < tempo_maximo:\n49:         if observer.ended:\n67:             no_frame_at = now if no_frame_at is None else no_frame_at\n68:             if now - no_frame_at >= TEMPO_TELA_PRETA_AUDIO:\n69:                 _desligar_surface_tela_preta(log=log)\n76:             last_position, progress_at = position, now\n77:         elif now - progress_at >= min(float(TEMPO_TRAVAMENTO_ANUNCIO), 12.0):\n78:             reason = 'travamento'",
+      "exibir": "1: def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,\n2:            baixar_tag=None, tocar=None, dormir=None):\n47:         return {'exibido': False, 'motivo': 'vast-sem-criativo'}\n48:     recibo = reproduzir(anuncio, log=log, tempo_maximo=tempo_maximo,\n49:                         tocar=tocar, dormir=dormir)",
+      "restaurar": "15:             player.seekTime(target)\n16:             deadline = agora() + 3\n17:             confirmed = False\n23:                     break\n24:                 if agora() >= deadline:\n25:                     break"
+    }
+  },
+  "current": {
+    "constants": {
+      "TEMPO_MAXIMO_ANUNCIO": 45,
+      "TEMPO_TRAVAMENTO_ANUNCIO": 6.0,
+      "TEMPO_TELA_PRETA_AUDIO": 2.5,
+      "FOLGA_FIM": 1.5,
+      "TIMEOUT_HTTP": 8,
+      "PROFUNDIDADE_WRAPPER": 2
+    },
+    "scoped_excerpts": {
+      "baixar": "11:         context.minimum_version = ssl.TLSVersion.TLSv1_2\n12:         budget = min(max(float(timeout), 0.1), 8.0)\n13:         deadline = _clock.monotonic() + budget\n14:         request = Request(url, headers={\n15:             'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',\n16:             'Accept': 'application/xml,text/xml,*/*;q=0.8',\n23:             while True:\n24:                 if _clock.monotonic() >= deadline:\n25:                     transport_failure(xbmc, reason='deadline')\n26:                     return None",
+      "_aguardar_anuncio_tocar": "",
+      "reproduzir": "1: def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None, dormir=None, anterior=''):\n2:     \"\"\"Confirm progress, own callbacks and release failed ads before fallback.\"\"\"\n59:                     start = progress_at = _agora()\n60:                     while _agora() - start < tempo_maximo:\n61:                         playing = _player_tocando_video()\n79:                             no_frame_at = now if no_frame_at is None else no_frame_at\n80:                             if now - no_frame_at >= min(float(TEMPO_TELA_PRETA_AUDIO), 4.0):\n81:                                 reason = 'tela-preta-sem-quadro'\n95:                                 emit(xbmc, 'tracking-event-queued', event='start')\n96:                         elif now - progress_at >= min(float(TEMPO_TRAVAMENTO_ANUNCIO), 8.0):\n97:                             reason = 'travamento'",
+      "exibir": "1: def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,\n2:            baixar_tag=None, tocar=None, dormir=None):\n24:         return {'exibido': False, 'motivo': reason, 'vast_attempt_id': _attempt_id}\n25:     deadline = _agora() + 8.0\n26:     last = ['no-fill-ou-sem-midia', 303]\n54:     def follow(url, depth, ancestors, impressions, branch_errors, inherited):\n55:         if _agora() >= deadline:\n56:             return reject('timeout-vast', 301, branch_errors, depth)\n62:         try:\n63:             remaining = deadline - _agora()\n64:             data = baixar_tag(url) if baixar_tag else baixar(url, timeout=remaining)\n84:         for creative, linear in pairs:\n85:             if _agora() >= deadline:\n86:                 return reject('timeout-vast', 301, branch_errors, 0)\n98:                 media.text = address(media.text, base)\n99:             vast = _ET.Element('VAST', version='3.0')\n100:             _ET.SubElement(vast, 'Ad').append(candidate)\n114:     def visit(root, base, depth, ancestors, impressions, branch_errors, inherited):\n115:         if _agora() >= deadline:\n116:             return reject('timeout-vast', 301, branch_errors, depth)\n186:     emit(xbmc, 'creative-selected')\n187:     receipt = reproduzir(ad, log=log, tempo_maximo=tempo_maximo, tocar=tocar, dormir=dormir)\n188:     receipt['vast_attempt_id'] = _attempt_id",
+      "restaurar": "10:     live = bool(estado.get('ao_vivo'))\n11:     deadline = agora() + min(float(espera), 12.0)\n12:     candidates = _candidatos_restauracao(estado)\n13:     for route_index, route in enumerate(candidates):\n14:         if agora() >= deadline:\n15:             break\n28:                 continue\n29:             route_deadline = min(deadline, agora() + 6.0)\n30:             ready = False\n35:                     break\n36:                 if agora() >= route_deadline:\n37:                     break\n44:                 player.seekTime(target)\n45:                 seek_deadline = min(deadline, agora() + 3.0)\n46:                 confirmed = False\n54:                         break\n55:                     if agora() >= seek_deadline:\n56:                         break"
+    }
+  }
+}

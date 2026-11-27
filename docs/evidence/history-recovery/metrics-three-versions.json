@@ -1,0 +1,72 @@
+{
+  "historical-before": {
+    "utc": "2026-11-27T23:29:52.201+00:00",
+    "total_attempts": 36,
+    "live": {
+      "root_requests": 3,
+      "http_responses": 3,
+      "empty_responses": 3,
+      "selected": 0,
+      "native_plays": 0
+    },
+    "fixtures": {
+      "attempts": 33,
+      "selected": 18,
+      "classifications": {
+        "media-selected": 18,
+        "vast-sem-criativo": 13,
+        "tag-sem-resposta": 2
+      },
+      "native_plays": 0,
+      "browser_plays": 18
+    }
+  },
+  "current-before": {
+    "utc": "2026-11-27T23:30:59.735+00:00",
+    "total_attempts": 36,
+    "live": {
+      "root_requests": 3,
+      "http_responses": 3,
+      "empty_responses": 3,
+      "selected": 0,
+      "native_plays": 0
+    },
+    "fixtures": {
+      "attempts": 33,
+      "selected": 26,
+      "classifications": {
+        "media-selected": 26,
+        "empty-vast": 2,
+        "falha-rede-vast": 2,
+        "vmap-sem-preroll": 1,
+        "sem-midia-compativel": 2
+      },
+      "native_plays": 0,
+      "browser_plays": 26
+    }
+  },
+  "current-after": {
+    "utc": "2026-11-27T23:46:31.804+00:00",
+    "total_attempts": 36,
+    "live": {
+      "root_requests": 3,
+      "http_responses": 3,
+      "empty_responses": 3,
+      "selected": 0,
+      "native_plays": 0
+    },
+    "fixtures": {
+      "attempts": 33,
+      "selected": 26,
+      "classifications": {
+        "media-selected": 26,
+        "empty-vast": 2,
+        "falha-rede-vast": 2,
+        "vmap-sem-preroll": 1,
+        "sem-midia-compativel": 2
+      },
+      "native_plays": 0,
+      "browser_plays": 26
+    }
+  }
+}

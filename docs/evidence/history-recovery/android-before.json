@@ -1,0 +1,142 @@
+{
+  "host": "x86_64",
+  "kvm_device": true,
+  "virtualization_flag": true,
+  "tools": {
+    "adb": "/usr/local/lib/android/sdk/platform-tools/adb",
+    "emulator": "/usr/local/lib/android/sdk/emulator/emulator",
+    "avdmanager": "/usr/local/lib/android/sdk/cmdline-tools/latest/bin/avdmanager",
+    "sdkmanager": "/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager",
+    "java": "/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.21-2/x64/bin/java",
+    "javac": "/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.21-2/x64/bin/javac"
+  },
+  "android_executed": true,
+  "cycles": [
+    {
+      "cycle": 1,
+      "status": "not-run",
+      "reason": "requires-real-content-selection-and-visual-validation",
+      "vast_requests": null,
+      "ads_played": null,
+      "no_fill": null
+    },
+    {
+      "cycle": 2,
+      "status": "not-run",
+      "reason": "requires-real-content-selection-and-visual-validation",
+      "vast_requests": null,
+      "ads_played": null,
+      "no_fill": null
+    },
+    {
+      "cycle": 3,
+      "status": "not-run",
+      "reason": "requires-real-content-selection-and-visual-validation",
+      "vast_requests": null,
+      "ads_played": null,
+      "no_fill": null
+    }
+  ],
+  "status": "apk-launch-attempted-content-cycles-not-executed",
+  "requested_image": "system-images;android-30;google_apis;x86_64",
+  "sdk_install": {
+    "code": 0,
+    "output": "=======            ] 70% Unzipping... x86_64/system.img    \n[============================           ] 70% Unzipping... x86_64/system.img    \n[============================           ] 71% Unzipping... x86_64/system.img    \n[============================           ] 72% Unzipping... x86_64/system.img    \n[=============================          ] 73% Unzipping... x86_64/system.img    \n[=============================          ] 74% Unzipping... x86_64/system.img    \n[=============================          ] 75% Unzipping... x86_64/system.img    \n[==============================         ] 75% Unzipping... x86_64/system.img    \n[==============================         ] 76% Unzipping... x86_64/system.img    \n[==============================         ] 77% Unzipping... x86_64/system.img    \n[==============================         ] 77% Unzipping... x86_64/userdata.img  \n[==============================         ] 77% Unzipping... x86_64/vendor.img    \n[==============================         ] 77% Unzipping... x86_64/data/local.pro\n[==============================         ] 77% Unzipping... x86_64/data/misc/apns\n[==============================         ] 77% Unzipping... x86_64/data/misc/emul\n[==============================         ] 77% Unzipping... x86_64/data/misc/gcec\n[==============================         ] 77% Unzipping... x86_64/data/misc/wifi\n[==============================         ] 77% Unzipping... x86_64/data/system/di\n[==============================         ] 78% Unzipping... x86_64/data/system/di\n[=======================================] 100% Unzipping... x86_64/data/system/d\n\n"
+  },
+  "avd_home_explicit": true,
+  "avd_create": {
+    "code": 0,
+    "output": "Loading local repository...                                                     \n[=========                              ] 25% Loading local repository...       \n[=========                              ] 25% Fetch remote repository...        \n[=======================================] 100% Fetch remote repository...       \nAuto-selecting single ABI x86_64\n"
+  },
+  "ro.build.version.release": "11",
+  "ro.build.version.sdk": "30",
+  "ro.product.cpu.abilist": "x86_64,x86,arm64-v8a,armeabi-v7a,armeabi",
+  "ro.dalvik.vm.native.bridge": "libndk_translation.so",
+  "install": {
+    "code": 0,
+    "output": "Performing Streamed Install\nSuccess\n"
+  },
+  "apk_sha256": "919e97db0929ab90f189c9503722f4a5139feda573a28c96d79973a8e70e6087",
+  "all_files_permission": {
+    "code": 0,
+    "output": ""
+  },
+  "launch": {
+    "code": 0,
+    "output": "Starting: Intent { cmp=smartedtv.full/.Splash }\nStatus: ok\nLaunchState: COLD\nActivity: smartedtv.full/.Splash\nTotalTime: 2456\nWaitTime: 2461\nComplete\n"
+  },
+  "permission_actions": [],
+  "kodi_log_paths": [],
+  "power": "uler*:internal (partial)\n  11-27 23:40:46.530 - 10121 - ACQ *gms_scheduler*/c.g.a.g/.i.b.IpaGcmTaskService (partial)\n  11-27 23:40:46.796 - 10121 - REL *gms_scheduler*:internal\n  11-27 23:40:46.828 - 10121 - REL *gms_scheduler*/c.g.a.g/.i.b.IpaGcmTaskService\n  11-27 23:40:46.829 - 10121 - ACQ *gms_scheduler*:internal (partial)\n  11-27 23:40:46.918 - 1041 - REL AudioMix\n  11-27 23:40:47.113 - 10121 - REL *gms_scheduler*:internal\n  11-27 23:40:47.113 - 10121 - ACQ *gms_scheduler*:internal (partial)\n  11-27 23:40:47.122 - 10121 - ACQ *gms_scheduler*/c.g.a.g/.c.u.QosUploaderService (partial)\n  11-27 23:40:47.279 - 10121 - REL *gms_scheduler*:internal\n  11-27 23:40:48.109 - 10121 - REL *gms_scheduler*/c.g.a.g/.c.u.QosUploaderService\n  11-27 23:40:48.110 - 10121 - ACQ *gms_scheduler*:internal (partial)\n  11-27 23:40:48.469 - 10121 - REL *gms_scheduler*:internal\n  11-27 23:40:53.826 - 1041 - ACQ AudioMix (partial)\n  11-27 23:40:54.795 - 1000 - ACQ *alarm* (partial)\n  11-27 23:40:54.803 - 1000 - REL *alarm*\n  11-27 23:40:56.287 - 1000 - ACQ *job*/c.g.a.a.p/c.g.a.l.s.m.MediaMonitorJobSchedulerService (partial)\n  11-27 23:40:56.833 - 1041 - REL AudioMix\n  11-27 23:40:56.982 - 1000 - REL *job*/c.g.a.a.p/c.g.a.l.s.m.MediaMonitorJobSchedulerService\n  11-27 23:41:00.000 - 1000 - ACQ *alarm* (partial)\n  11-27 23:41:00.001 - 1000 - REL *alarm*\n  11-27 23:41:04.849 - 1000 - ACQ *alarm* (partial)\n  11-27 23:41:04.856 - 1000 - REL *alarm*\n  -\n  Events: 2015, Time-Resets: 107\n  Buffer, Bytes used: 6003\nAmbientDisplaySuppressionController:\n ambientDisplaySuppressed=false\n mSuppressionTokens={}\n",
+  "app_pid": {
+    "code": 0,
+    "output": "5151\n"
+  },
+  "ui_hierarchy": "<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation=\"1\"><node index=\"0\" text=\"\" resource-id=\"\" class=\"android.widget.FrameLayout\" package=\"smartedtv.full\" content-desc=\"\" checkable=\"false\" checked=\"false\" clickable=\"false\" enabled=\"true\" focusable=\"false\" focused=\"false\" scrollable=\"false\" long-clickable=\"false\" password=\"false\" selected=\"false\" bounds=\"[0,0][834,540]\"><node index=\"0\" text=\"\" resource-id=\"\" class=\"android.widget.LinearLayout\" package=\"smartedtv.full\" content-desc=\"\" checkable=\"false\" checked=\"false\" clickable=\"false\" enabled=\"true\" focusable=\"false\" focused=\"false\" scrollable=\"false\" long-clickable=\"false\" password=\"false\" selected=\"false\" bounds=\"[0,0][834,540]\"><node index=\"0\" text=\"\" resource-id=\"android:id/content\" class=\"android.widget.FrameLayout\" package=\"smartedtv.full\" content-desc=\"\" checkable=\"false\" checked=\"false\" clickable=\"false\" enabled=\"true\" focusable=\"false\" focused=\"false\" scrollable=\"false\" long-clickable=\"false\" password=\"false\" selected=\"false\" bounds=\"[0,0][834,540]\"><node index=\"0\" text=\"\" resource-id=\"smartedtv.full:id/VideoLayout\" class=\"android.widget.RelativeLayout\" package=\"smartedtv.full\" content-desc=\"\" checkable=\"false\" checked=\"false\" clickable=\"false\" enabled=\"true\" focusable=\"false\" focused=\"false\" scrollable=\"false\" long-clickable=\"false\" password=\"false\" selected=\"false\" bounds=\"[0,0][834,540]\"><node index=\"0\" text=\"\" resource-id=\"\" class=\"android.view.View\" package=\"smartedtv.full\" content-desc=\"\" checkable=\"false\" checked=\"false\" clickable=\"false\" enabled=\"true\" focusable=\"false\" focused=\"false\" scrollable=\"false\" long-clickable=\"false\" password=\"false\" selected=\"false\" bounds=\"[0,0][834,540]\" /></node></node></node></node></hierarchy>",
+  "ui_labels": [],
+  "activity_tail": ".0,0.0) 960 x 63 transform=(1.0, 0.0, 1.0, 0.0)\n    mLastFreezeDuration=+1s880ms\n    mForceSeamlesslyRotate=false seamlesslyRotate: pending=null finishedFrameNumber=85\n    isOnScreen=true\n    isVisible=false\n   mAdapter=    ControlAdapter\n     mCapturedLeash=Surface(name=Surface(name=5ab7798 StatusBar)/@0x1c5d7e6 - animation-leash)/@0x9e25419   mControlTarget=    mDisplayId=0 rootTaskId=10 mSession=Session{7786dbf 5151:u0a10167} mClient=android.os.BinderProxy@ddc37e9\n    mOwnerUid=10167 showForAllUsers=false package=smartedtv.full appop=NONE\n    mAttrs={(0,0)(fillxfill) sim={adjust=resize} ty=BASE_APPLICATION fmt=TRANSLUCENT wanim=0x1030001 preferredRefreshRate=60.000004\n      fl=LAYOUT_IN_SCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED\n      pfl=FORCE_DRAW_STATUS_BAR_BACKGROUND FIT_INSETS_CONTROLLED\n      fitSides=}\n    Requested w=960 h=540 mLayoutSeq=151\n    mHasSurface=true isReadyForDisplay()=true mWindowRemovalAllowed=false\n    WindowStateAnimator{e49a31d smartedtv.full/smartedtv.full.Main}:\n      Surface: shown=true layer=0 alpha=1.0 rect=(0.0,0.0) 960 x 540 transform=(1.0, 0.0, 1.0, 0.0)\n    mForceSeamlesslyRotate=false seamlesslyRotate: pending=null finishedFrameNumber=0\n    isOnScreen=true\n    isVisible=true\n\n  KeyguardController:\n    mKeyguardShowing=false\n    mAodShowing=false\n    mKeyguardGoingAway=false\n    Occluded=false DismissingKeyguardActivity=null at display=0\n    mDismissalRequested=false\n\n  LockTaskController:\n    mLockTaskModeState=NONE\n    mLockTaskModeTasks=\n    mLockTaskPackages (userId:packages)=\n      u0:[]\n\n  mCurTaskIdForUser={0=10}\n  mUserStackInFront={}\n  mVisibilityTransactionDepth=0\n  isHomeRecentsComponent=true\n\n  TaskOrganizerController:\n    Per windowing mode:\n      pinned:\n        android.window.ITaskOrganizer$Stub$Proxy@a00f98c uid=10157:\n      split-screen-primary:\n        android.window.ITaskOrganizer$Stub$Proxy@cbb18d5 uid=10157:\n          Task{343ef9 #5 visible=false type=undefined mode=split-screen-primary translucent=true ?? U=0 StackId=5 sz=0}\n          Task{62b9897 #6 visible=false type=undefined mode=split-screen-secondary translucent=true ?? U=0 StackId=6 sz=0}\n      split-screen-secondary:\n        android.window.ITaskOrganizer$Stub$Proxy@cbb18d5 uid=10157:\n          Task{343ef9 #5 visible=false type=undefined mode=split-screen-primary translucent=true ?? U=0 StackId=5 sz=0}\n          Task{62b9897 #6 visible=false type=undefined mode=split-screen-secondary translucent=true ?? U=0 StackId=6 sz=0}\n\n",
+  "adb_root_after_cycles": {
+    "code": 0,
+    "output": "restarting adbd as root\n"
+  },
+  "apk_ad_module_sha256": {
+    "smart_ads.py": "d992255efeb14322606eff071a31b8530f23f3952a4036ed18f993b98dfa1d76",
+    "ads_vast.py": "5f96db7ad57a48b893adf178578d7153b4c0209e25d220738a0e56a628f7c0e7",
+    "ads_regra.py": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b",
+    "ads_tracking.py": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f",
+    "ads_openings.py": "885c6650266125f3bc6750b783dddf940b6d2344a6bf78c8b14a6f062fea1672"
+  },
+  "runtime_ad_module_sha256": {
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/smart_ads.py": {
+      "code": 0,
+      "output": "d992255efeb14322606eff071a31b8530f23f3952a4036ed18f993b98dfa1d76  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/smart_ads.py\n"
+    },
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_vast.py": {
+      "code": 0,
+      "output": "5f96db7ad57a48b893adf178578d7153b4c0209e25d220738a0e56a628f7c0e7  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_vast.py\n"
+    },
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_regra.py": {
+      "code": 0,
+      "output": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_regra.py\n"
+    },
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+      "code": 0,
+      "output": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_tracking.py\n"
+    },
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_openings.py": {
+      "code": 0,
+      "output": "885c6650266125f3bc6750b783dddf940b6d2344a6bf78c8b14a6f062fea1672  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_openings.py\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/smart_ads.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/smart_ads.py: No such file or directory\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_vast.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_vast.py: No such file or directory\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_regra.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_regra.py: No such file or directory\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_tracking.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_tracking.py: No such file or directory\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_openings.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_openings.py: No such file or directory\n"
+    }
+  },
+  "kodi_log_read_after_root": true,
+  "startup_native_events": [
+    "2026-11-27 23:39:28.864 T:5448  warning <general>: [script.smartedtv.welcome] vigia: a tela nao apareceu em 8 s; abrindo a Home",
+    "2026-11-27 23:39:28.864 T:5448  warning <general>: [script.smartedtv.welcome] abrindo a Home: vigia (tela nao chegou a desenhar)",
+    "2026-11-27 23:39:30.491 T:5448     info <general>: [script.smartedtv.welcome] Home ativa (ActivateWindow)",
+    "2026-11-27 23:39:31.803 T:5478     info <general>: [script.smartedtv.welcome] tela de entrada carregada (antes da Home)"
+  ],
+  "opening_stages": [
+    "{\"stage\": \"provider-selected\", \"opening\": null, \"monotonic_ms\": 126437, \"provider\": \"vast\", \"reason\": \"validacao-vast-celular-admob-adiado\"}",
+    "{\"stage\": \"state-observer-installed\", \"opening\": null, \"monotonic_ms\": 126495}"
+  ]
+}
