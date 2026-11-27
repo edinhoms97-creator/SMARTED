@@ -1,0 +1,193 @@
+name: Build SMARTEDTV universal APK (manual)
+run-name: SMARTEDTV universal · ${{ github.ref_name }} · teste #${{ github.run_number }}
+
+# Deliberately no push, pull_request, workflow_run or schedule triggers.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Opcional: URL HTTPS de outra base Kodi genuinamente multi-ABI (exige SHA256)'
+        type: string
+        default: ''
+      base_sha256:
+        description: 'SHA256 da base alternativa; deixar ambos vazios usa o Dropbox fixado no repositorio'
+        type: string
+        default: ''
+      publish_release:
+        description: 'Publicar pre-release de teste com link direto para o APK verificado'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Repeated manual clicks never start builds concurrently on the same ref.
+concurrency:
+  group: smartedtv-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  APKTOOL_VERSION: '2.12.1'
+  BUILD_TOOLS_VERSION: '35.0.0'
+  INPUT_BASE_URL: ${{ inputs.base_url }}
+  INPUT_BASE_SHA256: ${{ inputs.base_sha256 }}
+
+jobs:
+  build:
+    name: Testar, reempacotar e verificar
+    runs-on: ubuntu-24.04
+    # Target is 5–10 min with a warm cache, NOT a guaranteed SLA.
+    timeout-minutes: 8
+    steps:
+      - name: Checkout da revisao solicitada
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Node 22 (cache npm)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Python 3.11
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.11'
+
+      - name: Apenas testes unitarios rapidos (sem emulador)
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test
+          python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v
+          npm run build:standalone
+          git diff --exit-code -- smartedtv/standalone/smartedtv-preview.html
+          bash -n tools/build-universal-apk.sh
+          python3 -m compileall -q kodi-addon tools
+
+      - name: Java 17 para apktool e assinatura
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache SDK build-tools
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: /usr/local/lib/android/sdk/build-tools/35.0.0
+          key: smartedtv-sdk-ubuntu24-build-tools35-v1
+
+      - name: Cache apktool fixado por SHA256
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .cache/smartedtv-apktool
+          key: smartedtv-apktool-2.12.1-66cf4524-v1
+
+      - name: Cache APK-base imutavel (validar hash em TODA execucao)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .cache/smartedtv-base
+          key: smartedtv-base-${{ inputs.base_sha256 || 'dropbox-03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277' }}
+
+      - name: Cache chave apenas de debug (nunca producao)
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .cache/smartedtv-signing
+          key: smartedtv-test-debug-key-v1
+
+      - name: Preparar SDK e apktool (sem NDK / Gradle / emulador)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -x "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" ]]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;$BUILD_TOOLS_VERSION"
+          fi
+          mkdir -p .cache/smartedtv-apktool
+          jar=".cache/smartedtv-apktool/apktool_${APKTOOL_VERSION}.jar"
+          if [[ ! -f "$jar" ]]; then
+            curl --fail --location --proto '=https' --proto-redir '=https' \
+              --connect-timeout 20 --max-time 120 --retry 1 \
+              "https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VERSION}/apktool_${APKTOOL_VERSION}.jar" -o "$jar"
+          fi
+          python3 - "$jar" <<'PY'
+          import hashlib, sys
+          from tools.apk_pipeline import CONFIG
+          assert hashlib.sha256(open(sys.argv[1], 'rb').read()).hexdigest() == CONFIG['apktool_sha256'], 'Apktool SHA256 mismatch'
+          PY
+          echo "APKTOOL_JAR=$GITHUB_WORKSPACE/$jar" >> "$GITHUB_ENV"
+
+      - name: Build APK universal, zipalign, assinatura e validacao
+        run: bash tools/build-universal-apk.sh
+
+      - name: Artefato — exatamente um APK, checksum e verificacoes
+        id: artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SMARTEDTV-universal
+          path: dist/
+          # APK is already compressed. Avoid wasting CPU recompressing 263+ MB.
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Relatorios se o build falhar (nunca divulgar APK nao verificado)
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SMARTEDTV-build-diagnostics
+          path: |
+            dist/*.json
+            dist/*.txt
+            dist/*.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Resumo
+        env:
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+        run: |
+          {
+            echo '## APK verificado (assinatura de debug)'
+            echo "Fonte: \`$GITHUB_SHA\`"
+            echo "[Download do artefato (ZIP)]($ARTIFACT_URL)"
+            echo 'Assinatura, alinhamento, manifesto compilado, ABIs e conteudo verificados. Sem teste em aparelho.'
+            echo 'VAST ainda precisa de validacao real. AdMob desligado.'
+            echo '```'
+            cat dist/SMARTEDTV-universal.apk.sha256
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Link direto de download (pre-release de teste)
+    if: inputs.publish_release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    steps:
+      - name: Baixar somente o artefato aprovado
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: SMARTEDTV-universal
+          path: dist
+
+      - name: Verificar transporte e publicar APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
+          tag="smartedtv-test-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
+            --title "SMARTEDTV universal — teste ${GITHUB_RUN_NUMBER}" \
+            --notes-file dist/INSTALLATION.txt \
+            dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
+            dist/signature.txt dist/AndroidManifest.xml dist/apk-validation.json \
+            dist/manifest-validation.json dist/build-info.json
+          url="$(gh release view "$tag" --json assets --jq '.assets[] | select(.name == "SMARTEDTV-universal.apk") | .url')"
+          echo "[Download direto SMARTEDTV-universal.apk]($url)" >> "$GITHUB_STEP_SUMMARY"

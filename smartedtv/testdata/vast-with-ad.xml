@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="4.2">
+  <Ad id="clickadilla-1508180-001" sequence="1">
+    <InLine>
+      <AdSystem version="1.0">Clickadilla</AdSystem>
+      <AdTitle>SMARTEDTV demo creative</AdTitle>
+      <AdServingId>1508180-001</AdServingId>
+      <Impression id="imp1">https://example.com/track/impression?spot=1508180&amp;ad=001</Impression>
+      <Creatives sequence="1">
+        <Creative id="cr1" sequence="1">
+          <UniversalAdId idRegistry="ad-id.org">CLICKADILLA1508180001</UniversalAdId>
+          <Linear skipoffset="00:00:05">
+            <Duration>00:00:30.000</Duration>
+            <MediaFiles>
+              <MediaFile delivery="progressive" type="video/mp4" width="640" height="360" bitrate="800" min="640" max="640">https://example.com/ads/demo-640.mp4</MediaFile>
+              <MediaFile delivery="progressive" type="video/mp4" width="1280" height="720" bitrate="1800" min="1280" max="1280">https://example.com/ads/demo-1280.mp4</MediaFile>
+            </MediaFiles>
+            <VideoClicks>
+              <ClickThrough id="ct1">https://example.com/landing?spot=1508180</ClickThrough>
+              <ClickTracking id="ctr1">https://example.com/track/click?spot=1508180&amp;ad=001</ClickTracking>
+            </VideoClicks>
+            <TrackingEvents>
+              <Tracking event="start">https://example.com/track/start?spot=1508180&amp;ad=001</Tracking>
+              <Tracking event="firstQuartile">https://example.com/track/firstQuartile?spot=1508180&amp;ad=001</Tracking>
+              <Tracking event="midpoint">https://example.com/track/midpoint?spot=1508180&amp;ad=001</Tracking>
+              <Tracking event="thirdQuartile">https://example.com/track/thirdQuartile?spot=1508180&amp;ad=001</Tracking>
+              <Tracking event="complete">https://example.com/track/complete?spot=1508180&amp;ad=001</Tracking>
+              <Tracking event="error">https://example.com/track/error?spot=1508180&amp;ad=001&amp;code=[ERRORCODE]</Tracking>
+            </TrackingEvents>
+          </Linear>
+        </Creative>
+      </Creatives>
+    </InLine>
+  </Ad>
+</VAST>

@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="SMARTEDTV — ative seu VIP com um código, assine o plano mensal ou continue gratuitamente com anúncios.">
+  <title>SMARTEDTV — Ativação e assinatura</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InNpbHZlciIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmZmZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIuNjIiIHN0b3AtY29sb3I9IiNiZGJkYmQiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjOGY4ZjhmIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSI0IiB5PSI0IiB3aWR0aD0iNTYiIGhlaWdodD0iNTYiIHJ4PSIxNiIgZmlsbD0idXJsKCNzaWx2ZXIpIi8+CiAgPHBhdGggZD0iTTI2IDIwLjV2MjNMNDUuNSAzMnoiIGZpbGw9IiMwOTA5MDkiLz4KPC9zdmc+Cg==">
+  <style>
+/* ============================================================
+   SMARTEDTV — ported 1:1 from the reference
+   (https://beamish-cupcake-5fbf43.netlify.app/) plus documented
+   additions: ATUALIZAR APLICATIVO button, plan selector, Baixar APK,
+   toasts, status dialog, entrance motion, marquee legend, parallax,
+   accessible focus states and a portrait-mobile flow layout.
+   ============================================================ */
+
+:root{
+  --ink:#f7f7f7;--txt:#bcbcbc;--mut:#838383;--line:rgba(255,255,255,.11);
+  --glass-a:rgba(255,255,255,.065);--glass-b:rgba(255,255,255,.018);
+  --u:1;
+}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#000;color:var(--ink);
+  font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:grid;place-items:center}
+.stage{position:relative;width:min(100vw,calc((100vh - 42px)*16/9));height:min(calc(100vh - 42px),56.25vw);aspect-ratio:16/9}
+.screen{position:absolute;inset:0;overflow:hidden;border-radius:1.45%;padding:2.0% 2.0%;
+  display:flex;flex-direction:column;gap:2.0%;
+  background:radial-gradient(115% 95% at 10% -10%,#181818 0%,rgba(10,10,12,.92) 48%,#050505 100%);
+  box-shadow:0 2.5rem 5rem rgba(0,0,0,.8)}
+.screen:before,.screen:after{content:"";position:absolute;border-radius:50%;filter:blur(4rem);pointer-events:none}
+.screen:before{width:42%;height:42%;left:-10%;top:-24%;background:radial-gradient(circle,rgba(255,255,255,.08),transparent 66%)}
+.screen:after{width:36%;height:36%;right:-10%;bottom:-18%;background:radial-gradient(circle,rgba(255,255,255,.05),transparent 68%)}
+.top{height:9%;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;flex:none}
+.brand{display:flex;align-items:center;gap:1rem}
+.mark{width:4.1rem;height:4.1rem;border-radius:1rem;background:linear-gradient(160deg,#fff,#bdbdbd 62%,#8f8f8f);
+  display:grid;place-items:center;box-shadow:inset 0 2px 0 #fff,0 8px 20px #0009}
+.mark svg{width:52%;height:52%;fill:#090909}
+.brand h1{margin:0;font-size:clamp(1rem,2.1vw,2rem);letter-spacing:.22em}
+.brand p{margin:.45rem 0 0;font-size:clamp(.55rem,.9vw,.9rem);color:var(--mut);letter-spacing:.08em}
+.seg{display:flex;gap:.25rem;padding:.25rem;border-radius:999px;background:#ffffff0b;border:1px solid var(--line)}
+.seg button{border:0;border-radius:999px;padding:.7rem 1.5rem;background:transparent;color:var(--txt);font-size:clamp(.65rem,1vw,1rem);font-weight:600;cursor:pointer;transition:background-color .15s,color .15s}
+.seg button:hover{background:#ffffff14;color:var(--ink)}
+.seg button[aria-selected=true]{background:linear-gradient(#fff,#e8e8e8);color:#080808}
+.grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:1.3%;flex:1;min-height:0}
+.card{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:2%;
+  padding:2.2%;border-radius:1.5rem;background:linear-gradient(180deg,var(--glass-a),var(--glass-b));
+  border:1px solid var(--line);box-shadow:inset 0 1px 0 #ffffff12,0 12px 34px #0007}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.card h2{font-size:clamp(.9rem,1.65vw,1.55rem);margin:0;font-weight:650}
+.chip{font-size:clamp(.55rem,.85vw,.8rem);color:var(--txt);padding:.4rem .8rem;border-radius:99px;border:1px solid #ffffff24;background:#ffffff0d;white-space:nowrap}
+.eyebrow{font-size:clamp(.55rem,.85vw,.8rem);letter-spacing:.24em;color:var(--mut);font-weight:600}
+.eyebrow:before{content:"";display:inline-block;width:1.4rem;height:2px;background:#ffffff8c;margin:0 .6rem .2rem 0}
+.welcome h3{font-size:clamp(1.5rem,2.6vw,2.55rem);line-height:1.08;margin:.7rem 0;font-weight:700}
+.welcome p{font-size:clamp(.8rem,1.3vw,1.25rem);line-height:1.45;color:var(--txt);margin:.4rem 0}
+.list{list-style:none;padding:0;margin:auto 0 2%;display:flex;flex-direction:column;gap:1.6rem}
+.list li{font-size:clamp(.75rem,1.15vw,1.1rem);color:var(--txt);display:flex;align-items:center;gap:.8rem}
+.tick{width:1.4rem;height:1.4rem;border-radius:50%;display:grid;place-items:center;background:#ffffff14;border:1px solid #ffffff29;flex:none}
+.tick svg{width:65%;height:65%;stroke:#fff;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.qr-wrap{flex:1;min-height:0;display:grid;place-items:center}
+.qr-plate{width:min(64%,27vh);aspect-ratio:1;padding:1rem;background:#fff;border-radius:.6rem;box-shadow:0 10px 28px #0008}
+.qr-plate img{width:100%;height:100%;display:block;image-rendering:pixelated}
+.hint{margin:0;text-align:center;font-size:clamp(.65rem,.95vw,.9rem);color:var(--mut);line-height:1.4;min-height:2.8em}
+.btn{height:clamp(2.5rem,5.1vh,3.6rem);padding:0 1.2rem;border-radius:.65rem;border:1px solid #ffffff2b;
+  display:inline-flex;align-items:center;justify-content:center;gap:.5rem;font-size:clamp(.75rem,1.05vw,1rem);
+  font-weight:650;white-space:nowrap;cursor:pointer;
+  transition:background-color .15s,color .15s,box-shadow .15s,transform .15s,border-color .15s}
+.btn.primary{background:linear-gradient(#fff,#ebebeb);color:#080808}
+.btn.ghost{background:#ffffff0b;color:var(--ink)}
+.btn.quiet{background:transparent;color:#d6d6d6}
+.btn:hover,.btn:focus-visible,.btn.is-focus{outline:none;background:#fff;color:#080808;box-shadow:0 0 0 3px #fff9,0 0 22px #fff4;transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.985)}
+.btn[disabled]{opacity:.55;cursor:progress;transform:none}
+.card .btn{width:100%}
+.bar{position:relative;z-index:1;display:flex;align-items:center;gap:1.5%;padding:1.5% 1.6%;
+  border-radius:1.2rem;background:linear-gradient(180deg,#ffffff13,#ffffff05);
+  border:1px solid var(--line);box-shadow:inset 0 1px 0 #ffffff12,0 12px 30px #0008;flex:none}
+.bar-copy{width:28%;min-width:0}
+.bar-copy h3{font-size:clamp(.8rem,1.4vw,1.35rem);margin:0;white-space:nowrap}
+.bar-copy p{font-size:clamp(.6rem,.9vw,.9rem);color:var(--mut);margin:.4rem 0 0;white-space:nowrap}
+.bar-form{display:flex;align-items:center;gap:.7rem;flex:1;min-width:0}
+.field{height:clamp(2.5rem,5.1vh,3.6rem);min-width:0;flex:1;padding:0 1rem;border-radius:.65rem;
+  background:#0006;border:1px solid #ffffff26;color:#fff;font-size:clamp(.7rem,1vw,1rem);outline:none;transition:border-color .15s,box-shadow .15s}
+.field::placeholder{color:#747474}
+.field:focus{border-color:#aaa;box-shadow:0 0 0 3px #fff5}
+.divider{width:1px;align-self:stretch;background:#ffffff25}
+.bar>.btn{max-width:22%;font-size:clamp(.65rem,.9vw,.9rem)}
+.legend{position:absolute;left:0;right:0;bottom:-27px;overflow:hidden;font-size:11px;color:#666;letter-spacing:.05em;white-space:nowrap}
+.overlay{position:absolute;inset:0;z-index:5;display:none;place-items:center;background:#000a;backdrop-filter:blur(7px)}
+.overlay.on{display:grid}
+.dialog{width:min(48%,680px);padding:2.4rem;border-radius:1.2rem;background:linear-gradient(#181818,#0d0d0d);
+  border:1px solid #ffffff24;box-shadow:0 25px 70px #000b;display:flex;flex-direction:column;gap:1.2rem}
+.dialog h4{font-size:clamp(1rem,1.8vw,1.6rem);margin:0}
+.dialog p{font-size:clamp(.75rem,1.1vw,1rem);line-height:1.5;color:var(--txt);margin:0}
+.dialog .row{display:flex;gap:1rem;margin-top:.5rem}
+.dialog .row .btn{flex:1}
+
+/* ---------- accessibility helpers ---------- */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.field:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.plan button:focus-visible,.seg button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+/* ---------- additions: plan selector, stacks, toasts, errors ---------- */
+.btn svg{width:1.05em;height:1.05em;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn-stack{display:flex;flex-direction:column;gap:.5rem;margin-top:auto}
+.welcome .list{margin:2% 0 6%}
+.welcome-actions{margin-top:0}
+.plan{display:flex;gap:.25rem;padding:.25rem;border-radius:999px;background:#ffffff0b;border:1px solid var(--line);flex:none}
+.plan button{border:0;border-radius:999px;padding:.55rem .9rem;background:transparent;color:var(--txt);
+  font-size:clamp(.6rem,.85vw,.8rem);font-weight:650;cursor:pointer;white-space:nowrap;
+  transition:background-color .15s,color .15s}
+.plan button:hover{background:#ffffff1a;color:var(--ink)}
+.plan button[aria-pressed=true]{background:linear-gradient(#fff,#e8e8e8);color:#080808}
+.plan button[aria-pressed=true]:hover{background:#fff}
+.field-wrap{display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:0}
+.field{width:100%}
+.field-error{font-size:.7rem;color:#ffb3a7;margin:0;line-height:1.2}
+.toast-wrap{position:absolute;left:50%;bottom:3.2%;transform:translateX(-50%);z-index:6;display:flex;
+  flex-direction:column;align-items:center;gap:.5rem;pointer-events:none;width:max-content;max-width:90%}
+.toast{padding:.7rem 1.2rem;border-radius:.7rem;background:linear-gradient(#181818,#0d0d0d);
+  border:1px solid #ffffff2b;box-shadow:0 12px 34px #000a;color:var(--ink);
+  font-size:clamp(.65rem,.95vw,.9rem);animation:toast-in .25s ease both;transition:opacity .3s,transform .3s}
+.toast.out{opacity:0;transform:translateY(6px)}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- legend marquee (same words, slow editorial drift) ---------- */
+.legend-track{display:inline-flex;animation:legend-drift 48s linear infinite;will-change:transform}
+.legend-track>span{flex:none}
+@keyframes legend-drift{to{transform:translateX(-50%)}}
+
+/* ---------- ambient parallax (pointer-driven, subtle) ---------- */
+.screen:before{transform:translate3d(calc(var(--px,0)*14px),calc(var(--py,0)*10px),0);transition:transform .9s cubic-bezier(.16,.84,.3,1)}
+.screen:after{transform:translate3d(calc(var(--px,0)*-18px),calc(var(--py,0)*-12px),0);transition:transform .9s cubic-bezier(.16,.84,.3,1)}
+
+/* ---------- entrance motion: power-on + masked line reveal ---------- */
+@keyframes power-on{0%{opacity:0;transform:scale(.985);filter:brightness(2.1)}55%{opacity:1;filter:brightness(1.1)}100%{opacity:1;transform:none;filter:none}}
+.screen{animation:power-on .8s ease-out both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+.top{animation:rise .6s .08s cubic-bezier(.22,.8,.3,1) both}
+.welcome .eyebrow{animation:rise .55s .2s cubic-bezier(.22,.8,.3,1) both}
+.welcome h3 .line{display:block;overflow:hidden}
+.welcome h3 .line>span{display:block;transform:translateY(112%);animation:line-up .75s cubic-bezier(.22,.8,.24,1) both}
+.welcome h3 .line:nth-child(1)>span{animation-delay:.32s}
+.welcome h3 .line:nth-child(2)>span{animation-delay:.46s}
+@keyframes line-up{to{transform:none}}
+.welcome p{animation:rise .55s .58s cubic-bezier(.22,.8,.3,1) both}
+.welcome .list li:nth-child(1){animation:rise .5s .66s cubic-bezier(.22,.8,.3,1) both}
+.welcome .list li:nth-child(2){animation:rise .5s .74s cubic-bezier(.22,.8,.3,1) both}
+.welcome .list li:nth-child(3){animation:rise .5s .82s cubic-bezier(.22,.8,.3,1) both}
+.welcome .welcome-actions{animation:rise .55s .92s cubic-bezier(.22,.8,.3,1) both}
+.grid .card:nth-child(2){animation:rise .6s .5s cubic-bezier(.22,.8,.3,1) both}
+.grid .card:nth-child(3){animation:rise .6s .62s cubic-bezier(.22,.8,.3,1) both}
+.bar{animation:rise .6s .78s cubic-bezier(.22,.8,.3,1) both}
+.legend{animation:fade-in 1s 1.05s both}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  *,*:before,*:after{animation:none!important;transition:none!important}
+  .welcome h3 .line>span{transform:none}
+}
+
+/* ---------- reference tablet/letterbox breakpoints (kept verbatim) ---------- */
+@media (max-width: 900px) {
+  html { font-size: clamp(7px, 1.45vw, 16px); }
+  .stage { width: min(96vw, calc((100vh - 42px)*16/9)); height: min(calc(100vh - 42px), 54vw); }
+  .screen { padding: 2.2%; gap: 1.6%; border-radius: 1%; }
+  .top { height: 10%; }
+  .brand { gap: .7rem; }
+  .mark { width: 3.4rem; height: 3.4rem; border-radius: .7rem; }
+  .brand h1 { letter-spacing: .12em; font-size: clamp(1.2rem, 2.4vw, 2rem); }
+  .brand p { font-size: .85rem; }
+  .seg { gap: .15rem; padding: .18rem; }
+  .seg button { padding: .55rem .9rem; font-size: .9rem; }
+  .grid { gap: 1.1%; }
+  .card { padding: 3%; gap: 1.4%; border-radius: 1rem; }
+  .card-head { align-items: flex-start; flex-wrap: wrap; gap: .35rem; }
+  .card h2 { font-size: clamp(1.05rem, 2.15vw, 1.55rem); line-height: 1.12; }
+  .chip { font-size: .78rem; padding: .28rem .55rem; }
+  .eyebrow { font-size: .78rem; letter-spacing: .16em; }
+  .welcome h3 { font-size: clamp(1.5rem, 3vw, 2.3rem); margin: .45rem 0; }
+  .welcome p { font-size: .9rem; line-height: 1.3; margin: .2rem 0; }
+  .list { gap: .45rem; margin: auto 0 0; }
+  .list li { font-size: .78rem; gap: .4rem; }
+  .tick { width: 1.1rem; height: 1.1rem; }
+  .qr-plate { width: min(60%, 17vw, 24vh); padding: .45rem; border-radius: .45rem; }
+  .btn-stack { flex-direction: row; gap: .4rem; }
+  .btn-stack .btn { flex: 1; padding: 0 .5rem; font-size: .72rem; white-space: normal; line-height: 1.1; }
+  .hint { font-size: .78rem; line-height: 1.25; min-height: 2.5em; }
+  .btn { height: 2.7rem; padding: 0 .7rem; font-size: .82rem; border-radius: .55rem; }
+  .bar { gap: 1%; padding: 1.3%; border-radius: .85rem; }
+  .bar-copy { width: 25%; }
+  .bar-copy h3 { white-space: normal; font-size: .95rem; line-height: 1.15; }
+  .bar-copy p { white-space: normal; font-size: .7rem; line-height: 1.2; }
+  .bar-form { gap: .35rem; }
+  .field { height: 2.7rem; padding: 0 .55rem; font-size: .78rem; }
+  .plan button { padding: .45rem .7rem; font-size: .78rem; }
+  .bar > .btn { max-width: 25%; font-size: .72rem; white-space: normal; line-height: 1.1; }
+  .legend { bottom: -18px; font-size: 8px; }
+  .dialog { width: 78%; padding: 1.6rem; gap: .9rem; }
+  .dialog .row { gap: .6rem; }
+}
+@media (max-width: 520px) {
+  .stage { width: 98vw; height: 55.125vw; }
+  .screen { padding: 2%; gap: 1.4%; }
+  .brand h1 { font-size: 1.35rem; }
+  .brand p { font-size: .72rem; }
+  .seg button { padding: .45rem .58rem; font-size: .78rem; }
+  .card { padding: 2.5%; }
+  .card h2 { font-size: 1.05rem; }
+  .chip { font-size: .68rem; padding: .22rem .4rem; }
+  .welcome h3 { font-size: 1.55rem; }
+  .welcome p { font-size: .78rem; }
+  .list li { font-size: .68rem; }
+  .qr-plate { width: min(78%, 16vw); padding: .3rem; }
+  .hint { font-size: .68rem; }
+  .bar-copy { width: 23%; }
+  .bar-copy h3 { font-size: .78rem; }
+  .bar-copy p { font-size: .62rem; }
+  .bar > .btn { max-width: 24%; padding: 0 .35rem; font-size: .64rem; }
+  .field { font-size: .68rem; padding: 0 .4rem; }
+}
+
+/* ---------- phones stay EXACTLY horizontal, like the TV: the 16:9
+   letterbox stage is kept at every viewport. Portrait phones show the
+   whole screen as a miniature (no page scroll); landscape phones fill
+   the width. Only sizing of the new additions is tuned here. ---------- */
+@media (max-width: 640px) {
+  .welcome .list{margin:6% 0 5%}
+  .list{gap:.5rem}
+  .btn-stack{gap:.35rem}
+  .bar-form{flex-wrap:nowrap;gap:.35rem}
+  .plan{padding:.15rem;gap:.15rem}
+  .plan button{padding:.3rem .45rem;font-size:.62rem}
+  .field{padding:0 .45rem}
+  .field-error{font-size:.55rem}
+  .toast{font-size:.6rem;padding:.5rem .8rem}
+  .toast-wrap{bottom:4%}
+  .dialog{width:88%;padding:1.4rem;gap:.8rem}
+  .legend{font-size:8px}
+}
+
+/* ---------- VAST pre-roll overlay (js/vast.js) ----------
+   Full-screen black overlay; removed on complete/skip/no-fill/
+   error so the main content is never left behind a black screen. */
+.vast-overlay{position:fixed;inset:0;z-index:9999;background:#000;display:grid;place-items:center}
+.vast-video{width:min(100vw,177.78vh);height:min(100vh,56.25vw);background:#000}
+.vast-label{position:absolute;top:1rem;left:1rem;color:#fff;font:600 .8rem Arial,Helvetica,sans-serif;letter-spacing:.15em;text-transform:uppercase;opacity:.85}
+.vast-skip{position:absolute;right:1rem;bottom:1rem;border:1px solid #ffffff55;background:#000a;color:#fff;border-radius:.5rem;padding:.6rem 1.1rem;font:600 .85rem Arial,Helvetica,sans-serif;cursor:pointer}
+.vast-skip:hover,.vast-skip:focus-visible{background:#fff;color:#000;outline:none}
+
+</style>
+</head>
+<body>
+  <noscript><p style="color:#bcbcbc;font-family:Arial,Helvetica,sans-serif;text-align:center;padding:1rem">Ative o JavaScript para usar a ativação, o compartilhamento e a navegação por controle (D-PAD).</p></noscript>
+
+  <div class="stage">
+    <main class="screen" aria-label="Tela de boas-vindas SMARTEDTV" data-testid="welcome-screen">
+
+      <header class="top">
+        <div class="brand">
+          <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.2v13.6L19 12z"/></svg></div>
+          <div>
+            <h1>SMARTEDTV</h1>
+            <p>Ativação e assinatura</p>
+          </div>
+        </div>
+        <div class="seg" aria-label="Aparelho">
+          <button type="button" aria-selected="true" data-testid="device-android-tv-button">Android TV</button>
+          <button type="button" aria-selected="false" data-testid="device-mobile-button">Celular</button>
+        </div>
+      </header>
+
+      <section class="grid">
+        <article class="card welcome" data-testid="welcome-card" aria-labelledby="welcome-title">
+          <div class="eyebrow">BEM-VINDO</div>
+          <h3 id="welcome-title">
+            <span class="line"><span>Sua TV,</span></span>
+            <span class="line"><span>do seu jeito.</span></span>
+          </h3>
+          <p>Ative o VIP com um código ou continue gratuitamente com anúncios.</p>
+          <ul class="list" data-testid="benefit-list">
+            <li><span class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></span>Canais ao vivo, sem travar</li>
+            <li><span class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></span>Sem anúncios com o VIP ativo</li>
+            <li><span class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></span>Ativação em poucos segundos</li>
+          </ul>
+          <div class="btn-stack welcome-actions">
+            <button class="btn ghost" type="button" id="atualizar" data-testid="update-app-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.9-6.6"/><path d="M21 3v6h-6"/></svg>
+              ATUALIZAR APLICATIVO
+            </button>
+          </div>
+        </article>
+
+        <article class="card" data-testid="checkout-card" aria-labelledby="checkout-title">
+          <div class="card-head">
+            <h2 id="checkout-title">Sem anúncios</h2>
+            <span class="chip">Plano mensal</span>
+          </div>
+          <div class="qr-wrap">
+            <div class="qr-plate">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAYwAAAGMCAIAAABGWwIdAAAHiElEQVR4nO3dMY7sVBBAUQb9DSCRsf+lkSGxBBMT0Fj6pZr77HPiUbft9ly9pFRf13X9AlD163dfAMAnIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJD2Y+qDfvv9j6mPOs7ff/35v38z9XzufNeUO9c8de9T97X5XXf4v/h5TlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkjc3u3bE5MzWlNnNXm6erzeVtfs7Ufb35/+IOJykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSVmf37ticCarNTG3Opj313jd3IG568/+FkxSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpudm9p3rqPN1Td/PVfos3c5IC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIEykgzexeyJt3q03ZnAF86jOscZIC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIEykgLTe7Zx7qs9p+us3dfJtq72HtejY5SQFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJC2OrtXm8+qmZpxm5rzqs3cbT6fzefs/+IzJykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSxmb33rwXbEptF17NifdVu54TOUkBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQNja7V5ur2ty/NsUet59nX95nm/c+9V1OUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaR9Xdf13dfwL1PzUCfOCU591x1Tc4u1z7mj9m48ldk94BVECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIG1s794dmzNctXmxTZuzaZs2fy+/+2ebz8dJCkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIE2kgLTc3r0ptf10Uzb399V2BdacOCt34n5DJykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSxvbube65O3Fm6qlq+w035w0339XaLsXN63GSAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIC23d++pM4CbansAnzrfd0ft3jfZuwe8gkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkje3du6O2p2xzFqw2T3eizedcm5V78/vsJAWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJAmUkDa2N69E3eiTbErcMeJz/nEmc3a/7KTFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWmre/dOnC2q7Qq8Y3PG7ame+o5N2bweJykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSjty7d+Iusym13XMnzglu/qa1+cfN38LePeAVRApIEykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBtbHZv01PnBPnsqXOUm2ozm3c4SQFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaSJFJD247svoK62e87ndEzNpm3OwZ34nJ2kgDSRAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBub3dvchTeltr+vtu9syub1bM7Tbc64bb6rtfk+JykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSvq7r+u5reIXaLrPafNYdm3N5d9TmTJ96PU5SQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpOX27p3oxL1ym9+1OedVew9PvPfa3kYnKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIE2kgDSRAtLGZvfuqM0E3XHiPNTmNddm0948B1e79ylOUkCaSAFpIgWkiRSQJlJAmkgBaSIFpIkUkCZSQJpIAWkiBaStzu7dsTk3VJunO3FW7kRT91V7PlPvxtR7OMVJCkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIE2kgLTc7N5T1ebypmzOedWe4Ym/14mcpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgzu/dAtVm5qe+a+pzaNU+p7QGc4iQFpIkUkCZSQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJAWm52rzYPtWlz7mzK5jVP7bmrXfMdJ842TnGSAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIG11dq82E7SpNnf25v10m6bufeo3nbL5XU5SQJpIAWkiBaSJFJAmUkCaSAFpIgWkiRSQJlJAmkgBaSIFpH1d1/Xd1wDwn5ykgDSRAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSBMpIE2kgDSRAtJECkgTKSBNpIA0kQLSRApIEykgTaSANJEC0kQKSPsHov0svyvO1mEAAAAASUVORK5CYII=" alt="QR Code para abrir o checkout da assinatura mensal" width="396" height="396" data-testid="checkout-qr-image">
+            </div>
+          </div>
+          <p class="hint">Aponte a câmera de outro celular.<br>Valor e condições aparecem no checkout.</p>
+          <button class="btn ghost" type="button" id="checkout" data-testid="open-checkout-button">Abrir checkout</button>
+        </article>
+
+        <article class="card" data-testid="referral-card" aria-labelledby="referral-title">
+          <div class="card-head">
+            <h2 id="referral-title">Indique e ganhe</h2>
+            <span class="chip">Compartilhar</span>
+          </div>
+          <div class="qr-wrap">
+            <div class="qr-plate">
+              <img src="data:image/png;base64,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" alt="QR Code para compartilhar e baixar o aplicativo Android" width="588" height="588" data-testid="referral-qr-image">
+            </div>
+          </div>
+          <p class="hint">Aponte a câmera e envie o link<br>do app a quem quiser.</p>
+          <div class="btn-stack">
+            <button class="btn ghost" type="button" id="share" data-testid="share-link-button">Compartilhar link</button>
+            <button class="btn quiet" type="button" id="baixar-apk" data-testid="download-apk-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+              Baixar APK (Android)
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <footer class="bar" data-testid="activation-bar">
+        <div class="bar-copy">
+          <h3>Já é assinante? Ative seu VIP</h3>
+          <p>Digite o código que você recebeu.</p>
+        </div>
+        <div class="bar-form">
+          <div class="plan" role="group" aria-label="Plano do código">
+            <button type="button" data-plan="10min" aria-pressed="true" data-testid="plan-10min-button">10 min</button>
+            <button type="button" data-plan="1month" aria-pressed="false" data-testid="plan-1month-button">1 mês</button>
+          </div>
+          <span class="field-wrap">
+            <label class="sr-only" for="codigo">Código de ativação</label>
+            <input class="field" id="codigo" data-testid="activation-code-input" placeholder="Código de ativação"
+                   autocomplete="off" spellcheck="false" aria-describedby="codigo-error">
+            <span class="field-error" id="codigo-error" role="alert" data-testid="code-error" hidden>Digite seu código para ativar.</span>
+          </span>
+          <button class="btn primary" type="button" id="ativar" data-testid="activate-code-button">Ativar</button>
+        </div>
+        <div class="divider" role="presentation"></div>
+        <button class="btn quiet" type="button" id="gratis" data-testid="ads-continue-button">Continuar com anúncios</button>
+      </footer>
+
+      <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ads-title" data-testid="ads-dialog">
+        <div class="dialog">
+          <h4 id="ads-title">Continuar com anúncios?</h4>
+          <p>Você vai ver anúncios durante o uso. Para removê-los, assine pelo checkout ou ative um código VIP quando quiser.</p>
+          <div class="row">
+            <button class="btn quiet" type="button" id="voltar" data-testid="ads-cancel-button">Voltar</button>
+            <button class="btn primary" type="button" id="seguir" data-testid="ads-confirm-button">Continuar com anúncios</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay" id="overlay-status" role="dialog" aria-modal="true" aria-labelledby="status-title" data-testid="status-dialog">
+        <div class="dialog">
+          <h4 id="status-title" data-testid="status-dialog-title"></h4>
+          <p id="status-text" data-testid="status-dialog-text"></p>
+          <div class="row">
+            <button class="btn primary" type="button" id="status-ok" data-testid="status-dialog-ok">Entendi</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast-wrap" id="toast-region" role="region" aria-live="polite" data-testid="toast-region"></div>
+    </main>
+
+    <div class="legend" data-testid="legend" aria-label="Android TV, 16 por 9, tela única sem rolagem, setas e Enter navegam pelo D-PAD">
+      <div class="legend-track">
+        <span>ANDROID TV&nbsp;&nbsp;·&nbsp;&nbsp;16:9&nbsp;&nbsp;·&nbsp;&nbsp;TELA ÚNICA, SEM ROLAGEM&nbsp;&nbsp;·&nbsp;&nbsp;SETAS / ENTER NAVEGAM (D-PAD)&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+        <span aria-hidden="true">ANDROID TV&nbsp;&nbsp;·&nbsp;&nbsp;16:9&nbsp;&nbsp;·&nbsp;&nbsp;TELA ÚNICA, SEM ROLAGEM&nbsp;&nbsp;·&nbsp;&nbsp;SETAS / ENTER NAVEGAM (D-PAD)&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+/* SMARTEDTV — central configuration.
+   Every external URL used by the interface lives here. Nothing else
+   in the codebase hardcodes a link, so hosts/links can be swapped in
+   one place. No endpoint, credential or code format is invented: the
+   only URLs below are the ones provided for this build. */
+window.SMARTEDTV_CONFIG = {
+  appName: "SMARTEDTV",
+
+  /* Payment — official checkout link provided for this build (Cakto). */
+  checkoutUrl: "https://pay.cakto.com.br/nkvbegd_1323120",
+
+  /* Android APK — EXACT share link provided for this build (Dropbox, dl=0).
+     Updated 2026-11-27: SMARTEDTV.apk (263 MB, /SMARTEDTV UNIVERSAL/).
+     Previous file was SMARTEDTV-atual.apk (adn9elzkjzxof741bbui2). */
+  apkShareUrl: "https://www.dropbox.com/scl/fi/ixfw289m0sibcyfyrxf9g/SMARTEDTV.apk?rlkey=z59708sngkysw0c1ntmmur6lv&st=okcfec6i&dl=0",
+
+  /* Same Dropbox link in its direct-download form (Dropbox's documented
+     dl=1 parameter) so the "Baixar APK" button starts the download.
+     The QR code encodes apkShareUrl exactly as provided. */
+  apkDownloadUrl: "https://www.dropbox.com/scl/fi/ixfw289m0sibcyfyrxf9g/SMARTEDTV.apk?rlkey=z59708sngkysw0c1ntmmur6lv&st=okcfec6i&dl=1",
+
+  /* Access plans offered at activation. Labels only — duration semantics
+     (10 minutes / 1 month) must be confirmed against the existing
+     validation service. See docs/HANDOFF.md. */
+  plans: [
+    { id: "10min", label: "10 min" },
+    { id: "1month", label: "1 mês" }
+  ],
+  defaultPlan: "10min",
+
+  /* Advertising — VAST (Clickadilla, Spot #1508180). PRIORITY path.
+     The player fetches this tag, plays the creative as a pre-roll and
+     fires impression/start/quartile/complete/error tracking. No-fill,
+     network failure and timeout all fall back cleanly to the content
+     (see js/vast.js). */
+  vastTagUrl: "https://vast.yomeno.xyz/vast?spot_id=1508180",
+  adTimeoutMs: 8000,
+
+  /* Advertising — AdMob (mobile). ISOLATED and DISABLED by flag.
+     Validation focus is 100% on the VAST path above; AdMob is only
+     activated in a later step, after VAST approval. See docs/ADMOB.md
+     and js/admob.js. IDs below are the real production IDs. */
+  admob: {
+    enabled: false,
+    appId: "ca-app-pub-2066014755407744~5076693043",
+    appOpenAdUnitId: "ca-app-pub-2066014755407744/4214378379",
+    interstitialAdUnitId: "ca-app-pub-2066014755407744/3572039686"
+  }
+};
+
+</script>
+  <script>
+/* ============================================================
+   SMARTEDTV — VAST client (Clickadilla, Spot #1508180).
+
+   Priority ad path. Fetches the VAST tag, parses the XML,
+   plays the creative as a pre-roll overlay and fires the
+   standard tracking events (impression, start, firstQuartile,
+   midpoint, thirdQuartile, complete, error).
+
+   Guarantees (per product spec):
+   • No-fill is NOT an error: empty XML, a minimal <VAST> root
+     without <Ad>, or a <VAST><Error> response resolves as
+     { outcome:"nofill" } — no parse exception, no frozen player.
+   • Network failure / timeout resolves as { outcome:"error" }
+     and the caller falls back immediately to the main content
+     (the overlay is removed; no black screen is left behind).
+   • Exact VOD resume: pass resumeTarget { video } and the
+     player saves video.currentTime before the pre-roll and
+     restores it (seek confirmed via "seeked") after the ad.
+
+   Transport note: in the browser, fetch() negotiates TLS 1.2+
+   using platform security settings and the actual browser UA. JS
+   cannot force a minimum TLS version or impersonate Chrome Android;
+   configure those in the native shell for older devices. The Kodi
+   (Python) twin of this client enforces them explicitly in
+   kodi-addon/script.smartedtv.welcome/vast.py.
+
+   Testable without a browser: parseVast / parseTimeOffset /
+   chooseMediaFile are pure and covered by tools/test-vast.js.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  var DEFAULT_TIMEOUT_MS = 8000;
+  var STALL_TIMEOUT_MS = 12000;
+
+  /* ---------- time helpers ---------- */
+
+  /* "HH:MM:SS.mmm" | "MM:SS" | "SS" -> seconds (float) or null */
+  function parseClock(str) {
+    if (typeof str !== "string") return null;
+    var s = str.trim();
+    if (!s) return null;
+    var parts = s.split(":");
+    var sec = 0;
+    try {
+      if (parts.length === 3) {
+        sec = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]);
+      } else if (parts.length === 2) {
+        sec = parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+      } else if (parts.length === 1) {
+        sec = parseFloat(parts[0]);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+    return isNaN(sec) ? null : sec;
+  }
+
+  /* VAST time offset: "00:00:05" -> {type:"time",seconds:5}
+     "25%" -> {type:"percent",value:25}; null when unparsable. */
+  function parseTimeOffset(str) {
+    if (typeof str !== "string") return null;
+    var s = str.trim();
+    if (!s) return null;
+    if (s.charAt(s.length - 1) === "%") {
+      var v = parseFloat(s.slice(0, -1));
+      return isNaN(v) ? null : { type: "percent", value: v };
+    }
+    var sec = parseClock(s);
+    return sec === null ? null : { type: "time", seconds: sec };
+  }
+
+  function offsetToSeconds(offset, duration) {
+    if (!offset) return null;
+    if (offset.type === "time") return offset.seconds;
+    if (offset.type === "percent" && duration) return (offset.value / 100) * duration;
+    return null;
+  }
+
+  /* ---------- beacon (tracking) ---------- */
+
+  /* Fire-and-forget GET beacon. Never throws, never blocks.
+     Supports VAST macros [ERRORCODE] / [CACHEBUSTER] / [TIMESTAMP]. */
+  function beacon(url, macros) {
+    if (!url) return;
+    var u = String(url);
+    macros = macros || {};
+    {
+      if (macros.errorCode !== undefined) u = u.split("[ERRORCODE]").join(String(macros.errorCode));
+      u = u.split("[CACHEBUSTER]").join(String(Math.floor(Math.random() * 1e9)));
+      u = u.split("[TIMESTAMP]").join(encodeURIComponent(new Date().toISOString()));
+    }
+    try {
+      var img = new Image();
+      img.src = u;
+    } catch (e) { /* tracking must never break playback */ }
+  }
+
+  function fireAll(urls, macros, onEvent, eventName) {
+    (urls || []).forEach(function (u) {
+      beacon(u, macros);
+      if (onEvent) { try { onEvent(eventName, u); } catch (e) {} }
+    });
+  }
+
+  /* ---------- VAST parsing ---------- */
+
+  /* getElementsByTagName-based helpers (work in browsers AND in
+     older Android TV WebViews without querySelector on XML docs). */
+  function findAll(root, tag) {
+    return root.getElementsByTagName ? root.getElementsByTagName(tag) : [];
+  }
+  function findFirst(root, tag) {
+    var els = findAll(root, tag);
+    return els.length ? els[0] : null;
+  }
+  function textOf(root, tag) {
+    var el = findFirst(root, tag);
+    return el && el.textContent ? el.textContent.trim() : "";
+  }
+  function allText(root, tag) {
+    var out = [];
+    var els = findAll(root, tag);
+    for (var i = 0; i < els.length; i++) {
+      var t = els[i].textContent ? els[i].textContent.trim() : "";
+      if (t) out.push(t);
+    }
+    return out;
+  }
+
+  /* Pick the best playable media file: prefer progressive MP4,
+     highest width first; fall back to the first media file. */
+  function chooseMediaFile(files) {
+    if (!files || !files.length) return null;
+    var mp4 = files.filter(function (f) {
+      return /mp4/i.test(f.type || "") || /\.mp4($|\?)/i.test(f.url || "");
+    });
+    var pool = mp4.length ? mp4 : files;
+    return pool.slice().sort(function (a, b) {
+      return (b.width || 0) - (a.width || 0);
+    })[0];
+  }
+
+  /* Parse VAST XML text.
+     Returns { ads:[...], noFill:bool, reason, errorCode }.
+     NEVER throws on no-fill / empty / malformed input — those
+     resolve as noFill so the caller can fall back cleanly. */
+  function parseVast(xmlText) {
+    var empty = { ads: [], noFill: true, reason: "empty", errorCode: null };
+    if (typeof xmlText !== "string" || !xmlText.trim()) return empty;
+
+    var doc;
+    try {
+      doc = new DOMParser().parseFromString(xmlText, "text/xml");
+    } catch (e) {
+      return { ads: [], noFill: true, reason: "malformed", errorCode: null };
+    }
+    if (!doc || findFirst(doc, "parsererror")) {
+      return { ads: [], noFill: true, reason: "malformed", errorCode: null };
+    }
+
+    var adEls = findAll(doc, "Ad");
+    var errEl = findFirst(doc, "Error");
+    if (!adEls.length && errEl) {
+      return {
+        ads: [], noFill: true, reason: "vast-error",
+        errorCode: errEl.getAttribute("code") || errEl.textContent.trim() || null
+      };
+    }
+
+    if (!adEls.length) return { ads: [], noFill: true, reason: "no-ad", errorCode: null };
+
+    var ads = [];
+    for (var i = 0; i < adEls.length; i++) {
+      var adEl = adEls[i];
+      var tracking = {};
+      var trackEls = findAll(adEl, "Tracking");
+      for (var j = 0; j < trackEls.length; j++) {
+        var ev = trackEls[j].getAttribute("event");
+        var url = trackEls[j].textContent ? trackEls[j].textContent.trim() : "";
+        if (ev && url) {
+          (tracking[ev] = tracking[ev] || []).push(url);
+        }
+      }
+      tracking.error = (tracking.error || []).concat(allText(adEl, "Error"));
+      var mediaFiles = [];
+      var mfEls = findAll(adEl, "MediaFile");
+      for (var k = 0; k < mfEls.length; k++) {
+        mediaFiles.push({
+          url: mfEls[k].textContent ? mfEls[k].textContent.trim() : "",
+          type: mfEls[k].getAttribute("type") || "",
+          delivery: mfEls[k].getAttribute("delivery") || "",
+          width: parseInt(mfEls[k].getAttribute("width") || "0", 10) || 0,
+          height: parseInt(mfEls[k].getAttribute("height") || "0", 10) || 0,
+          bitrate: parseInt(mfEls[k].getAttribute("bitrate") || "0", 10) || 0
+        });
+      }
+      var linear = findFirst(adEl, "Linear");
+      ads.push({
+        id: adEl.getAttribute("id") || "",
+        sequence: parseInt(adEl.getAttribute("sequence") || "1", 10) || 1,
+        adSystem: textOf(adEl, "AdSystem"),
+        adTitle: textOf(adEl, "AdTitle"),
+        universalAdId: textOf(adEl, "UniversalAdId"),
+        duration: parseClock(textOf(adEl, "Duration")),
+        skipOffset: linear ? parseTimeOffset(linear.getAttribute("skipoffset")) : null,
+        mediaFiles: mediaFiles,
+        mediaFile: chooseMediaFile(mediaFiles),
+        clickThrough: textOf(adEl, "ClickThrough"),
+        clickTracking: allText(adEl, "ClickTracking"),
+        impressions: allText(adEl, "Impression"),
+        tracking: tracking
+      });
+    }
+    return { ads: ads, noFill: false, reason: null, errorCode: null };
+  }
+
+  /* ---------- fetch with timeout ---------- */
+
+  function fetchVast(tagUrl, timeoutMs) {
+    var ms = timeoutMs || DEFAULT_TIMEOUT_MS;
+    var controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    // Race covers slow response bodies AND WebViews without AbortController.
+    return new Promise(function (resolve, reject) {
+      var timer = setTimeout(function () {
+        if (controller) controller.abort();
+        reject(new Error("vast-timeout"));
+      }, ms);
+      var opts = { method: "GET", credentials: "omit", redirect: "follow",
+        headers: { Accept: "application/xml,text/xml,*/*;q=0.8" } };
+      if (controller) opts.signal = controller.signal;
+      Promise.resolve().then(function () { return fetch(tagUrl, opts); })
+        .then(function (res) {
+          if (!res.ok) throw new Error("vast-http-" + res.status);
+          return res.text();
+        }).then(function (text) {
+          clearTimeout(timer); resolve(text);
+        }, function (err) {
+          clearTimeout(timer); reject(err);
+        });
+    });
+  }
+
+  /* ---------- pre-roll player ---------- */
+
+  function VastPlayer(opts) {
+    opts = opts || {};
+    this.tagUrl = opts.tagUrl;
+    this.timeoutMs = opts.timeoutMs || DEFAULT_TIMEOUT_MS;
+    this.container = opts.container || document.body;
+    this.onEvent = opts.onEvent || null;       /* (eventName, url) — logging hook */
+    this.onFinish = opts.onFinish || null;     /* (result) — resume hook */
+    this.resumeTarget = opts.resumeTarget || null; /* { video } — exact VOD resume */
+    this._done = false;
+    this._overlay = null;
+    this._video = null;
+    this._stallTimer = null;
+  }
+
+  VastPlayer.prototype.play = function () {
+    var self = this;
+    if (this._playPromise) return this._playPromise;
+    this._playPromise = new Promise(function (resolve) { self._resolve = resolve; });
+    if (self.resumeTarget && self.resumeTarget.video) {
+      var v = self.resumeTarget.video;
+      self._savedTime = v.currentTime;
+      self._wasPlaying = !v.paused;
+      try { v.pause(); } catch (e) {}
+    }
+    if (!this.tagUrl) {
+      self._finish({ outcome: "error", reason: "no-tag-url" });
+      return this._playPromise;
+    }
+    fetchVast(this.tagUrl, this.timeoutMs).then(function (xml) {
+      var parsed;
+      try {
+        parsed = parseVast(xml);
+      } catch (e) {
+        return self._finish({ outcome: "error", reason: "parse-failed" });
+      }
+      if (!parsed.ads.length) {
+        /* No-fill: clean fallback, no overlay ever shown. */
+        return self._finish({
+          outcome: "nofill", reason: parsed.reason, errorCode: parsed.errorCode
+        });
+      }
+      var ad = parsed.ads[0];
+      if (!ad.mediaFile || !ad.mediaFile.url) {
+        return self._finish({ outcome: "nofill", reason: "no-mediafile" });
+      }
+      return self._showAd(ad);
+    }).catch(function (err) {
+      /* Network failure / timeout: immediate clean fallback. */
+      return self._finish({ outcome: "error", reason: String(err && err.message || err) });
+    });
+    return this._playPromise;
+  };
+
+  VastPlayer.prototype._showAd = function (ad) {
+    var self = this;
+    {
+      self._ad = ad;
+
+      var overlay = document.createElement("div");
+      overlay.className = "vast-overlay";
+      overlay.setAttribute("data-testid", "vast-ad-overlay");
+      var video = document.createElement("video");
+      video.className = "vast-video";
+      video.setAttribute("playsinline", "");
+      video.setAttribute("preload", "auto");
+      video.src = ad.mediaFile.url;
+      var label = document.createElement("div");
+      label.className = "vast-label";
+      label.textContent = "Anúncio";
+      var skip = document.createElement("button");
+      skip.className = "vast-skip";
+      skip.type = "button";
+      skip.setAttribute("data-testid", "vast-skip-button");
+      skip.hidden = true;
+      skip.disabled = true;
+      self._previousFocus = document.activeElement;
+      overlay.appendChild(video);
+      overlay.appendChild(label);
+      overlay.appendChild(skip);
+      self.container.appendChild(overlay);
+      self._overlay = overlay;
+      self._video = video;
+      self._skipBtn = skip;
+      self._fired = {};
+      self._impressionFired = false;
+
+      /* Watch progress for both startup failure and mid-ad buffering. */
+      var armStall = function () {
+        clearTimeout(self._stallTimer);
+        self._stallTimer = setTimeout(function () {
+          if (!self._done) {
+            self._fireError(405);
+            self._finish({ outcome: "error", reason: "creative-stall" });
+          }
+        }, STALL_TIMEOUT_MS);
+      };
+      armStall();
+      var lastPosition = -1;
+      video.addEventListener("playing", function () {
+        if (self._done) return;
+        if (!self._impressionFired) {
+          self._impressionFired = true;
+          fireAll(ad.impressions, null, self.onEvent, "impression");
+        }
+        self._fire("start");
+      });
+      video.addEventListener("timeupdate", function () {
+        if (self._done) return;
+        if (video.currentTime !== lastPosition) { lastPosition = video.currentTime; armStall(); }
+        var d = video.duration || ad.duration || 0;
+        if (!d) return;
+        var p = video.currentTime / d;
+        if (p >= 0.25) self._fire("firstQuartile");
+        if (p >= 0.50) self._fire("midpoint");
+        if (p >= 0.75) self._fire("thirdQuartile");
+        var skipAt = offsetToSeconds(ad.skipOffset, d);
+        if (skipAt !== null) {
+          if (video.currentTime >= skipAt) {
+            skip.hidden = false;
+            if (skip.disabled) { skip.disabled = false; skip.focus(); }
+            skip.textContent = "Pular anúncio";
+          } else {
+            skip.hidden = false;
+            skip.textContent = "Pular anúncio em " + Math.ceil(skipAt - video.currentTime) + "s";
+          }
+        }
+      });
+      video.addEventListener("ended", function () {
+        self._fire("firstQuartile");
+        self._fire("midpoint");
+        self._fire("thirdQuartile");
+        self._fire("complete");
+        self._finish({ outcome: "completed" });
+      });
+      video.addEventListener("error", function () {
+        self._fireError(405);
+        self._finish({ outcome: "error", reason: "media-error" });
+      });
+      skip.addEventListener("click", function () {
+        var at = offsetToSeconds(ad.skipOffset, video.duration || ad.duration);
+        if (self._done || at === null || video.currentTime < at) return;
+        self._fire("skip");
+        self._finish({ outcome: "skipped" });
+      });
+      if (ad.clickThrough) {
+        video.addEventListener("click", function () {
+          fireAll(ad.clickTracking, null, self.onEvent, "click");
+          window.open(ad.clickThrough, "_blank", "noopener");
+        });
+      }
+
+      var playPromise = video.play();
+      if (playPromise && playPromise.catch) {
+        playPromise.catch(function () {
+          if (self._done) return;
+          /* Autoplay with sound blocked: retry muted (still counts as start). */
+          video.muted = true;
+          var retry = video.play();
+          if (retry && retry.catch) {
+            retry.catch(function () {
+              self._fireError(405);
+              self._finish({ outcome: "error", reason: "autoplay-blocked" });
+            });
+          }
+        });
+      }
+    }
+  };
+
+  VastPlayer.prototype._fire = function (eventName) {
+    if (this._done || this._fired[eventName]) return;
+    this._fired[eventName] = true;
+    fireAll(this._ad.tracking[eventName], null, this.onEvent, eventName);
+  };
+
+  VastPlayer.prototype._fireError = function (code) {
+    if (this._done) return;
+    fireAll(this._ad.tracking.error, { errorCode: code }, this.onEvent, "error");
+  };
+
+  VastPlayer.prototype._finish = function (result) {
+    if (this._done) return result;
+    this._done = true;
+    clearTimeout(this._stallTimer);
+    if (this._video) {
+      try { this._video.pause(); this._video.removeAttribute("src"); this._video.load(); } catch (e) {}
+    }
+    if (this._overlay && this._overlay.parentNode) {
+      this._overlay.parentNode.removeChild(this._overlay);
+    }
+    this._overlay = null;
+    this._video = null;
+    if (this._previousFocus && this._previousFocus.focus) this._previousFocus.focus();
+
+    /* Exact VOD resume: restore saved position, confirm via "seeked". */
+    var self = this;
+    var restore = function (done) {
+      if (self.resumeTarget && self.resumeTarget.video && self._savedTime !== undefined) {
+        var v = self.resumeTarget.video;
+        var target = self._savedTime;
+        var wasPlaying = self._wasPlaying;
+        var settled = false;
+        var timer;
+        var confirm = function () {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          v.removeEventListener("seeked", confirm);
+          result.resumedAt = v.currentTime;
+          result.resumeTarget = target;
+          result.resumeConfirmed = !v.seeking && Math.abs(v.currentTime - target) <= 0.05;
+          if (wasPlaying) {
+            try {
+              var p = v.play();
+              if (p && p.catch) p.catch(function () { result.playbackBlocked = true; });
+            } catch (e) { result.playbackBlocked = true; }
+          }
+          done();
+        };
+        v.addEventListener("seeked", confirm);
+        timer = setTimeout(confirm, 1500);
+        if (!v.seeking && Math.abs(v.currentTime - target) <= 0.001) confirm();
+        else { try { v.currentTime = target; } catch (e) { confirm(); } }
+      } else {
+        done();
+      }
+    };
+
+    restore(function () {
+      if (self.onFinish) { try { self.onFinish(result); } catch (e) {} }
+      if (self._resolve) self._resolve(result);
+    });
+    return result;
+  };
+
+  /* ---------- public API ---------- */
+
+  window.SmartedtvVast = {
+    parseVast: parseVast,
+    parseTimeOffset: parseTimeOffset,
+    parseClock: parseClock,
+    chooseMediaFile: chooseMediaFile,
+    fetchVast: fetchVast,
+    VastPlayer: VastPlayer,
+    DEFAULT_TIMEOUT_MS: DEFAULT_TIMEOUT_MS
+  };
+})();
+
+</script>
+  <script>
+/* ============================================================
+   SMARTEDTV — AdMob (mobile) — ISOLATED, DISABLED BY FLAG.
+
+   This module is intentionally SEPARATE from the VAST path
+   (js/vast.js). Validation focus is 100% on VAST Clickadilla
+   (Spot #1508180); AdMob is only prepared here and activated
+   in a later step, after VAST approval.
+
+   Real production IDs (from config.js):
+     App ID ......... ca-app-pub-2066014755407744~5076693043
+     App Open ....... ca-app-pub-2066014755407744/4214378379
+     Interstitial ... ca-app-pub-2066014755407744/3572039686
+       (also used for Rewarded / In-Stream placements)
+
+   IMPORTANT: the AdMob SDK is native Android. It cannot run
+   inside a plain WebView — it needs a native bridge
+   (window.SmartedtvAdMobBridge, e.g. a Capacitor/Cordova
+   plugin or a custom @JavascriptInterface). Until that bridge
+   exists AND config.admob.enabled is true, every call here
+   resolves { connected:false } and nothing is shown.
+   Native setup (AndroidManifest, Gradle, bridge) is
+   documented in docs/ADMOB.md.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  var CONFIG = (window.SMARTEDTV_CONFIG && window.SMARTEDTV_CONFIG.admob) || {};
+  var enabled = CONFIG.enabled === true;
+
+  function bridge() {
+    return window.SmartedtvAdMobBridge || null;
+  }
+
+  function disabled(reason) {
+    return Promise.resolve({ connected: false, reason: reason || "disabled" });
+  }
+
+  function callBridge(method, adUnitId) {
+    if (!enabled) return disabled("disabled-by-flag");
+    var b = bridge();
+    if (!b || typeof b[method] !== "function") return disabled("no-native-bridge");
+    try {
+      var res = b[method](adUnitId);
+      return Promise.resolve(res).then(function (r) {
+        return { connected: true, shown: !!(r && r.shown) };
+      }, function (err) {
+        return { connected: true, shown: false, error: String(err) };
+      });
+    } catch (e) {
+      return Promise.resolve({ connected: true, shown: false, error: String(e) });
+    }
+  }
+
+  window.SmartedtvAdMob = {
+    enabled: enabled,
+    config: CONFIG,
+    /* True only when the flag is on AND the native bridge exists. */
+    isAvailable: function () {
+      return enabled && !!bridge();
+    },
+    showAppOpen: function () {
+      return callBridge("showAppOpen", CONFIG.appOpenAdUnitId);
+    },
+    showInterstitial: function () {
+      return callBridge("showInterstitial", CONFIG.interstitialAdUnitId);
+    },
+    showRewarded: function () {
+      return callBridge("showRewarded", CONFIG.interstitialAdUnitId);
+    }
+  };
+})();
+
+</script>
+  <script>
+/* ============================================================
+   SMARTEDTV — integration layer.
+
+   Every interface action routes through EXACTLY ONE service below.
+   This is the ONLY file the existing app's services need to touch —
+   the UI never changes to connect a backend.
+
+   Rules honoured by design:
+   • Defaults are HONEST: services that must talk to the existing app
+     answer { connected:false } until a real implementation is
+     registered. The UI shows an explicit "not connected" state and
+     never fakes success, payment status, codes or ad behaviour.
+   • Actions that ARE an external link (Cakto checkout, APK download)
+     use the URLs from js/config.js — real, provided destinations.
+   • Contracts marked [TO CONFIRM] are proposals to be validated
+     against the existing app during inspection (docs/HANDOFF.md).
+
+   How the existing app plugs in (NO business logic is replaced):
+     window.SmartedtvServices.register("codeAccess", {
+       async activate({ code, plan }) {
+         const res = await existingApi.validateCode(code, plan); // your call
+         return { connected: true, granted: res.ok, message: res.msg };
+       }
+     });
+   ============================================================ */
+(function () {
+  "use strict";
+  var CONFIG = window.SMARTEDTV_CONFIG;
+
+  var defaults = {
+
+    /* PAYMENT ------------------------------------------------------
+       Default: opens the official Cakto checkout in a new tab.       */
+    payment: {
+      openCheckout: function () {
+        window.open(CONFIG.checkoutUrl, "_blank", "noopener");
+        return { opened: true };
+      }
+    },
+
+    /* CODE VALIDATION — VIP access (10 minutes or 1 month) ---------
+       MUST be connected to the existing validation service.
+       Suggested contract [TO CONFIRM against the existing app]:
+         activate({ code, plan }) ->
+           { connected:true, granted:true,  plan, expiresAt?, expiresLabel? }
+           { connected:true, granted:false, message }
+           { connected:false }                 // not wired yet
+       Only resolve granted:true after REAL server confirmation.     */
+    codeAccess: {
+      activate: function () {
+        return Promise.resolve({ connected: false });
+      }
+    },
+
+    /* ADVERTISING — "Continuar com anúncios" -----------------------
+       CONNECTED (2026-11-27): VAST Clickadilla Spot #1508180 via
+       js/vast.js (pre-roll overlay + tracking events). No-fill,
+       network failure and timeout resolve as a clean fallback —
+       the caller resumes the main content, never a black screen.
+       Contract:
+         startSession({ resumeTarget }) ->
+           { connected:true, started:bool, outcome:
+             "completed"|"skipped"|"nofill"|"error", message? }
+       AdMob (mobile) is a separate, flag-disabled module
+       (js/admob.js) and is NOT part of this path. */
+    ads: {
+      startSession: function (opts) {
+        opts = opts || {};
+        if (!window.SmartedtvVast) {
+          return Promise.resolve({ connected: false });
+        }
+        var player = new window.SmartedtvVast.VastPlayer({
+          tagUrl: opts.tagUrl || CONFIG.vastTagUrl,
+          timeoutMs: CONFIG.adTimeoutMs,
+          resumeTarget: opts.resumeTarget || null,
+          onEvent: opts.onEvent || null
+        });
+        return player.play().then(function (result) {
+          var messages = {
+            completed: "Anúncio concluído.",
+            skipped: "Anúncio pulado.",
+            nofill: "Nenhum anúncio disponível no momento — continuando sem anúncios.",
+            error: "Não foi possível carregar o anúncio — continuando."
+          };
+          return {
+            connected: true,
+            started: result.outcome === "completed" || result.outcome === "skipped",
+            outcome: result.outcome,
+            reason: result.reason || null,
+            resumeConfirmed: result.resumeConfirmed === true,
+            resumeTarget: result.resumeTarget,
+            resumedAt: result.resumedAt !== undefined ? result.resumedAt : null,
+            message: messages[result.outcome] || "Sessão com anúncios iniciada."
+          };
+        });
+      }
+    },
+
+    /* APP UPDATE — "ATUALIZAR APLICATIVO" --------------------------
+       Default: opens the published APK download (the provided
+       Dropbox file "SMARTEDTV-atual.apk"). Register an
+       implementation to plug the existing update service
+       (version check / in-app update flow) instead.               */
+    appUpdate: {
+      checkAndInstall: function () {
+        window.open(CONFIG.apkDownloadUrl, "_blank", "noopener");
+        return Promise.resolve({ connected: false, openedDownload: true });
+      }
+    },
+
+    /* SHARE — Web Share API with clipboard fallback.
+       Used for "Compartilhar link" and the share QR payload.       */
+    share: {
+      shareLink: function (url) {
+        if (navigator.share) {
+          return navigator.share({ title: CONFIG.appName, url: url }).then(
+            function () { return { method: "native" }; },
+            function (err) {
+              if (err && err.name === "AbortError") return { method: "cancelled" };
+              return fallbackCopy(url);
+            }
+          );
+        }
+        return Promise.resolve(fallbackCopy(url));
+      }
+    }
+  };
+
+  function fallbackCopy(url) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(url)
+        .then(function () { return { method: "clipboard" }; })
+        .catch(function () { return { method: "failed" }; });
+    }
+    return Promise.resolve({ method: "failed" });
+  }
+
+  var impl = {};
+  Object.keys(defaults).forEach(function (k) { impl[k] = defaults[k]; });
+
+  window.SmartedtvServices = {
+    /* Current implementation of a service (default until registered). */
+    get: function (name) { return impl[name]; },
+
+    /* Register/override a service with the existing app's logic.
+       Methods you do not override keep the default behaviour.      */
+    register: function (name, partial) {
+      impl[name] = Object.assign({}, defaults[name], partial || {});
+      return impl[name];
+    },
+
+    /* Restore factory defaults (useful in tests). */
+    reset: function () {
+      Object.keys(defaults).forEach(function (k) { impl[k] = defaults[k]; });
+    },
+
+    defaults: defaults
+  };
+})();
+
+</script>
+  <script>
+/* SMARTEDTV — interface wiring.
+   UI concerns only: D-PAD navigation, dialogs, validation feedback,
+   toasts, plan selection, parallax. All business outcomes come from
+   window.SmartedtvServices (js/services.js). */
+(function () {
+  "use strict";
+  var CONFIG = window.SMARTEDTV_CONFIG;
+  var Services = window.SmartedtvServices;
+  function $(id) { return document.getElementById(id); }
+
+  var els = {
+    screen: document.querySelector(".screen"),
+    overlayAds: $("overlay"),
+    overlayStatus: $("overlay-status"),
+    statusTitle: $("status-title"),
+    statusText: $("status-text"),
+    statusOk: $("status-ok"),
+    codigo: $("codigo"),
+    codigoError: $("codigo-error"),
+    ativar: $("ativar"),
+    checkout: $("checkout"),
+    share: $("share"),
+    baixar: $("baixar-apk"),
+    atualizar: $("atualizar"),
+    gratis: $("gratis"),
+    voltar: $("voltar"),
+    seguir: $("seguir"),
+    toasts: $("toast-region")
+  };
+
+  /* ---------- toasts (aria-live region) ---------- */
+  function toast(message) {
+    var t = document.createElement("div");
+    t.className = "toast";
+    t.setAttribute("role", "status");
+    t.textContent = message;
+    els.toasts.appendChild(t);
+    while (els.toasts.children.length > 2) els.toasts.removeChild(els.toasts.firstChild);
+    setTimeout(function () {
+      t.classList.add("out");
+      setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 320);
+    }, 3600);
+  }
+
+  /* ---------- accessible overlay control ---------- */
+  var lastFocus = null;
+  function openOverlay(ov) {
+    lastFocus = document.activeElement;
+    ov.classList.add("on");
+    var target = ov.querySelector(".dialog .btn");
+    if (target) target.focus();
+    document.addEventListener("keydown", onOverlayKeydown, true);
+  }
+  function closeOverlay(ov) {
+    ov.classList.remove("on");
+    document.removeEventListener("keydown", onOverlayKeydown, true);
+    if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+  }
+  function onOverlayKeydown(e) {
+    var ov = document.querySelector(".overlay.on");
+    if (!ov) return;
+    if (e.key === "Escape") { e.preventDefault(); closeOverlay(ov); return; }
+    if (e.key === "Tab") {
+      var focusables = Array.prototype.filter.call(
+        ov.querySelectorAll("button, input"),
+        function (x) { return x.offsetParent && !x.disabled; }
+      );
+      if (!focusables.length) return;
+      var first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
+  function showStatus(title, text, okLabel) {
+    els.statusTitle.textContent = title;
+    els.statusText.textContent = text;
+    els.statusOk.textContent = okLabel || "Entendi";
+    openOverlay(els.overlayStatus);
+  }
+  els.statusOk.addEventListener("click", function () { closeOverlay(els.overlayStatus); });
+  els.overlayAds.addEventListener("click", function (e) { if (e.target === els.overlayAds) closeOverlay(els.overlayAds); });
+  els.overlayStatus.addEventListener("click", function (e) { if (e.target === els.overlayStatus) closeOverlay(els.overlayStatus); });
+
+  /* ---------- plan selection (visual only; sent to the service) ---------- */
+  var planButtons = Array.prototype.slice.call(document.querySelectorAll(".plan button"));
+  planButtons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      planButtons.forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    });
+  });
+  function selectedPlan() {
+    var active = planButtons.filter(function (x) { return x.getAttribute("aria-pressed") === "true"; })[0];
+    return active ? active.dataset.plan : CONFIG.defaultPlan;
+  }
+
+  /* ---------- device segment (visual toggle, as in the reference) ---------- */
+  var segButtons = Array.prototype.slice.call(document.querySelectorAll(".seg button"));
+  segButtons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      segButtons.forEach(function (x) { x.setAttribute("aria-selected", String(x === b)); });
+    });
+  });
+
+  /* ---------- code activation (no local code-format rules) ---------- */
+  function activate() {
+    var code = els.codigo.value.trim();
+    els.codigoError.hidden = true;
+    els.codigo.setAttribute("aria-invalid", "false");
+    if (!code) {
+      els.codigoError.hidden = false;
+      els.codigo.setAttribute("aria-invalid", "true");
+      els.codigo.focus();
+      return;
+    }
+    var original = els.ativar.textContent;
+    els.ativar.disabled = true;
+    els.ativar.textContent = "Verificando…";
+    Promise.resolve(Services.get("codeAccess").activate({ code: code, plan: selectedPlan() }))
+      .then(function (res) {
+        if (res && res.connected) {
+          if (res.granted) {
+            var when = res.expiresLabel || res.expiresAt || "";
+            showStatus("VIP ativado",
+              when ? "Acesso liberado até " + when + "." : "Acesso VIP liberado pelo serviço de ativação.",
+              "Começar a assistir");
+          } else {
+            showStatus("Código não ativado",
+              res.message || "O serviço de validação não aceitou este código para o plano selecionado.",
+              "Tentar novamente");
+          }
+        } else {
+          showStatus("Validação ainda não conectada",
+            "Esta interface está pronta para acionar o serviço de validação de códigos do SMARTEDTV. Nenhuma validação real foi executada e nenhuma ativação foi simulada. Ponto de integração: js/services.js (codeAccess.activate) e guia docs/HANDOFF.md.",
+            "Entendi");
+        }
+      })
+      .catch(function () {
+        showStatus("Não foi possível verificar",
+          "O serviço de ativação respondeu com erro. Tente novamente em instantes.",
+          "Fechar");
+      })
+      .then(function () {
+        els.ativar.disabled = false;
+        els.ativar.textContent = original;
+      });
+  }
+  els.ativar.addEventListener("click", activate);
+  els.codigo.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); activate(); }
+  });
+
+  /* ---------- checkout ---------- */
+  els.checkout.addEventListener("click", function () {
+    Services.get("payment").openCheckout();
+    toast("Checkout aberto em uma nova aba.");
+  });
+
+  /* ---------- share / download APK ---------- */
+  els.share.addEventListener("click", function () {
+    Promise.resolve(Services.get("share").shareLink(CONFIG.apkShareUrl)).then(function (res) {
+      if (res.method === "clipboard") toast("Link copiado para a área de transferência.");
+      else if (res.method === "failed") showStatus("Não foi possível compartilhar",
+        "Copie manualmente o link do app exibido no QR code.", "Fechar");
+    });
+  });
+  els.baixar.addEventListener("click", function () {
+    window.open(CONFIG.apkDownloadUrl, "_blank", "noopener");
+    toast("Download do APK aberto em uma nova aba.");
+  });
+
+  /* ---------- ATUALIZAR APLICATIVO ---------- */
+  els.atualizar.addEventListener("click", function () {
+    Promise.resolve(Services.get("appUpdate").checkAndInstall()).then(function (res) {
+      if (res && res.connected) { if (res.message) toast(res.message); return; }
+      if (res && res.openedDownload) toast("Abrindo o download do aplicativo atualizado…");
+    });
+  });
+
+  /* ---------- ads (reference dialog copy preserved) ---------- */
+  els.gratis.addEventListener("click", function () { openOverlay(els.overlayAds); });
+  els.voltar.addEventListener("click", function () { closeOverlay(els.overlayAds); });
+  els.seguir.addEventListener("click", function () {
+    if (els.seguir.disabled) return;
+    els.seguir.disabled = true;
+    closeOverlay(els.overlayAds);
+    Promise.resolve(Services.get("ads").startSession())
+      .then(function (res) {
+        if (res && res.connected) {
+          /* VAST connected: completed/skipped/nofill/error all fall
+             back to the welcome screen cleanly (no black screen). */
+          toast(res.message || "Sessão com anúncios iniciada.");
+        } else {
+          showStatus("Anúncios ainda não conectados",
+            "A exibição de anúncios será iniciada pelo serviço de anúncios existente do SMARTEDTV quando ele for conectado a esta interface. Nenhum anúncio foi simulado. Ponto de integração: js/services.js (ads.startSession) e guia docs/HANDOFF.md.",
+            "Entendi");
+        }
+      })
+      .catch(function () {
+        showStatus("Não foi possível iniciar",
+          "O serviço de anúncios respondeu com erro. Tente novamente em instantes.",
+          "Fechar");
+      }).then(function () { els.seguir.disabled = false; });
+  });
+
+  /* ---------- D-PAD: arrows cycle focus, Esc closes (reference behavior) ---------- */
+  document.addEventListener("keydown", function (e) {
+    if (["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].indexOf(e.key) === -1) return;
+    e.preventDefault();
+    var open = document.querySelector(".vast-overlay") || document.querySelector(".overlay.on");
+    var scope = open || document;
+    var list = Array.prototype.filter.call(
+      scope.querySelectorAll("button, input"),
+      function (x) { return x.offsetParent && !x.disabled; }
+    );
+    if (!list.length) return;
+    var i = list.indexOf(document.activeElement);
+    if (i < 0) i = 0;
+    var dir = (e.key === "ArrowRight" || e.key === "ArrowDown") ? 1 : -1;
+    list[(i + dir + list.length) % list.length].focus();
+  });
+
+  /* ---------- ambient parallax (fine pointers only) ---------- */
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!reduced && window.matchMedia("(pointer: fine)").matches) {
+    var raf = 0;
+    window.addEventListener("mousemove", function (e) {
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        raf = 0;
+        var x = (e.clientX / window.innerWidth) * 2 - 1;
+        var y = (e.clientY / window.innerHeight) * 2 - 1;
+        els.screen.style.setProperty("--px", x.toFixed(3));
+        els.screen.style.setProperty("--py", y.toFixed(3));
+      });
+    });
+  }
+})();
+
+</script>
+</body>
+</html>

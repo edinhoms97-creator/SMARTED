@@ -1,0 +1,24 @@
+# Downloaded originals from Dropbox (kept locally, distributed via Dropbox links)
+dropbox/
+
+# Android binaries — distributed via Dropbox, never committed (263 MB)
+*.apk
+*.aab
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node test tooling
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Local Android build/download/signing outputs (never version keys or APKs)
+.cache/
+dist/
+*.keystore
+*.jks
