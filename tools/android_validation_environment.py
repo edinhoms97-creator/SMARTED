@@ -111,6 +111,25 @@ def prepare(report, sdk, apk):
                 return
             report['apk_sha256'] = hashlib.sha256(apk.read_bytes()).hexdigest()
             report['all_files_permission'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'appops', 'set', '--uid', 'smartedtv.full', 'MANAGE_EXTERNAL_STORAGE', 'allow'])
+            startup_stop = None
+            startup_thread = None
+            if os.environ.get('ANDROID_STARTUP_TRACE') == 'true':
+                import threading
+                startup_stop = threading.Event()
+                startup_dir = Path('.cache/android-validation/startup')
+                startup_dir.mkdir(parents=True, exist_ok=True)
+                def capture_startup():
+                    for index in range(25):
+                        if startup_stop.is_set():
+                            break
+                        frame = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'exec-out', 'screencap', '-p'], capture_output=True, timeout=20)
+                        if frame.returncode == 0:
+                            (startup_dir / ('%03d.png' % index)).write_bytes(frame.stdout)
+                        (startup_dir / ('%03d.json' % index)).write_text(json.dumps(dict(utc=time.time(), activity=execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'dumpsys', 'activity', 'top'])['output'][-1000:])))
+                        if startup_stop.wait(8):
+                            break
+                startup_thread = threading.Thread(target=capture_startup, daemon=True)
+                startup_thread.start()
             report['launch'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'am', 'start', '-W',
                                          '-n', 'smartedtv.full/smartedtv.full.Splash'], timeout=60)
             # The original native permission explainer is shown even with -g.
@@ -143,6 +162,9 @@ def prepare(report, sdk, apk):
                 execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'input', 'tap', str(x), str(y)])
                 time.sleep(8)
             time.sleep(120)  # cold native ARM translation + original profile extraction
+            if startup_stop is not None:
+                startup_stop.set()
+                startup_thread.join(timeout=25)
             evidence = Path('.cache/android-validation')
             evidence.mkdir(parents=True, exist_ok=True)
             if os.environ.get('ANDROID_CONTENT_CYCLES') == 'true':
@@ -206,6 +228,9 @@ def prepare(report, sdk, apk):
             if contents.returncode == 0:
                 (evidence / 'kodi.log').write_bytes(contents.stdout)
                 report['kodi_log_read_after_root'] = True
+                startup_lines = [line for line in contents.stdout.decode(errors='replace').splitlines() if any(s in line for s in ('tela de entrada carregada', 'indo direto para a Home', 'reentrada apos SAIR', 'abrindo a Home:', 'Home ativa', 'vigia: a tela'))]
+                report['startup_native_events'] = startup_lines
+                (evidence / 'startup-events.json').write_text(json.dumps(startup_lines, indent=2)+'\n')
                 report['opening_stages'] = [line.split('[SmartAdsOpening] ', 1)[-1] for line in contents.stdout.decode(errors='replace').splitlines() if '[SmartAdsOpening]' in line]
             else:
                 report['kodi_log_read_after_root'] = False
