@@ -64,6 +64,7 @@ class Tests(unittest.TestCase):
         env = runtime.env()
         env.update(re=re, json=json, threading=threading, ssl=ssl)
         definitions((ORIGINAL or minimal.FOLDER) / 'ads_vast.py', env)
+        env['_disparar_eventos'] = lambda urls: runtime.events.extend(urls)
         env['PROFUNDIDADE_WRAPPER'] = 5
         env['sem_namespace'] = strip
         env['VAST_TAG_PADRAO'] = minimal.TAG
@@ -135,6 +136,25 @@ class Tests(unittest.TestCase):
         self.assertRegex(request.full_url, r'c=\d{8}&e=405')
         self.assertTrue(kw['context'].check_hostname)
         self.assertGreaterEqual(kw['context'].minimum_version, ssl.TLSVersion.TLSv1_2)
+
+    def test_actual_original_parser_selects_media_and_inherits_wrapper_pixels(self):
+        if ORIGINAL is None:
+            self.skipTest('Actual parser available in APK runner')
+        runtime = Runtime()
+        env = runtime.env()
+        env.update(re=re, json=json, threading=threading)
+        definitions(ORIGINAL / 'ads_vast.py', env)
+        env['_disparar_eventos'] = lambda urls: runtime.events.extend(urls)
+        selected = []
+        env['reproduzir'] = lambda ad, **kw: selected.append(ad) or {'exibido': True}
+        pages = {'https://tag.invalid/one': wrapper('https://tag.invalid/two'),
+                 'https://tag.invalid/two': INLINE}
+        receipt = env['exibir'](tag='https://tag.invalid/one', baixar_tag=pages.get)
+        self.assertTrue(receipt['exibido'])
+        self.assertEqual(selected[0]['url'], 'https://m.invalid/ad.mp4')
+        self.assertEqual(selected[0]['impressao'], ['https://p.invalid/outer',
+                         'https://p.invalid/duplicate', 'https://p.invalid/inline'])
+        self.assertEqual(runtime.events, [])
 
     def test_original_playback_tracking_not_request_or_synthetic_complete(self):
         if ORIGINAL is None:
