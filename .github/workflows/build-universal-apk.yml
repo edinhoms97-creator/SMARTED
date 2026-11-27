@@ -538,6 +538,8 @@ jobs:
         run: python3 tools/inspect_vast_history_startup.py limits
       - name: Replay com relogio virtual das cadeias de 6, 9 e 12 segundos, sem rede
         run: python3 tools/compare_vast_request_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --out .cache/history-startup/request-budget-before.json
+      - name: HTTP local real com tres segundos por hop e o downloader nativo
+        run: python3 tools/compare_vast_http_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --out .cache/history-startup/request-budget-http-before.json
       - name: Ler somente codigo de inicializacao Python
         if: inputs.vast_function_lab == 'history-startup'
         run: python3 tools/inspect_vast_history_startup.py startup
