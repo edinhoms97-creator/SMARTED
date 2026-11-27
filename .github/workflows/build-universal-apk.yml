@@ -208,7 +208,7 @@ jobs:
         with:
           name: android-environment-result
           path: |
-            .cache/android-validation/result.json
+            .cache/android-validation/
             .cache/android-emulator.log
           if-no-files-found: warn
           retention-days: 7

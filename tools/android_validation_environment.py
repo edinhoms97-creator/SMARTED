@@ -102,6 +102,22 @@ def prepare(report, sdk, apk):
                 return
             report['launch'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'am', 'start', '-W',
                                          '-n', 'smartedtv.full/smartedtv.full.Splash'], timeout=60)
+            time.sleep(35)
+            evidence = Path('.cache/android-validation')
+            evidence.mkdir(parents=True, exist_ok=True)
+            for name, args in (
+                ('ui.xml', ['shell', 'uiautomator', 'dump', '/sdcard/smarted-ui.xml']),
+                ('activities.txt', ['shell', 'dumpsys', 'activity', 'activities']),
+                ('logcat.txt', ['logcat', '-d', '-v', 'threadtime']),
+            ):
+                command = [tools['adb'], '-s', 'emulator-5554'] + args
+                run = subprocess.run(command, capture_output=True, timeout=45)
+                (evidence / name).write_bytes(run.stdout + run.stderr)
+            execute([tools['adb'], '-s', 'emulator-5554', 'pull', '/sdcard/smarted-ui.xml', str(evidence / 'hierarchy.xml')])
+            screenshot = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'exec-out', 'screencap', '-p'], capture_output=True, timeout=30)
+            (evidence / 'screen.png').write_bytes(screenshot.stdout)
+            report['ui_hierarchy'] = (evidence / 'hierarchy.xml').read_text(errors='replace')[:12000] if (evidence / 'hierarchy.xml').exists() else 'unavailable'
+            report['activity_tail'] = (evidence / 'activities.txt').read_text(errors='replace')[-2500:]
             report['status'] = 'apk-launch-attempted-content-cycles-not-executed'
             for row in report['cycles']: row['reason'] = 'requires-real-content-selection-and-visual-validation'
     finally:
