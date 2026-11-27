@@ -34,6 +34,10 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
             tree = ast.parse(text)
         except SyntaxError:
             continue
+        if path == 'assets/addons/script.smartedtv.welcome/default.py':
+            selected = {n.name: ast.unparse(Redact().visit(n)) for n in ast.walk(tree)
+                        if isinstance(n, ast.FunctionDef) and (n.name == 'onClick' or any(word in n.name for word in ('dropbox', 'compartilhar', 'baixar', 'atualizar')))}
+            emit({'welcome_actions': selected})
         if not path.startswith('assets/addons/service.smarted.bootstrap/'):
             lines = [line.strip() for line in text.splitlines() if any(word in line for word in ('open_apk_download', 'share_download_link', 'procurar_atualizacao', 'install_update', 'compartilhar(', 'abrir_dropbox(', 'onClick', 'control_id ==', 'control_id in'))]
             if lines:
@@ -55,4 +59,5 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     # Prior inspections already captured installer contracts. Emit routes only
     # here so the GitHub ten-notice limit cannot truncate button evidence.
     # emit({'controls': matches})
-    emit({'routes': routes})
+    # Previous inspection captured the compact routing table.
+    # emit({'routes': routes})
