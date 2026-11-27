@@ -17,13 +17,16 @@ import zipfile
 
 def audit(path):
     result = {"mode": "read-only-original-apk", "skin_addons": [], "startup_addons": [],
-              "candidate_code": [], "containers": [], "asset_groups": {}}
+              "candidate_code": [], "bootstrap_files": [], "containers": [], "asset_groups": {}}
     with zipfile.ZipFile(path) as archive:
         groups = Counter()
         for info in archive.infolist():
             name = info.filename
             if name.startswith("assets/"):
                 groups["/".join(name.split("/")[:3])] += 1
+            if name.startswith("assets/addons/service.smarted.bootstrap/") and not name.endswith("/"):
+                result["bootstrap_files"].append({"path": name, "size": info.file_size,
+                                                  "sha256": hashlib.sha256(archive.read(name)).hexdigest()})
             if name.endswith((".zip", ".7z", ".tar", ".obb")):
                 result["containers"].append({"path": name, "size": info.file_size})
             if name.endswith("/addon.xml") and info.file_size < 100000:
@@ -43,8 +46,8 @@ def audit(path):
                 data = archive.read(name)
                 text = data.decode("utf-8", errors="replace")
                 terms = [term for term in ("vast", "admob", "clickadilla", "spot_id", "smarted", "welcome")
-                         if re.search(r"\b" + term + r"\b", text, re.I) or term in name.lower()]
-                if not terms:
+                         if re.search(r"\b" + term + r"\b", text, re.I) or term in Path(name).name.lower()]
+                if not terms and not name.startswith("assets/addons/service.smarted.bootstrap/"):
                     continue
                 entry = {"path": name, "size": info.file_size,
                          "sha256": hashlib.sha256(data).hexdigest(), "terms": terms}
@@ -65,16 +68,19 @@ def audit(path):
 
 
 def notices(report):
-    # Structured metadata only; no source code, URL tokens or account settings.
-    for section in ("skin_addons", "startup_addons", "candidate_code", "containers", "asset_groups"):
+    # GitHub limits notices per step; one annotation per section, not many
+    # chunks that can silently omit the important first addon candidates.
+    for section in ("skin_addons", "startup_addons", "bootstrap_files", "candidate_code", "containers", "asset_groups"):
         items = report[section]
+        if section == "candidate_code":
+            items = sorted(items, key=lambda el: (
+                not bool(set(el["terms"]) & {"vast", "admob", "clickadilla", "spot_id"}),
+                not el["path"].startswith("assets/addons/service.smarted.bootstrap/"), el["path"]))[:30]
         if isinstance(items, dict):
-            items = [{"path": key, "entries": value} for key, value in items.items()]
-        items = items[:64]
-        for offset in range(0, len(items), 8):
-            message = json.dumps({section: items[offset:offset + 8]}, ensure_ascii=True)
-            message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-            print("::notice title=SMARTED original inventory::" + message, flush=True)
+            items = [{"path": key, "entries": value} for key, value in items.items()][:100]
+        message = json.dumps({section: items}, ensure_ascii=True)
+        message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print("::notice title=SMARTED original inventory::" + message, flush=True)
 
 
 if __name__ == "__main__":
