@@ -34,6 +34,16 @@ Não inclui `ads_resume.py`, guarda de menus, novos watchdogs, novo fluxo de pri
 
 ## Entrega e limites
 
-Build manual com `minimal_clickadilla=true` e `publish_release=true`. O APK universal ARM32+ARM64 é publicado como prerelease separada, com fonte exata, hash, identidade/assinatura e relatórios de preservação. Não sobrescreve o original no Dropbox nem faz merge de PR.
+**Build e publicação concluídos:** [run 46023622889](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46023622889), fonte `455a398f35e1d78333336f803cfc46f952c99029`, perfil `minimal_clickadilla=true`, `publish_release=true`.
+
+- [Baixar SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46023622889-1/SMARTEDTV-universal.apk), ARM32+ARM64, **263.222.584 bytes**.
+- [Prerelease com identidade/assinatura e relatórios](https://github.com/edinhoms97-creator/SMARTED/releases/tag/smarted-original-ads-46023622889-1).
+- SHA-256 do asset conferido pela API GitHub: `affd977a6dacc2eb91be6015683725737ae61d4240760038ec1a012a48969534`.
+- Auditoria do APK original confirmou host anterior **`bid.onclckstr.com`**. Tag substituída pela URL Clickadilla acima.
+- Preservação final aprovada: **três entradas alteradas/adicionadas, 8.049 preservadas**; funções protegidas e monitor originais iguais na comparação AST.
+- Testes rápidos e os sete testes do perfil (incluindo parser e tracking sobre funções extraídas do APK original e comparação dos módulos gerados) passaram no runner. São testes com doubles, não reprodução Android.
+- A tentativa anterior, run `46023423138`, parou por uma dependência ausente no harness de teste (`_DISPARAR_PADRAO`). Corrigido o harness, acrescentado teste do parser real e reexecutado o pipeline completo; nenhum APK daquela tentativa foi publicado.
+
+O APK universal é uma prerelease separada. Não sobrescreve o original no Dropbox nem faz merge de PR. O registro deste resultado é atualização documental posterior ao SHA compilado, não outra versão do APK.
 
 Assinatura de teste/debug do pipeline existente: pode não atualizar uma instalação de outra chave. Fazer backup antes de remover qualquer instalação. **Sem validação física de imagem/áudio/toque ou confirmação de impressões no painel.** O usuário testará este perfil original, não mais um remendo sobre o APK experimental anterior.
