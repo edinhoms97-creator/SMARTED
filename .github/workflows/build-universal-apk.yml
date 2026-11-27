@@ -74,7 +74,7 @@ jobs:
         if: inputs.inspect_only
         run: |
           python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk --report .cache/base-identity.json
-          python3 tools/inspect_original_controls.py .cache/smartedtv-base/base.apk
+          python3 tools/inspect_resume_contract.py .cache/smartedtv-base/base.apk
       - name: Empacotar somente anuncios; verificar todos os outros arquivos
         if: ${{ !inputs.inspect_only }}
         run: bash tools/build-universal-apk.sh
