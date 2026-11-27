@@ -20,6 +20,7 @@ from test_ads_regressions import Runtime
 
 ORIGINAL = None
 BASE_APK = None
+SOURCE = 'clickadilla'
 sys.path.insert(0, str(minimal.FOLDER))
 
 
@@ -67,7 +68,8 @@ class Tests(unittest.TestCase):
         env['_disparar_eventos'] = lambda urls: runtime.events.extend(urls)
         env['PROFUNDIDADE_WRAPPER'] = 5
         env['sem_namespace'] = strip
-        env['VAST_TAG_PADRAO'] = minimal.TAG
+        if ORIGINAL is None:
+            env['VAST_TAG_PADRAO'] = minimal.TAG
         env['tag_do_wrapper'] = lambda xml: ET.fromstring(strip(xml)).findtext('.//VASTAdTagURI') or ''
         env['tag_do_vmap'] = lambda xml: ''
         def choose(data, height=0):
@@ -81,7 +83,11 @@ class Tests(unittest.TestCase):
 
     def test_exact_tag_and_vast_on_every_device(self):
         _, env = self.env()
-        self.assertEqual(env['tag_configurada']('https://old.invalid'), minimal.TAG)
+        expected_tag = minimal.TAG
+        if SOURCE == 'original' and BASE_APK:
+            with zipfile.ZipFile(BASE_APK) as archive:
+                expected_tag = minimal.source_tag(archive.read(minimal.BASE + 'ads_vast.py').decode(), SOURCE)
+        self.assertEqual(env['tag_configurada']('https://old.invalid'), expected_tag)
         definitions((ORIGINAL or minimal.FOLDER) / 'smart_ads.py', env)
         env['MOTOR_VAST'] = 'vast'
         for tv in (True, False):
@@ -114,7 +120,7 @@ class Tests(unittest.TestCase):
                             'cycle': wrapper('one'), 'depth': wrapper('three')}[mode]
                 pages = {'one': wrapper('two'), 'two': response, 'three': INLINE}
                 receipt = env['exibir'](tag='one', baixar_tag=pages.get)
-                expected = 'vast-sem-criativo' if mode == 'empty' else reason
+                expected = reason
                 self.assertEqual(receipt['motivo'], expected)
                 self.assertFalse(receipt['exibido'])
                 self.assertFalse(any('/duplicate' in event for event in runtime.events))
@@ -189,13 +195,75 @@ class Tests(unittest.TestCase):
                 if mode == 'refused':
                     self.assertFalse(receipt['exibido'])
 
+    def test_source_selection_preserves_original_spot_not_just_host(self):
+        tag = 'https://original.invalid/vast?spot_id=123&c=[CACHEBUSTING]'
+        source = 'VAST_TAG_PADRAO = ' + repr(tag)
+        self.assertEqual(minimal.source_tag(source, 'original'), tag)
+        self.assertEqual(minimal.source_tag(source, 'clickadilla'), minimal.TAG)
+        with self.assertRaises(ValueError):
+            minimal.source_tag(source, 'invented-fallback')
+
+    def test_diagnostic_distinguishes_nofill_without_urls_or_pixels(self):
+        runtime, env = self.env()
+        logs = []
+        receipt = env['exibir'](tag='https://tag.invalid/?token=private',
+                                baixar_tag=lambda url: '<VAST/>', log=logs.append)
+        self.assertEqual(receipt['motivo'], 'no-fill')
+        self.assertEqual(runtime.events, [])
+        self.assertIn('"reason": "no-fill"', str(logs))
+        self.assertNotIn('private', str(logs))
+
+    def test_actual_original_player_no_longer_cuts_one_and_half_seconds_early(self):
+        if ORIGINAL is None:
+            self.skipTest('Actual original playback source available in APK runner')
+        runtime = Runtime('ended')
+        env = runtime.env()
+        definitions(ORIGINAL / 'ads_vast.py', env)
+        env.update(_agora=lambda: runtime.now, _arquivo_atual=lambda: runtime.file,
+                   _player_tocando_video=lambda: runtime.playing,
+                   _aguardar_anuncio_tocar=lambda *a, **kw: True,
+                   _posicao_e_duracao=lambda: (runtime.position, 15),
+                   _garantir_tela_cheia=lambda: None, _audio_sem_quadro_video=lambda: False,
+                   _disparar_eventos=lambda urls: runtime.events.extend(urls))
+        env['FOLGA_FIM'] = 1.5
+        env['QUARTIS'] = [('firstQuartile', .25), ('midpoint', .5), ('thirdQuartile', .75), ('complete', 1)]
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 15,
+                      'eventos': {'complete': ['complete']}},
+                      tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertGreaterEqual(runtime.now - runtime.start, 15)
+        self.assertEqual(runtime.events.count('complete'), 1)
+        self.assertIn('complete', receipt['eventos'])
+
+    def test_original_dispatch_acknowledges_scheduling_not_delivery(self):
+        if BASE_APK is None:
+            self.skipTest('Original dispatch source available in APK runner')
+        with zipfile.ZipFile(BASE_APK) as archive:
+            tree = ast.parse(archive.read(minimal.BASE + 'smart_ads.py').decode())
+        monitor = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'MonitorPreRoll')
+        dispatch = next(n for n in monitor.body if isinstance(n, ast.FunctionDef) and n.name == '_disparar')
+        outcomes = []
+        class ImmediateThread:
+            def __init__(self, target, args, **kw): self.target, self.args = target, args
+            def start(self): self.target(*self.args)
+        env = {'usar_vast': lambda: True, 'android': lambda: True,
+               'threading': types.SimpleNamespace(Thread=ImmediateThread)}
+        exec(compile(ast.Module(body=[dispatch], type_ignores=[]), 'actual-original-dispatch', 'exec'), env)
+        def failed_cycle(*args):
+            outcomes.append(False)  # no-fill completes before caller books opportunity
+            return False
+        player = types.SimpleNamespace(_em_vast=False, ultimo_caminho='film',
+                  _caminho=lambda: 'film', _ciclo_vast=failed_cycle)
+        dispatched = env['_disparar'](player, 'preroll', None)
+        self.assertTrue(dispatched)
+        self.assertEqual(outcomes, [False])
+
     def test_actual_apk_monitor_resume_controls_and_frequency_unchanged(self):
         if BASE_APK is None:
             self.skipTest('Original APK comparison available in runner')
         with zipfile.ZipFile(BASE_APK) as archive:
             originals = {name: archive.read(minimal.BASE + name).decode() for name in ('ads_vast.py', 'smart_ads.py')}
             self.assertNotIn(minimal.BASE + 'ads_resume.py', archive.namelist())
-        expected = minimal.patch_sources(originals)
+        expected = minimal.patch_sources(originals, SOURCE)
         for name, code in expected.items():
             self.assertEqual((ORIGINAL / name).read_text(), code)
         original_node = next(n for n in ast.parse(originals['ads_vast.py']).body if isinstance(n, ast.FunctionDef) and n.name == 'reproduzir')
@@ -208,8 +276,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--original', type=Path)
     parser.add_argument('--base', type=Path)
+    parser.add_argument('--source', choices=('original', 'clickadilla'), default='clickadilla')
     args, rest = parser.parse_known_args()
-    ORIGINAL, BASE_APK = args.original, args.base
+    ORIGINAL, BASE_APK, SOURCE = args.original, args.base, args.source
     if ORIGINAL:
         sys.path.insert(0, str(ORIGINAL))
     helper_spec = importlib.util.spec_from_file_location('ads_tracking', (ORIGINAL or minimal.FOLDER) / 'ads_tracking.py')

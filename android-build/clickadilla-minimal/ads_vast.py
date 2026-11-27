@@ -1,6 +1,6 @@
 # Replacements for tag/transport/tracking only. Native playback remains in base.
 def tag_configurada(padrao=''):
-    # Do not let a saved Hilltop window property override this test's network.
+    # Use the exact build-selected tag; never splice a new host onto an old spot.
     return VAST_TAG_PADRAO
 
 
@@ -44,7 +44,18 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
     visited = set()
     fetch = baixar_tag or baixar
     current = tag
+    def diagnostic(stage, **fields):
+        import json
+        message = '[SmartAdsDelivery] ' + json.dumps(dict(stage=stage, **fields), ensure_ascii=True)
+        try:
+            if log:
+                log(message)
+            else:
+                xbmc.log(message, getattr(xbmc, 'LOGINFO', 1))
+        except Exception:
+            pass
     def fail(reason, code):
+        diagnostic('result', reason=reason, creative=False)
         _disparar_eventos([expand(url, error_code=code, user_agent=ua) for url in errors])
         return {'exibido': False, 'motivo': reason}
     if not current:
@@ -53,6 +64,8 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
         if current in visited:
             return fail('wrapper-ciclico', 302)
         visited.add(current)
+        from urllib.parse import urlsplit
+        diagnostic('request', host=urlsplit(current).hostname, wrapper_level=level)
         try:
             data = fetch(expand(current, user_agent=ua))
         except Exception:
@@ -65,6 +78,10 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
             root = ET.fromstring(sem_namespace(data).strip())
         except Exception:
             return fail('xml-invalido', 100)
+        diagnostic('response', bytes=len(data), ads=len(list(root.iter('Ad'))),
+                   media_files=len(list(root.iter('MediaFile'))))
+        if root.tag == 'VAST' and not list(root.iter('Ad')):
+            return fail('no-fill', 303)
         ad = escolher_anuncio(data, altura_tela)
         if ad:
             ad = dict(ad)
@@ -74,8 +91,11 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
             for name, urls in (ad.get('eventos') or {}).items():
                 combined.setdefault(name, []).extend(urls)
             ad['eventos'] = combined
+            diagnostic('creative-selected', media_type=ad.get('tipo'), duration=ad.get('duracao'))
             receipt = reproduzir(ad, log=log, tempo_maximo=tempo_maximo,
                                  tocar=tocar, dormir=dormir)
+            diagnostic('player-result', reason=receipt.get('motivo'),
+                       complete='complete' in (receipt.get('eventos') or []))
             receipt['anuncio'] = ad.get('id') or ad.get('url')
             return receipt
         target = tag_do_wrapper(data) or tag_do_vmap(data)

@@ -4,12 +4,19 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      vast_source:
+        description: 'Fonte VAST do perfil minimo; original restaura URL e spot exatos do APK'
+        type: choice
+        options:
+          - original
+          - clickadilla
+        default: original
       delivery_probe:
         description: 'Inspecao: duas tentativas sem pixels, fonte original e Clickadilla; decode CPU se houver criativo'
         type: boolean
         default: false
       minimal_clickadilla:
-        description: 'Original Dropbox: somente tag Clickadilla + tracking, sem os patches anteriores de player'
+        description: 'Original Dropbox: fonte VAST selecionada + tracking, sem os patches anteriores de player'
         type: boolean
         default: true
       inspect_only:
@@ -36,6 +43,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  VAST_SOURCE: ${{ inputs.vast_source }}
   MINIMAL_CLICKADILLA: ${{ inputs.minimal_clickadilla }}
   ANDROID_HOME: /usr/local/lib/android/sdk
   INPUT_BASE_URL: ${{ inputs.base_url }}
@@ -138,7 +146,7 @@ jobs:
           (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
           tag="smarted-original-ads-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
-            --title 'SMARTED original Dropbox — Clickadilla + tracking (teste)' \
+            --title "SMARTED original — VAST ${VAST_SOURCE} e diagnostico de entrega (teste)" \
             --notes-file dist/INSTALLATION.txt \
             dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
             dist/preservation.json dist/source-preservation.json dist/signature.txt dist/badging.txt

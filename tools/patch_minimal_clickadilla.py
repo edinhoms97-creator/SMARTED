@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fresh pinned Dropbox APK: network + tracking only, no player-flow patches."""
+"""Pinned original APK: source/tracking and full-length ending; no player replacement."""
 import argparse
 import ast
 import hashlib
@@ -18,14 +18,28 @@ TAG = 'https://vast.yomeno.xyz/vast?spot_id=1508180'
 BASE = 'assets/addons/service.smarted.bootstrap/'
 
 
+def source_tag(original_source, source='clickadilla'):
+    if source == 'clickadilla':
+        return TAG
+    if source != 'original':
+        raise ValueError('Unknown VAST source')
+    for node in ast.parse(original_source).body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'VAST_TAG_PADRAO' for t in node.targets):
+            value = ast.literal_eval(node.value)
+            if isinstance(value, str) and urlsplit(value).scheme in ('http', 'https'):
+                return value
+    raise ValueError('Original VAST tag contract changed')
+
+
 def tracking_only_playback(source):
     """Exact reviewed edits to pixels only; all native control calls stay put.
 
     The original loop prematurely sent Impression before PlayMedia and always
-    sent complete even on stall. Fix event truthfulness, not playback policy.
-    Near-end break, stalls, waits, focus, restore and success receipt stay base.
+    sent complete even on stall. Fix event truthfulness and avoid abbreviating the final 1.5 seconds.
+    Remove only the base near-end cutoff; stalls, waits, focus and restore stay base.
     """
     edits = [
+        ("            if posicao >= duracao - FOLGA_FIM:\n", "            if posicao >= duracao:\n"),
         ("    _disparar_eventos(anuncio.get('impressao') or [])\n",
          "    from ads_tracking import playback_events, expand, device_user_agent\n"
          "    _tracking = playback_events(xbmc)\n"
@@ -81,7 +95,8 @@ def native_control_calls(source):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in names]
 
 
-def patch_sources(originals):
+def patch_sources(originals, source='clickadilla'):
+    tag = source_tag(originals['ads_vast.py'], source)
     result = {}
     for name in ('ads_vast.py', 'smart_ads.py'):
         original = originals[name]
@@ -93,19 +108,19 @@ def patch_sources(originals):
             if native_control_calls(playback) != native_control_calls(updated):
                 raise ValueError('Tracking patch changed native player controls')
             code += '\n\n' + updated + '\n'
-        result[name] = replace_functions(original, code, {'VAST_TAG_PADRAO': TAG})
+        result[name] = replace_functions(original, code, {'VAST_TAG_PADRAO': tag})
     result['ads_tracking.py'] = (FOLDER / 'ads_tracking.py').read_text()
     return result
 
 
-def build(base, output, work, report):
+def build(base, output, work, report, source='clickadilla'):
     verify_base(base)
     plan = json.loads(PLAN.read_text())
     if plan['base_dropbox_content_hash'] != CONFIG['dropbox_content_hash']:
         raise ValueError('Minimal plan base mismatch')
     with zipfile.ZipFile(base) as archive:
         originals = {name: archive.read(BASE + name).decode('utf-8') for name in ('ads_vast.py', 'smart_ads.py')}
-    updated = patch_sources(originals)
+    updated = patch_sources(originals, source)
     work.mkdir(parents=True, exist_ok=True)
     for name, code in updated.items():
         compile(code, name, 'exec')
@@ -125,7 +140,10 @@ def build(base, output, work, report):
         raise ValueError('Original monitor changed')
     tag_value = next(n.value for n in ast.parse(originals['ads_vast.py']).body if isinstance(n, ast.Assign)
                      and any(isinstance(t, ast.Name) and t.id == 'VAST_TAG_PADRAO' for t in n.targets))
-    result.update(profile='original-tag-tracking-only', source_original_tag_host=urlsplit(ast.literal_eval(tag_value)).hostname,
+    result.update(profile='original-tag-tracking-only', active_source=source,
+                  active_tag_host=urlsplit(source_tag(originals['ads_vast.py'], source)).hostname,
+                  active_tag_fingerprint=hashlib.sha256(source_tag(originals['ads_vast.py'], source).encode()).hexdigest(),
+                  early_end_cutoff_removed=True, source_original_tag_host=urlsplit(ast.literal_eval(tag_value)).hostname,
                   original_native_player_and_monitor=True, original_frequency_and_resume=True,
                   protected_function_hashes={name: hashlib.sha256(ast.dump(old[name]).encode()).hexdigest() for name in protected})
     write_json(report, result)
@@ -139,5 +157,6 @@ if __name__ == '__main__':
     parser.add_argument('output', type=Path)
     parser.add_argument('--work', required=True, type=Path)
     parser.add_argument('--report', required=True, type=Path)
+    parser.add_argument('--source', choices=('original', 'clickadilla'), default='clickadilla')
     args = parser.parse_args()
-    build(args.base, args.output, args.work, args.report)
+    build(args.base, args.output, args.work, args.report, args.source)
