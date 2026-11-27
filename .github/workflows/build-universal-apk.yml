@@ -4,6 +4,10 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      vast_function_lab:
+        description: 'Laboratorio isolado, baseline ou release de uma unica funcao VAST'
+        type: string
+        default: ''
       publish_existing_run:
         description: 'Anexar artefato ja auditado a prerelease existente; nao recompila'
         type: string
@@ -89,7 +93,7 @@ env:
 
 jobs:
   build:
-    if: ${{ inputs.publish_existing_run == '' && inputs.read_publish_log == '' && !inputs.vast_comparison && !inputs.android_probe && inputs.android_log_run == '' }}
+    if: ${{ inputs.vast_function_lab == '' && inputs.publish_existing_run == '' && inputs.read_publish_log == '' && !inputs.vast_comparison && !inputs.android_probe && inputs.android_log_run == '' }}
     name: Original SMARTED — patch restrito de anuncios
     runs-on: ubuntu-24.04
     timeout-minutes: 8
@@ -367,3 +371,55 @@ jobs:
           grep -F "$source" dist/INSTALLATION.txt
           gh release upload "$tag" --clobber dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 dist/preservation.json dist/source-preservation.json dist/reference-preservation.json dist/signature.txt dist/badging.txt
           gh release edit "$tag" --notes-file dist/INSTALLATION.txt
+
+  vast_function_lab:
+    if: inputs.vast_function_lab != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Preparar laboratorio sem modificar producao
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/vast-lab/base
+          gh release download smarted-original-ads-46074593488-1 --pattern SMARTEDTV-universal.apk --dir .cache/vast-lab/base
+          echo '2b64c443f42902cb07031db1106137a59d852ae39bb8fbd8b9379b8a6d2682bc  .cache/vast-lab/base/SMARTEDTV-universal.apk' | sha256sum -c -
+          python3 -m pip install --disable-pip-version-check playwright==1.58.0
+          command -v google-chrome
+      - name: Capturas e requests independentes da nova tag, sem pixels
+        if: inputs.vast_function_lab == 'baseline'
+        run: |
+          mkdir -p .cache/vast-lab/baseline
+          set -o pipefail
+          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/base/SMARTEDTV-universal.apk --out .cache/vast-lab/baseline/evidence --live 2>&1 | tee .cache/vast-lab/lab.log
+      - name: Preview real da evidencia visual
+        if: inputs.vast_function_lab == 'baseline'
+        run: |
+          python3 - <<'PYPREVIEW'
+          import base64,json
+          from pathlib import Path
+          data=base64.b64encode(Path('.cache/vast-lab/baseline/evidence/001/04-playback-result.jpg').read_bytes()).decode()
+          for i in range(0,len(data),3500):
+              if i//3500<9: print('::notice title=VAST lab screenshot chunks::'+json.dumps({'part':i//3500,'total':(len(data)+3499)//3500,'data':data[i:i+3500]}))
+          PYPREVIEW
+      - name: Diagnostico do laboratorio se falhar
+        if: failure()
+        run: python3 tools/report_build_diagnostics.py .cache/vast-lab/lab.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vast-visual-lab-evidence
+          path: |
+            .cache/vast-lab/baseline/evidence/
+            .cache/vast-lab/lab.log
+          retention-days: 30
