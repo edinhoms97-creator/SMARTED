@@ -233,6 +233,27 @@ class Tests(unittest.TestCase):
         ads_openings.observe(h.monitor, kodi, previous); h.join()
         self.assertEqual(h.calls, ['film-a'])
 
+    def test_live_automatic_home_on_eof_is_not_a_user_home_return(self):
+        h = Harness(); kodi = self.observer(h)
+        h.home = False
+        kodi.getCondVisibility = lambda key: (h.media if key == 'Player.HasMedia' else h.home if key == 'Window.IsActive(home)' else not h.home)
+        previous = ads_openings.observe(h.monitor, kodi); h.join()
+        with patch.dict(sys.modules, {'ao_vivo': types.SimpleNamespace(eh_ao_vivo=lambda path: True)}):
+            h.playing = h.media = False; h.home = True
+            previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.playing = h.media = True; h.home = False
+        ads_openings.observe(h.monitor, kodi, previous); h.join()
+        self.assertEqual(h.calls, ['film-a'])
+
+    def test_live_channel_token_refresh_not_new_opening_but_stop_is(self):
+        ledger = ads_openings.Opening()
+        first = ledger.claim('stream?token=one', 'Channel A')
+        ledger.finish(first, 'stream?token=one')
+        self.assertIsNone(ledger.claim('stream?token=two', 'Channel A'))
+        self.assertIn('stream?token=two', ledger.aliases)
+        ledger.close()
+        self.assertIsNotNone(ledger.claim('stream?token=three', 'Channel A'))
+
     def test_vip_exemption(self):
         h = Harness(); h.vip = True; h.callback(); h.join()
         self.assertEqual(h.calls, []); self.assertEqual(h.bookings, [])

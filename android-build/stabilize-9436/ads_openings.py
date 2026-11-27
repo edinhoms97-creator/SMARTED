@@ -45,10 +45,14 @@ class Opening:
             if self.in_ad:
                 return None
             same = path in self.aliases and (not channel or not self.channel or channel == self.channel)
+            if channel and self.channel and channel == self.channel:
+                same = True  # native channel identity survives proxy/token refresh
             if self.closed or not same:
                 self.generation += 1
                 self.aliases, self.channel = {path}, channel
                 self.attempted, self.closed = False, False
+            if same:
+                self.aliases.add(path)
             if same and channel and not self.channel:
                 self.channel = channel
             if self.attempted:
@@ -118,8 +122,18 @@ def observe(monitor, kodi, previous=(False, '', '')):
     media = bool(kodi.getCondVisibility('Player.HasMedia'))
     path = (monitor._caminho() or '') if playing else ''
     channel = (kodi.getInfoLabel('VideoPlayer.ChannelName') or '') if playing else ''
-    home_return = ledger.observe_ui(home, full)
     was_video, old_path, old_channel = previous
+    live = False
+    if was_video and not playing and not media:
+        try:
+            import ao_vivo
+            live = bool(ao_vivo.eh_ao_vivo(old_path))
+        except Exception:
+            pass
+    # Kodi can show Home automatically at a live EOF. That is not a user
+    # navigation boundary; explicit Stop or Home while media is active still is.
+    suppress_auto_home = live and not media and not playing and not ledger.closed
+    home_return = ledger.observe_ui(home and not suppress_auto_home, full)
     if playing:
         edge = not was_video or path != old_path or channel != old_channel
         waiting = getattr(monitor, '_smarted_wait_for_video_boundary', False)
@@ -130,15 +144,9 @@ def observe(monitor, kodi, previous=(False, '', '')):
     if media:
         return previous  # paused/buffering is not a new opening
     if was_video:
-        live = False
-        try:
-            import ao_vivo
-            live = bool(ao_vivo.eh_ao_vivo(old_path))
-        except Exception:
-            pass
-        # Live's existing reconnect helper may temporarily release media. Home
-        # or an explicit native Stop closes it; EOF alone must not repeat ads.
-        if (not live or home) and ledger.close():
+        # Live's existing reconnect helper may temporarily release media.
+        # An explicit Stop closes it; EOF alone must not repeat ads.
+        if not live and ledger.close():
             try:
                 monitor._limpar_retomada()
             except Exception as exc:
