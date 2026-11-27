@@ -36,13 +36,14 @@ SMARTED — RECUPERACAO VAST E FLUXO INICIAL / TESTE FISICO
 Fonte: $(git rev-parse HEAD)
 Base exata atual 46079704676: SHA256 919e97db0929ab90f189c9503722f4a5139feda573a28c96d79973a8e70e6087.
 Historico comparado: build 45992589750 (skin original preservada, INTERVALO=120).
-SOMENTE ads_vast.exibir e welcome.abrir_tela_entrada modificados; demais bytes/funcoes protegidos.
+SOMENTE ads_vast.exibir e welcome.abrir_tela_entrada/vigiar_inicializacao modificados; demais bytes/funcoes protegidos.
 VAST: recupera orcamento historico de ate 8s por HTTP hop, teto compartilhado de 24s para profundidade nativa 2.
 Sem sleep, retry artificial de raiz, cooldown, cache vazio ou limite por sessao.
 INTERVALO=0 e elegibilidade atual preservados; nunca restaurar regra historica de 120s.
 Tag efetiva: https://vast.yomeno.xyz/vast?spot_id=1508249, sem fallback antigo.
 Recuperacao de alternativas Wrapper/VMAP/URLs relativas e pareamento MediaFile/duracao/ID preservados.
 Tela inicial: retira apenas dois atalhos que iam para Home antes do dialogo (ativacao concluida/reentrada).
+Vigia inicial: nao antecipa Home por demora no desenho; dispatcher existente mantem fallback de erro.
 Validacao VIP, layout/controles, Home, navegacao, AdMob, tracking, player e retomada NAO alterados.
 O perfil 3s/duracao+5s aparece em outro commit, NAO no player do APK-base atual. Player atual preservado byte a byte.
 ARM32+ARM64 e assinatura de teste preservados; nao prova posse da chave oficial. Backup antes de desinstalar.

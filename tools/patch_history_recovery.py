@@ -8,7 +8,7 @@ from apk_preservation import patch,compare
 BASE_SHA='919e97db0929ab90f189c9503722f4a5139feda573a28c96d79973a8e70e6087'
 AD='assets/addons/service.smarted.bootstrap/ads_vast.py'
 WELCOME='assets/addons/script.smartedtv.welcome/default.py'
-SCOPES={AD:'exibir',WELCOME:'abrir_tela_entrada'}
+SCOPES={AD:'exibir',WELCOME:['abrir_tela_entrada','vigiar_inicializacao']}
 
 def function(source,name):
     return next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name==name)
@@ -35,7 +35,12 @@ def welcome(source):
         lines[branch.lineno-1:branch.end_lineno]=[]
     result=''.join(lines)
     audit(source,result,'abrir_tela_entrada')
-    return result
+    old = "    _log('vigia: a tela nao apareceu em %d s; abrindo a Home' % ESPERA_VIGIA, xbmc.LOGWARNING)\n    _ir_para_home('vigia (tela nao chegou a desenhar)')\n    return True"
+    new = "    # Slow native startup may still be constructing the existing dialog.\n    # Its dispatcher owns error fallback; the observer must not overtake it.\n    _log('vigia: aguardando a tela inicial; sem antecipar a Home')\n    return False"
+    if old not in result:raise ValueError('Unexpected native startup observer')
+    updated=result.replace(old,new,1)
+    audit(result,updated,'vigiar_inicializacao')
+    return updated
 
 def vast(source):
     overlay=(Path(__file__).resolve().parent.parent/'android-build/vast-function-only/ads_vast.py').read_text()

@@ -11,6 +11,10 @@ else:
     SOURCE='''# local dispatcher fixture; exact original code is used with --apk.
 def untouched_license():
     return 'preserve license validation'
+def vigiar_inicializacao():
+    _log('vigia: a tela nao apareceu em %d s; abrindo a Home' % ESPERA_VIGIA, xbmc.LOGWARNING)
+    _ir_para_home('vigia (tela nao chegou a desenhar)')
+    return True
 def abrir_tela_entrada():
     _limpar(MARCA_VOLTAR)
     _limpar_guarda_de_saida()
@@ -56,7 +60,24 @@ class Startup(unittest.TestCase):
                 EVIDENCE.append(dict(activated_fixture=activated,reentry_fixture=exit_marker,before=before,after=after,kind='doubles-not-native-UI'))
                 self.assertLess(after.index('existing-dialog-shown'),after.index('home'))
                 self.assertLess(after.index('existing-dialog-flow-finished'),after.index('home'))
-    def test_other_bytes_including_license_and_layout_logic_unchanged(self):audit(SOURCE,AFTER,'abrir_tela_entrada')
+    def test_other_bytes_including_license_and_layout_logic_unchanged(self):
+        from patch_history_recovery import function,replace
+        step=replace(AFTER,'vigiar_inicializacao',ast.get_source_segment(SOURCE,function(SOURCE,'vigiar_inicializacao')))
+        audit(SOURCE,step,'abrir_tela_entrada')
+    def test_delayed_native_startup_observer_never_overtakes_dialog(self):
+        events=[]
+        class Clock:
+            value=0
+            def time(self):self.value+=1;return self.value
+        for source,expected in ((SOURCE,['home']),(AFTER,[])):
+            events.clear()
+            env=dict(time=Clock(),ESPERA_VIGIA=8,MARCA_ABERTA='open',MARCA_SAIU='exit',
+                _propriedade=lambda key:False,_vigiar_depois_da_tela=lambda:None,
+                _log=lambda *a:None,xbmc=types.SimpleNamespace(LOGWARNING=2,sleep=lambda ms:None),
+                _ir_para_home=lambda *a:events.append('home'))
+            fn=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='vigiar_inicializacao')
+            exec(compile(ast.Module(body=[fn],type_ignores=[]),'<observer>','exec'),env)
+            env['vigiar_inicializacao']();self.assertEqual(events,expected)
     def test_no_cooldown_for_new_contents_even_one_second_apart(self):
         fn=next(n for n in ast.parse(RULE).body if isinstance(n,ast.FunctionDef) and n.name=='pode_anunciar')
         env={'_ler':lambda:dict(conteudo='previous',tentativa='previous',anunciado=True)}
