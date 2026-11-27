@@ -4,6 +4,10 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      vast_comparison:
+        description: 'Somente relatorio dos scripts em APKs ja publicados; nao gera APK nem consulta anuncios'
+        type: boolean
+        default: false
       android_probe:
         description: 'Preparar emulador real e testar compatibilidade de instalacao, sem gerar APK'
         type: boolean
@@ -77,7 +81,7 @@ env:
 
 jobs:
   build:
-    if: ${{ !inputs.android_probe && inputs.android_log_run == '' }}
+    if: ${{ !inputs.vast_comparison && !inputs.android_probe && inputs.android_log_run == '' }}
     name: Original SMARTED — patch restrito de anuncios
     runs-on: ubuntu-24.04
     timeout-minutes: 8
@@ -263,3 +267,23 @@ jobs:
           [[ "$RELEASE_TAG" =~ ^smarted-original-ads-[0-9]+-[0-9]+$ ]]
           gh release download "$RELEASE_TAG" --pattern SMARTEDTV-universal.apk --dir .cache/android-log-read
           python3 tools/read_android_monitor_logs.py .cache/android-log-read .cache/android-log-read/SMARTEDTV-universal.apk
+
+  vast_comparison:
+    if: inputs.vast_comparison
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Comparar APKs existentes sem abrir player ou consultar VAST
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/report_vast_apk_diff.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: vast-apk-script-comparison
+          path: |
+            .cache/vast-apk-comparison/comparison.json
+            .cache/vast-apk-comparison/scripts.diff
+          retention-days: 30
