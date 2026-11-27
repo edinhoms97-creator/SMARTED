@@ -66,8 +66,8 @@ def validate_plan(plan):
     for path, entry in plan["changes"].items():
         check_ad_path(path)
         if entry.get("new_file") is True:
-            if path not in ('assets/addons/service.smarted.bootstrap/ads_admob.py', 'assets/addons/service.smarted.bootstrap/ads_resume.py', 'assets/addons/service.smarted.bootstrap/ads_tracking.py') or entry.get('original_sha256') is not None:
-                raise ValueError('Only reviewed AdMob config or ad resume/tracking modules may be added')
+            if path not in ('assets/addons/service.smarted.bootstrap/ads_admob.py', 'assets/addons/service.smarted.bootstrap/ads_resume.py', 'assets/addons/service.smarted.bootstrap/ads_tracking.py', 'assets/addons/service.smarted.bootstrap/ads_openings.py') or entry.get('original_sha256') is not None:
+                raise ValueError('Only reviewed ad config/resume/tracking/opening modules may be added')
         elif not re.fullmatch(r"[0-9a-f]{64}", entry.get("original_sha256", "")):
             raise ValueError("An original source SHA256 is required for " + path)
 

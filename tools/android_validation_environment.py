@@ -98,7 +98,7 @@ def prepare(report, sdk, apk):
             if not apk or not apk.is_file():
                 report['status'] = 'android-booted-no-apk'
                 return
-            report['install'] = execute([tools['adb'], '-s', 'emulator-5554', 'install', '-r', str(apk)], timeout=100)
+            report['install'] = execute([tools['adb'], '-s', 'emulator-5554', 'install', '-r', '-g', str(apk)], timeout=100)
             if report['install']['code'] != 0:
                 report['status'] = 'apk-install-failed'
                 for row in report['cycles']: row['reason'] = 'apk-install-failed-no-abi-substitution'
