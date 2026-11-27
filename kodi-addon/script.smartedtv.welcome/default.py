@@ -37,15 +37,39 @@ class WelcomeDialog(xbmcgui.WindowXMLDialog):
             except Exception:
                 pass
         elif control_id == 906:
-            # A confirmação visual é fechada. O addon principal deve assumir
-            # aqui a navegação para o modo gratuito com anúncios.
-            self.close()
+            # Modo gratuito com anúncios: tenta o pre-roll VAST
+            # (Clickadilla, Spot #1508180) e fecha a janela. Qualquer
+            # falha (no-fill, rede, timeout) cai no fallback limpo:
+            # a janela fecha e o addon principal assume o canal/VOD.
+            self._play_preroll_or_close()
         elif control_id in (120, 121, 311):
             # Sem integração com checkout, share ou API VIP nesta janela isolada:
             # não simula sucesso nem validações.
             return
 
+    def _play_preroll_or_close(self):
+        """Keep dialog alive until ad + restoration finish; never block UI."""
+        if getattr(self, "_ad_busy", False):
+            return
+        self._ad_busy = True
+        import threading
+
+        def run():
+            try:
+                import vast_player
+                result = vast_player.run_session()
+                xbmc.log("SMARTEDTV VAST: " + str(result), xbmc.LOGINFO)
+            except Exception as exc:
+                xbmc.log("SMARTEDTV VAST fallback: " + str(exc), xbmc.LOGWARNING)
+            finally:
+                self._ad_busy = False
+                self.close()
+
+        threading.Thread(target=run).start()
+
     def onAction(self, action):
+        if getattr(self, "_ad_busy", False):
+            return
         if action in (xbmcgui.ACTION_NAV_BACK, xbmcgui.ACTION_PREVIOUS_MENU):
             if self.getProperty("show_free_dialog") == "true":
                 self.clearProperty("show_free_dialog")

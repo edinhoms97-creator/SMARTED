@@ -53,14 +53,46 @@
     },
 
     /* ADVERTISING — "Continuar com anúncios" -----------------------
-       MUST be connected to the existing ad service/provider.
-       Suggested contract [TO CONFIRM]:
-         startSession() ->
-           { connected:true, started:true, message? }
-           { connected:false }                              */
+       CONNECTED (2026-11-27): VAST Clickadilla Spot #1508180 via
+       js/vast.js (pre-roll overlay + tracking events). No-fill,
+       network failure and timeout resolve as a clean fallback —
+       the caller resumes the main content, never a black screen.
+       Contract:
+         startSession({ resumeTarget }) ->
+           { connected:true, started:bool, outcome:
+             "completed"|"skipped"|"nofill"|"error", message? }
+       AdMob (mobile) is a separate, flag-disabled module
+       (js/admob.js) and is NOT part of this path. */
     ads: {
-      startSession: function () {
-        return Promise.resolve({ connected: false });
+      startSession: function (opts) {
+        opts = opts || {};
+        if (!window.SmartedtvVast) {
+          return Promise.resolve({ connected: false });
+        }
+        var player = new window.SmartedtvVast.VastPlayer({
+          tagUrl: opts.tagUrl || CONFIG.vastTagUrl,
+          timeoutMs: CONFIG.adTimeoutMs,
+          resumeTarget: opts.resumeTarget || null,
+          onEvent: opts.onEvent || null
+        });
+        return player.play().then(function (result) {
+          var messages = {
+            completed: "Anúncio concluído.",
+            skipped: "Anúncio pulado.",
+            nofill: "Nenhum anúncio disponível no momento — continuando sem anúncios.",
+            error: "Não foi possível carregar o anúncio — continuando."
+          };
+          return {
+            connected: true,
+            started: result.outcome === "completed" || result.outcome === "skipped",
+            outcome: result.outcome,
+            reason: result.reason || null,
+            resumeConfirmed: result.resumeConfirmed === true,
+            resumeTarget: result.resumeTarget,
+            resumedAt: result.resumedAt !== undefined ? result.resumedAt : null,
+            message: messages[result.outcome] || "Sessão com anúncios iniciada."
+          };
+        });
       }
     },
 

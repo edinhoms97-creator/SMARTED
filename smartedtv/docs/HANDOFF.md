@@ -17,7 +17,7 @@ inspecting the existing app. The UI renders only what a registered service retur
 | APK share | Share QR + "Compartilhar link" | Yes — encodes/shares the EXACT provided Dropbox link |
 | APK download / update | "Baixar APK", "ATUALIZAR APLICATIVO" | Partially — opens the provided Dropbox APK (direct-download form `dl=1`) |
 | Code activation (10 min / 1 month) | Bottom bar "Ativar" | NO — calls the `codeAccess` service hook; default answers `{connected:false}` |
-| Ads | "Continuar com anúncios" → confirm | NO — calls the `ads` service hook; default answers `{connected:false}` |
+| Ads | "Continuar com anúncios" → confirm | VAST client connected; live tag/device validation pending. See [VAST](../../docs/VAST.md) |
 
 The QR images were generated from the provided URLs at build time
 (`assets/qr-checkout.png`, `assets/qr-apk.png`). Regenerate them if the links change.
@@ -112,10 +112,10 @@ Rules:
 
 ## 6. Findings (fill during inspection)
 
-- Code-validation endpoint/payload/response: _
-- Plan semantics (10min / 1month): _
-- Code format rules: _
-- Payment product + paid-status flow: _
-- Ad provider + session lifecycle: _
-- Update channel + current version: _
-- Device identity: _
+- Code-validation endpoint/payload/response: _ (ainda desconhecido — nenhum arquivo do Dropbox o contém)
+- Plan semantics (10min / 1month): _ (labels da UI; semântica no servidor a confirmar)
+- Code format rules: _ (a UI não impõe formato; só "não vazio")
+- Payment product + paid-status flow: checkout Cakto `https://pay.cakto.com.br/nkvbegd_1323120` (aberto em nova aba; status pago via fluxo existente, fora desta UI)
+- Ad provider + session lifecycle: **VAST Clickadilla #1508180 implementado nos fontes em 2026-11-27; validação da tag real pendente**. Web: `js/vast.js`, Kodi: `vast.py` + `vast_player.py`. No-fill/rede/timeout com fallback; tracking de reprodução; retomada com confirmação de posição. TLS 1.2+ e headers Chrome Android explícitos no Python; na web dependem da plataforma (não são controláveis pelo JS). Limites, integração com o player principal e testes em [VAST](../../docs/VAST.md). Sem URL/canal principal configurado, a welcome apenas retorna/fecha — o addon principal fornece o destino. AdMob isolado e **desativado**; ver [AdMob](../../docs/ADMOB.md).
+- Update channel + current version: link Dropbox do APK em `js/config.js` (`SMARTEDTV.apk`, `dl=1`); sem endpoint de version-check conhecido
+- Device identity: segmento "Android TV / Celular" é visual; sem vínculo com device id nesta UI

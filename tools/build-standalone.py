@@ -32,7 +32,7 @@ def main() -> int:
         "<style>\n" + css + "\n</style>",
     )
 
-    for js in ("config.js", "services.js", "app.js"):
+    for js in ("config.js", "vast.js", "admob.js", "services.js", "app.js"):
         code = (SRC / "js" / js).read_text(encoding="utf-8")
         html = html.replace(
             f'<script src="js/{js}"></script>',

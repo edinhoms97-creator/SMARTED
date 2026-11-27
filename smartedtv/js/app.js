@@ -180,26 +180,33 @@
   els.gratis.addEventListener("click", function () { openOverlay(els.overlayAds); });
   els.voltar.addEventListener("click", function () { closeOverlay(els.overlayAds); });
   els.seguir.addEventListener("click", function () {
+    if (els.seguir.disabled) return;
+    els.seguir.disabled = true;
     closeOverlay(els.overlayAds);
     Promise.resolve(Services.get("ads").startSession())
       .then(function (res) {
-        if (res && res.connected) toast(res.message || "Sessão com anúncios iniciada.");
-        else showStatus("Anúncios ainda não conectados",
-          "A exibição de anúncios será iniciada pelo serviço de anúncios existente do SMARTEDTV quando ele for conectado a esta interface. Nenhum anúncio foi simulado. Ponto de integração: js/services.js (ads.startSession) e guia docs/HANDOFF.md.",
-          "Entendi");
+        if (res && res.connected) {
+          /* VAST connected: completed/skipped/nofill/error all fall
+             back to the welcome screen cleanly (no black screen). */
+          toast(res.message || "Sessão com anúncios iniciada.");
+        } else {
+          showStatus("Anúncios ainda não conectados",
+            "A exibição de anúncios será iniciada pelo serviço de anúncios existente do SMARTEDTV quando ele for conectado a esta interface. Nenhum anúncio foi simulado. Ponto de integração: js/services.js (ads.startSession) e guia docs/HANDOFF.md.",
+            "Entendi");
+        }
       })
       .catch(function () {
         showStatus("Não foi possível iniciar",
           "O serviço de anúncios respondeu com erro. Tente novamente em instantes.",
           "Fechar");
-      });
+      }).then(function () { els.seguir.disabled = false; });
   });
 
   /* ---------- D-PAD: arrows cycle focus, Esc closes (reference behavior) ---------- */
   document.addEventListener("keydown", function (e) {
     if (["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].indexOf(e.key) === -1) return;
     e.preventDefault();
-    var open = document.querySelector(".overlay.on");
+    var open = document.querySelector(".vast-overlay") || document.querySelector(".overlay.on");
     var scope = open || document;
     var list = Array.prototype.filter.call(
       scope.querySelectorAll("button, input"),

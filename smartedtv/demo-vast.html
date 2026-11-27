@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMARTEDTV — Demo VAST (pre-roll + retomada exata)</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    body{display:grid;place-items:center;min-height:100vh;background:#050505;color:#f7f7f7;font-family:Arial,Helvetica,sans-serif;padding:1rem}
+    .demo{width:min(960px,100%)}
+    .demo h1{font-size:1.2rem;letter-spacing:.1em}
+    .demo p{color:#bcbcbc;font-size:.9rem;line-height:1.5}
+    .demo video{width:100%;background:#000;border:1px solid #ffffff22;border-radius:.75rem}
+    .demo .row{display:flex;gap:.6rem;flex-wrap:wrap;margin:.8rem 0}
+    .demo .btn{height:auto;padding:.7rem 1.1rem}
+    .demo .log{background:#000;border:1px solid #ffffff22;border-radius:.75rem;padding:.8rem;font:12px/1.6 monospace;max-height:220px;overflow:auto;white-space:pre-wrap}
+    .demo .ok{color:#7ee787}.demo .warn{color:#e3b341}
+  </style>
+</head>
+<body>
+  <div class="demo">
+    <h1>SMARTEDTV — DEMO VAST</h1>
+    <p>Reproduza o VOD, avance para qualquer posição e clique em
+       <strong>Continuar com anúncios</strong>. O pre-roll VAST (Clickadilla,
+       Spot #1508180) toca em overlay; ao terminar/pular, o VOD retoma
+       <strong>exatamente</strong> na posição salva. Use
+       <code>?tag=&lt;url&gt;</code> para testar outra tag (ex.: o fixture
+       <code>testdata/vast-nofill.xml</code> para validar o fallback no-fill).</p>
+    <video id="vod" controls preload="metadata"
+           src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"></video>
+    <div class="row">
+      <button class="btn primary" type="button" id="play-ads">Continuar com anúncios (pre-roll)</button>
+      <button class="btn ghost" type="button" id="seek-42">Ir para 00:42</button>
+    </div>
+    <div class="log" id="log" aria-live="polite">log pronto.</div>
+  </div>
+  <script src="js/config.js"></script>
+  <script src="js/vast.js"></script>
+  <script src="js/admob.js"></script>
+  <script src="js/services.js"></script>
+  <script>
+    (function () {
+      var vod = document.getElementById("vod");
+      var logEl = document.getElementById("log");
+      var params = new URLSearchParams(location.search);
+      var tag = params.get("tag") || window.SMARTEDTV_CONFIG.vastTagUrl;
+      function log(msg, cls) {
+        var line = document.createElement("div");
+        if (cls) line.className = cls;
+        line.textContent = "[" + new Date().toLocaleTimeString("pt-BR") + "] " + msg;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      log("tag VAST: " + tag);
+      document.getElementById("seek-42").addEventListener("click", function () {
+        vod.currentTime = 42; vod.play().catch(function () {});
+      });
+      document.getElementById("play-ads").addEventListener("click", function () {
+        var button = this;
+        if (button.disabled) return;
+        button.disabled = true;
+        var saved = vod.currentTime;
+        log("pre-roll solicitado; posição salva = " + saved.toFixed(3) + "s");
+        window.SmartedtvServices.get("ads").startSession({
+          tagUrl: tag,
+          resumeTarget: { video: vod },
+          onEvent: function (name, url) { log("tracking: " + name + " -> " + url); }
+        }).then(function (res) {
+          button.disabled = false;
+          log("resultado: outcome=" + res.outcome + " started=" + res.started +
+              (res.resumedAt !== null ? " retomado em " + res.resumedAt.toFixed(3) + "s (alvo " + saved.toFixed(3) + "s)" : ""),
+              res.outcome === "completed" || res.outcome === "skipped" ? "ok" : "warn");
+          if (res.resumeConfirmed) {
+            log("retomada exata CONFIRMADA (seek/resume).", "ok");
+          } else if (res.resumedAt !== null) {
+            log("retomada divergiu do alvo — verificar.", "warn");
+          }
+        }).catch(function (err) {
+          button.disabled = false;
+          log("erro inesperado: " + err, "warn");
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

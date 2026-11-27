@@ -63,7 +63,16 @@ Ou abra `smartedtv/standalone/smartedtv-preview.html` direto no navegador
 | Compartilhar link | ✅ Web Share API → clipboard |
 | Baixar APK / ATUALIZAR APLICATIVO | ✅ Abre o download do Dropbox (`dl=1`) |
 | Ativar código VIP (10 min / 1 mês) | ⚠️ **Não conectado** — `codeAccess.activate()` responde `{connected:false}`. Ver `smartedtv/docs/HANDOFF.md` |
-| Continuar com anúncios | ⚠️ **Não conectado** — `ads.startSession()` responde `{connected:false}` |
+| Continuar com anúncios | ✅ **VAST Clickadilla** (Spot #1508180) — pre-roll + tracking + fallback limpo + retomada exata do VOD. Demo: `smartedtv/demo-vast.html`. AdMob isolado e desativado por flag (`docs/ADMOB.md`) |
 
 Nada é simulado: enquanto os serviços não forem registrados, a interface
 mostra explicitamente "ainda não conectado" em vez de fingir sucesso.
+
+## Anúncios — validação
+
+Implementação VAST Clickadilla e testes: [docs/VAST.md](docs/VAST.md).
+AdMob mobile separado e desligado: [docs/ADMOB.md](docs/ADMOB.md).
+
+`npm ci && npm test` executa os testes locais (Node + Python).
+Demo de reprodução: `smartedtv/demo-vast.html`. Validação da tag real e
+em dispositivos ainda pendente; o APK original não foi recompilado.

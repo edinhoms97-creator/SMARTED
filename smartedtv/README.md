@@ -49,7 +49,7 @@ Any static server works. In this workspace the interface is already served at th
 | Compartilhar link | Web Share API → clipboard fallback with the exact provided link |
 | Baixar APK / ATUALIZAR APLICATIVO | Opens the provided Dropbox APK (direct-download form) |
 | Ativar (código) | Calls `codeAccess.activate()` → shows an explicit "validation not connected" dialog. No fake success, no invented code format (only the "not empty" rule) |
-| Continuar com anúncios → confirmar | Calls `ads.startSession()` → explicit "ads not connected" dialog. No simulated ad provider |
+| Continuar com anúncios → confirmar | VAST Clickadilla (Spot #1508180) via `js/vast.js`: pre-roll + tracking events; no-fill/failure/timeout fall back cleanly. Demo: `demo-vast.html`. AdMob is separate and flag-disabled (`js/admob.js`) |
 | Payment status / ad details | Never displayed, because none were provided |
 
 ## Design fidelity notes (deliberate, documented)

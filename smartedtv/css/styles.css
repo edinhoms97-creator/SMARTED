@@ -231,3 +231,12 @@ body{display:grid;place-items:center}
   .dialog{width:88%;padding:1.4rem;gap:.8rem}
   .legend{font-size:8px}
 }
+
+/* ---------- VAST pre-roll overlay (js/vast.js) ----------
+   Full-screen black overlay; removed on complete/skip/no-fill/
+   error so the main content is never left behind a black screen. */
+.vast-overlay{position:fixed;inset:0;z-index:9999;background:#000;display:grid;place-items:center}
+.vast-video{width:min(100vw,177.78vh);height:min(100vh,56.25vw);background:#000}
+.vast-label{position:absolute;top:1rem;left:1rem;color:#fff;font:600 .8rem Arial,Helvetica,sans-serif;letter-spacing:.15em;text-transform:uppercase;opacity:.85}
+.vast-skip{position:absolute;right:1rem;bottom:1rem;border:1px solid #ffffff55;background:#000a;color:#fff;border-radius:.5rem;padding:.6rem 1.1rem;font:600 .85rem Arial,Helvetica,sans-serif;cursor:pointer}
+.vast-skip:hover,.vast-skip:focus-visible{background:#fff;color:#000;outline:none}
