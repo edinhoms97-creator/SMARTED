@@ -2,14 +2,18 @@
 
 ## Novo build corretivo disponível
 
-- **[Baixar SMARTEDTV-universal.apk — uma tentativa por conteúdo aberto](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46000575890-1/SMARTEDTV-universal.apk)**.
-- Tamanho: **263.222.581 bytes** (~263 MB), universal ARM32/ARM64.
-- [Execução 46000575890](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46000575890): sucesso em 2026-11-27, 12:40:15–12:42:02 UTC.
-- Revisão do binário: `91a21e69a66cd8a72b84c65715e0a8b215d4e9a1`.
-- [Checksum publicado](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46000575890-1/SMARTEDTV-universal.apk.sha256).
-- [Relatório preservation.json](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46000575890-1/preservation.json): **8.046 entradas preservadas; somente os seis arquivos de anúncios/ações de link listados abaixo mudaram**.
+- **[Baixar SMARTEDTV-universal.apk — retomada direta + pixels VAST](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46006261704-1/SMARTEDTV-universal.apk)**.
+- Tamanho: **263.230.973 bytes** (~263 MB), universal ARM32/ARM64.
+- [Execução 46006261704](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46006261704): sucesso em 2026-11-27; build e publicação concluídos.
+- Revisão do binário: `c6ae2fbc1a70b38cae7ef27e4087423e779084ac`.
+- [Checksum publicado](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46006261704-1/SMARTEDTV-universal.apk.sha256).
+- [Relatório preservation.json](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46006261704-1/preservation.json): **8.046 entradas preservadas; somente os oito caminhos de anúncios/ações de link listados abaixo mudaram**.
 - Gates rápidos, testes do motor original corrigido, teste de aberturas contra os módulos originais, assinatura/alinhamento e preservação concluídos com sucesso no CI. Os testes usam doubles de rede/player, não um aparelho.
 - **Inicialização, anúncios reais e reprodução em aparelho ainda precisam de validação.**
+
+### Retomada e pixels
+
+Snapshot em RAM preserva stream resolvido, ListItem, metadados, posição e alternativas diretas. Término, skip e aborto retomam sem chamada ao seletor do plugin; uma alternativa salva é tentada se a anterior falhar. **Não resolve automaticamente páginas de hosters nem garante renovar links expirados.** Todos os Impression dos Wrappers selecionados são herdados, com macros expandidas e User-Agent real do runtime. AdMob permanece desativado. Ver [VAST_RESUME_TRACKING.md](VAST_RESUME_TRACKING.md) para detalhes e limites.
 
 ### Regra de frequência solicitada
 
@@ -60,6 +64,9 @@ Plano explícito: `android-build/ads-only-plan.json`.
 
 6. `assets/addons/script.smartedtv.welcome/default.py`: somente `APK_DOWNLOAD`, `DROPBOX_URL` e helper `_link_do_dropbox_desta_versao`; classes/métodos e XML/layout originais inalterados. O download original também deixa de depender da pasta por variante ao consultar `vip.dropbox_configurado`.
 
+7. `assets/addons/service.smarted.bootstrap/ads_resume.py`: helper isolado de snapshot e retomada direta, com fallback entre streams resolvidos capturados.
+8. `assets/addons/service.smarted.bootstrap/ads_tracking.py`: helper isolado de macros e User-Agent real do runtime.
+
 Os hashes dos cinco arquivos originais são conferidos antes de qualquer patch. Uma base de outra revisão faz o build falhar. As alterações de funções/métodos são feitas por intervalos do fonte; uma comparação AST exige que todos os nós não relacionados permaneçam iguais.
 
 ## O que não pode mudar
@@ -75,7 +82,7 @@ Não há substituição pelo HTML do repositório, nenhuma cópia de `skin.estil
 
 ## Empacotamento e verificações
 
-O novo pipeline **não usa apktool para reconstruir recursos ou manifesto**. Faz patch ZIP dos seis arquivos permitidos sobre o APK original, preserva os demais conteúdos, executa zipalign e assina para teste.
+O novo pipeline **não usa apktool para reconstruir recursos ou manifesto**. Faz patch ZIP dos oito caminhos permitidos sobre o APK original, preserva os demais conteúdos, executa zipalign e assina para teste.
 
 `tools/apk_preservation.py` compara SHA256 de **todas** as entradas antes e depois da assinatura. Qualquer modificação/remoção/adição fora da lista bloqueia publicação. Arquivos META-INF que não são assinatura também devem ser preservados. A mudança de certificado e bloco de assinatura é inevitável sem a chave original.
 
@@ -84,7 +91,7 @@ O pipeline também:
 - Confere hash do APK original e integridade de sua assinatura.
 - Executa testes rápidos JS/Python existentes e testes negativos de proteção da skin/manifesto/startup.
 - Testa o parser e as funções **do próprio original já corrigido** com doubles de rede/player; isso é separado da demo welcome.
-- Verifica TLS 1.2+ com certificado/hostname, UA Chrome Android, no-fill, fallback, tracking sem complete falso e seek confirmado.
+- Verifica TLS 1.2+ com certificado/hostname, UA real do Kodi, no-fill, fallback, tracking sem complete falso e seek confirmado.
 - Executa `apksigner verify`, `zipalign -c`, gera badging e checksum final.
 
 **Nada disso substitui teste de inicialização e reprodução em aparelho.** Não declarar o travamento corrigido apenas porque o CI passou. `preservation.json` comprova o escopo dos arquivos, não a reprodução em hardware.
