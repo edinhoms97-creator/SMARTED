@@ -387,39 +387,102 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.11'
-      - name: Preparar laboratorio sem modificar producao
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        if: inputs.vast_function_lab == 'release'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        if: inputs.vast_function_lab == 'release'
+        with:
+          path: .cache/smartedtv-signing
+          key: smartedtv-test-debug-key-v1
+      - name: Preparar laboratorio isolado
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          test '${{ inputs.vast_function_lab }}' = baseline || test '${{ inputs.vast_function_lab }}' = release
           mkdir -p .cache/vast-lab/base
           gh release download smarted-original-ads-46074593488-1 --pattern SMARTEDTV-universal.apk --dir .cache/vast-lab/base
           echo '2b64c443f42902cb07031db1106137a59d852ae39bb8fbd8b9379b8a6d2682bc  .cache/vast-lab/base/SMARTEDTV-universal.apk' | sha256sum -c -
-          python3 -m pip install --disable-pip-version-check playwright==1.58.0
+          python3 -m pip install --disable-pip-version-check playwright==1.58.0 imageio-ffmpeg==0.6.0 pillow==12.1.0
           command -v google-chrome
-      - name: Capturas e requests independentes da nova tag, sem pixels
-        if: inputs.vast_function_lab == 'baseline'
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run verify
+          python3 tools/test_vast_single_function.py --apk .cache/vast-lab/base/SMARTEDTV-universal.apk -v
+      - name: Evidencia ANTES de alterar funcao (baseline real ja registrado em 46078100066)
         run: |
           mkdir -p .cache/vast-lab/baseline
           set -o pipefail
-          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/base/SMARTEDTV-universal.apk --out .cache/vast-lab/baseline/evidence --live 2>&1 | tee .cache/vast-lab/lab.log
-      - name: Preview real da evidencia visual
-        if: inputs.vast_function_lab == 'baseline'
+          extra=()
+          if [[ '${{ inputs.vast_function_lab }}' == baseline ]]; then extra+=(--live); fi
+          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/base/SMARTEDTV-universal.apk --out .cache/vast-lab/baseline/evidence "${extra[@]}" 2>&1 | tee .cache/vast-lab/lab.log
+      - name: Alterar SOMENTE exibir e assinar com certificado conferido
+        if: inputs.vast_function_lab == 'release'
+        run: |
+          set -o pipefail
+          bash tools/build_vast_single_function.sh 2>&1 | tee .cache/vast-lab/build.log
+      - name: Evidencia DEPOIS, tres chamadas reais e fixtures sem pixels
+        if: inputs.vast_function_lab == 'release'
+        run: |
+          set -o pipefail
+          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/release/SMARTEDTV-universal.apk --out .cache/vast-lab/after/evidence --live 2>&1 | tee .cache/vast-lab/after.log
+      - name: Preview real limitado e resumo de verificacao
         run: |
           python3 - <<'PYPREVIEW'
-          import base64,json
+          import base64,json,io
           from pathlib import Path
-          data=base64.b64encode(Path('.cache/vast-lab/baseline/evidence/001/04-playback-result.jpg').read_bytes()).decode()
-          for i in range(0,len(data),3500):
-              if i//3500<9: print('::notice title=VAST lab screenshot chunks::'+json.dumps({'part':i//3500,'total':(len(data)+3499)//3500,'data':data[i:i+3500]}))
+          from PIL import Image
+          root=Path('.cache/vast-lab')
+          evidence=root/('after' if (root/'after').exists() else 'baseline')/'evidence'
+          for attempt in ('001','004'):
+              image=Image.open(evidence/attempt/'04-playback-result.jpg')
+              image.thumbnail((660,492));b=io.BytesIO();image.save(b,format='JPEG',quality=25,optimize=True)
+              data=base64.b64encode(b.getvalue()).decode()
+              for i in range(0,len(data),3500):
+                  print('::notice title=VAST lab screenshot chunks::'+json.dumps({'attempt':attempt,'part':i//3500,'total':(len(data)+3499)//3500,'data':data[i:i+3500]}))
+          r=json.loads((evidence/'summary.json').read_text())
+          for a in r['attempts']:
+              print('::notice title=VAST final attempt::'+json.dumps({k:a.get(k) for k in ('id','mode','requests','classification','browser_playback','receipt')}))
           PYPREVIEW
       - name: Diagnostico do laboratorio se falhar
         if: failure()
-        run: python3 tools/report_build_diagnostics.py .cache/vast-lab/lab.log
+        run: |
+          python3 tools/report_build_diagnostics.py .cache/vast-lab/lab.log
+          python3 tools/report_build_diagnostics.py .cache/vast-lab/build.log
+          python3 tools/report_build_diagnostics.py .cache/vast-lab/after.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
           name: vast-visual-lab-evidence
           path: |
             .cache/vast-lab/baseline/evidence/
-            .cache/vast-lab/lab.log
+            .cache/vast-lab/after/evidence/
+            .cache/vast-lab/*.log
           retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: inputs.vast_function_lab == 'release'
+        with:
+          name: SMARTED-vast-single-function
+          path: .cache/vast-lab/release/
+          compression-level: 0
+          retention-days: 30
+      - name: Publicar somente prerelease previamente autorizada com fonte exata
+        if: inputs.vast_function_lab == 'release' && inputs.publish_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="smarted-vast-only-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+          test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+          cd .cache/vast-lab/release
+          sha256sum -c SMARTEDTV-universal.apk.sha256
+          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt INSTALLATION.txt
+          gh release edit "$tag" --notes-file INSTALLATION.txt
+          gh release view "$tag" --json url --jq .url

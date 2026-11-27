@@ -104,7 +104,7 @@ class Lab:
             from base64 import b64encode
             # Serve clip from a short-lived loopback HTTP server in the runner.
             page.evaluate('''src=>{const v=document.createElement('video');v.controls=true;v.muted=true;v.autoplay=true;v.src=src;document.body.prepend(v);v.play().catch(()=>{});}''',video)
-            page.wait_for_timeout(1800)
+            page.wait_for_function("()=>{const v=document.querySelector('video');return v.currentTime>0.2||v.error}",timeout=10000)
             playback=page.evaluate('''()=>{const v=document.querySelector('video');return {current_time:v.currentTime,paused:v.paused,ready_state:v.readyState,width:v.videoWidth,height:v.videoHeight,error:v.error?{code:v.error.code}:null};}''')
             self.current['browser_playback']=playback
             self.event('browser-playback-result',**playback)
@@ -185,20 +185,28 @@ class Lab:
         if self.raw_media:
             try:
                 if mode.startswith('fixture'):
-                    media_url='https://api.github.com/repos/mediaelement/mediaelement-files/contents/big_buck_bunny.mp4'
-                    headers={'Accept':'application/vnd.github.raw+json','User-Agent':'SMARTED-VAST-lab'}
+                    # Local deterministic VIDEO TEST PATTERN, never provider inventory.
+                    import imageio_ffmpeg, subprocess
+                    fixture=self.out/'fixture-test-pattern.mp4'
+                    if not fixture.exists():
+                        subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),'-y','-f','lavfi',
+                            '-i','testsrc2=size=640x360:rate=25','-t','5','-an',
+                            '-c:v','libx264','-pix_fmt','yuv420p','-movflags','+faststart',str(fixture)],
+                            check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+                    data=fixture.read_bytes()
                 else:
-                    media_url=self.raw_media;headers={'User-Agent':self.current['requests'][0]['headers'].get('User-agent','Mozilla/5.0')}
-                if not media_url.startswith(('https://','http://')):raise ValueError('non-http media')
-                with self.real_open(Request(media_url,headers=headers),timeout=15) as response:
-                    data=response.read(24*1024*1024+1)
-                    if len(data)>24*1024*1024:raise ValueError('lab media size cap')
+                    media_url=self.raw_media
+                    headers={'User-Agent':self.current['requests'][0]['headers'].get('User-agent','Mozilla/5.0')}
+                    if not media_url.startswith(('https://','http://')):raise ValueError('non-http media')
+                    with self.real_open(Request(media_url,headers=headers),timeout=15) as response:
+                        data=response.read(24*1024*1024+1)
+                        if len(data)>24*1024*1024:raise ValueError('lab media size cap')
                 if b'ftyp' not in data[:48]:raise ValueError('not a directly downloadable MP4; native Kodi capability not inferred')
                 media_path=self.out/self.current['id']/'creative.mp4';media_path.write_bytes(data)
                 video=f'http://127.0.0.1:{self.port}/{self.current["id"]}/creative.mp4'
                 self.event('media-delivered-to-browser',bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),fixture=mode.startswith('fixture'))
             except Exception as exc:
-                self.event('lab-media-playback-unavailable',error_class=type(exc).__name__)
+                self.event('lab-media-playback-unavailable',error_class=type(exc).__name__,http_status=getattr(exc,'code',None))
         self.snap('04-playback-result',video)
         self.current['utc_end']=now();self.save()
         self.results.append(self.current)
@@ -226,6 +234,7 @@ class Lab:
             self.attempt(7,'Connection error fixture','fixture-network-error')
             self.attempt(8,'Timeout fixture','fixture-timeout')
             self.attempt(9,'New call AFTER empty/error/timeout, same module process','fixture-valid',INLINE)
+            assert all(r.get('browser_playback',{}).get('current_time',0)>0 and not r['browser_playback']['error'] for r in self.results if r['mode']=='fixture-valid'), 'Controlled test pattern did not play'
             assert self.results[-1].get('media'), 'Previous empty/failure blocked new call inside exibir'
             assert all(r['requests'] for r in self.results), 'A direct exibir call skipped HTTP'
             summary={'utc':now(),'tag':TAG,'real_root_calls':3 if self.live else 0,
@@ -234,7 +243,7 @@ class Lab:
             (self.out/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
             links=''.join(f'<li><a href="{r["id"]}/result.json">{r["id"]} {html.escape(r["label"])}</a> — {html.escape(r["classification"])} · <a href="{r["id"]}/04-playback-result.png">screenshot</a></li>' for r in self.results)
             (self.out/'index.html').write_text('<html><meta charset="utf-8"><h1>SMARTEDTV VAST evidence</h1><p>Open files without rerunning tests. Live and controlled fixtures are labeled. Sensitive query parameters are redacted; raw XML SHA-256 retained. No tracking sent. Browser is not Kodi.</p><ul>'+links+'</ul></html>')
-            (self.out/'README.md').write_text('# VAST evidence\n\nOpen index.html and each numbered folder. Four real browser screenshots, result.json, timestamped events.jsonl and sanitized full HTTP XML are saved per attempt. \n\nOnly 001–003 are real Clickadilla root requests when real_root_calls=3. 004–009 are CONTROLLED FIXTURES, not provider availability proof. Player is Chromium in an isolated lab, NOT Kodi. No tracking pixels are requested. URLs are sanitized and response raw SHA-256 is kept. No old-tag fallback.\n')
+            (self.out/'README.md').write_text('# VAST evidence\n\nOpen index.html and each numbered folder. Four real browser screenshots, result.json, timestamped events.jsonl and sanitized full HTTP XML are saved per attempt. \n\nOnly 001–003 are real Clickadilla root requests when real_root_calls=3. 004–009 are CONTROLLED FIXTURES, not provider availability proof. Fixture media is a locally generated test pattern, NOT a real ad. Player is Chromium in an isolated lab, NOT Kodi. No tracking pixels are requested. URLs are sanitized and response raw SHA-256 is kept. No old-tag fallback.\n')
             # Transfer compact text evidence and a true screenshot to workspace.
             payload={'summary':summary,'responses':{str(p.relative_to(self.out)):p.read_text() for p in self.out.glob('*/*.xml')}}
             encoded=base64.b64encode(gzip.compress(json.dumps(payload).encode())).decode()
