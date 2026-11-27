@@ -269,4 +269,5 @@ if __name__ == '__main__':
     parser.add_argument('--original', type=Path)
     args, remaining = parser.parse_known_args()
     ORIGINAL = args.original
+    if ORIGINAL: sys.path.insert(0, str(ORIGINAL))
     unittest.main(argv=[sys.argv[0]]+remaining, verbosity=2)
