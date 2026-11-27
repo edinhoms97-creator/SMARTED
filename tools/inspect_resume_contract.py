@@ -1,21 +1,36 @@
 #!/usr/bin/env python3
-"""Read-only, redacted original ad startup/gate contract; never execute APK code."""
+"""Static original ad lifecycle/history inventory. Never executes APK sources."""
 import ast
 import base64
+import hashlib
 import json
+import re
 import sys
 import zipfile
+from urllib.parse import urlsplit
 from inspect_ad_contract import Redact
 
 with zipfile.ZipFile(sys.argv[1]) as archive:
-    selected = {}
+    selected, inventory = {}, []
     for filename, names in (
-        ('ads_vast.py', ('_tocar', '_arquivo_atual', '_player_tocando_video', '_audio_sem_quadro_video', '_garantir_tela_cheia')),
-        ('smart_ads.py', ('tocar_anuncio', 'vast_disponivel', 'abrir_anuncio_vast', 'vip_ativo', 'iniciar_monitor')),
+        ('ads_vast.py', ('_tocar', '_garantir_tela_cheia', '_disparar_eventos', 'resumo')),
+        ('smart_ads.py', ('_e_video', '_ads_vast', 'iniciar_monitor', 'esquecer')),
+        ('ad_return.py', ('Retomada',)),
     ):
-        tree = ast.parse(archive.read('assets/addons/service.smarted.bootstrap/' + filename).decode('utf-8-sig'))
+        path = 'assets/addons/service.smarted.bootstrap/' + filename
+        if path not in archive.namelist():
+            continue
+        raw = archive.read(path)
+        tree = ast.parse(raw.decode('utf-8-sig'))
         selected[filename] = {node.name: ast.unparse(Redact().visit(node)) for node in tree.body
-                              if isinstance(node, ast.FunctionDef) and node.name in names}
-    payload = base64.b64encode(json.dumps(selected).encode()).decode()
+                              if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and node.name in names}
+    for path in archive.namelist():
+        if not (path.startswith('assets/addons/service.smarted.bootstrap/') and path.endswith(('.py','.json','.xml'))):
+            continue
+        raw = archive.read(path)
+        if b'hilltop' in raw.lower():
+            hosts = sorted(set(urlsplit(url).hostname or '' for url in re.findall(r'https?://[^\s<>\x22\x27]+', raw.decode('utf-8','replace')) if 'hilltop' in url.lower()))
+            inventory.append({'path': path, 'sha256': hashlib.sha256(raw).hexdigest(), 'hilltop_hosts': hosts})
+    payload = base64.b64encode(json.dumps({'selected':selected,'hilltop_inventory':inventory}).encode()).decode()
     for i in range(0, len(payload), 3600):
-        print('::notice title=SMARTED startup contract::' + json.dumps({'part': i // 3600, 'data': payload[i:i+3600]}))
+        print('::notice title=SMARTED lifecycle inventory::' + json.dumps({'part': i // 3600, 'data': payload[i:i+3600]}))
