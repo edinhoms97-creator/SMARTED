@@ -193,7 +193,7 @@ def prepare(report, sdk, apk):
                 '/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap',
                 '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap',
             )
-            names = ('smart_ads.py', 'ads_vast.py', 'ads_tracking.py', 'ads_openings.py')
+            names = ('smart_ads.py', 'ads_vast.py', 'ads_regra.py', 'ads_tracking.py', 'ads_openings.py')
             with zipfile.ZipFile(apk) as archive:
                 report['apk_ad_module_sha256'] = {name: hashlib.sha256(archive.read('assets/addons/service.smarted.bootstrap/'+name)).hexdigest() for name in names}
             report['runtime_ad_module_sha256'] = {}
