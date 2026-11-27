@@ -79,6 +79,7 @@ class Lab:
         self.results=[]
         self.real_open=urlopen
         self.current=None
+        self.kodi.log=lambda line,*args: self.event('production-native-log',message=sanitize(line)) if self.current else None
         self.env['_disparar_eventos']=lambda urls: self.event('tracking-suppressed-in-lab',pixel_count=len(urls or [])) or 0
         # Production selector/Wrapper flow, not the native player, runs in this lab.
         self.env['reproduzir']=self.selected
