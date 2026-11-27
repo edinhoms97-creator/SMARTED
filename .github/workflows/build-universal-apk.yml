@@ -8,6 +8,10 @@ on:
         description: 'Preparar emulador real e testar compatibilidade de instalacao, sem gerar APK'
         type: boolean
         default: false
+      android_log_run:
+        description: 'Ler somente logs de um run Android anterior, sem SDK ou novas requisicoes de anuncios'
+        type: string
+        default: ''
       android_cycles:
         description: 'Tentar 3 aberturas Android reais com amostras publicas, sem simular anuncios/pixels'
         type: boolean
@@ -73,7 +77,7 @@ env:
 
 jobs:
   build:
-    if: ${{ !inputs.android_probe }}
+    if: ${{ !inputs.android_probe && inputs.android_log_run == '' }}
     name: Original SMARTED — patch restrito de anuncios
     runs-on: ubuntu-24.04
     timeout-minutes: 8
@@ -238,3 +242,21 @@ jobs:
             .cache/android-emulator.log
           if-no-files-found: warn
           retention-days: 7
+
+  android_logs:
+    if: inputs.android_log_run != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Ler artefato existente sem abrir conteudo nem pedir anuncios
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.android_log_run }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          gh run download "$RUN_ID" --name android-environment-result --dir .cache/android-log-read
+          python3 tools/read_android_monitor_logs.py .cache/android-log-read

@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Read only an existing Android artifact; never launch ads/content."""
+import base64
+import gzip
+import json
+from pathlib import Path
+import re
+import sys
+result = []
+for path in Path(sys.argv[1]).rglob('logcat.txt'):
+    lines = path.read_text(errors='replace').splitlines()
+    keys = ('SmartAds', 'smart_ads', 'ads_openings', 'Traceback', 'Error Type:', 'Error Contents:',
+            'ModuleNotFoundError', 'SyntaxError', 'onClick recebido', 'Botao 312', 'Botao 906',
+            'VideoPlayer::OpenFile', 'PythonToCppException')
+    capture = 0
+    for line in lines:
+        if any(key in line for key in keys):
+            capture = 9 if any(key in line for key in ('Traceback', 'Error Type:', 'PythonToCppException')) else max(capture, 1)
+        if capture:
+            result.append(re.sub(r'https?://\S+', '<url>', line))
+            capture -= 1
+payload = base64.b64encode(gzip.compress('\n'.join(result[-180:]).encode())).decode()
+for i in range(0, len(payload), 2500):
+    print('::notice title=Android monitor diagnostic chunks::' + json.dumps(dict(part=i//2500, data=payload[i:i+2500])))

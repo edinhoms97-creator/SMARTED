@@ -47,6 +47,21 @@ def run_cycles(adb, evidence):
         # Fixed AVD resolution 960x540; never tap QR/VIP/payment/activation controls.
         result['welcome_free_tap'] = command('shell', 'input', 'tap', '148', '420')[0]
         time.sleep(8)
+        _, welcome_log = command('logcat', '-d', '-v', 'brief')
+        if 'Botao 312 (Assistir com anuncios) acionado.' not in welcome_log:
+            result['cycle_blocker'] = 'original-free-welcome-button-not-confirmed'
+            return result
+        # Original onClick(312) opens the ads notice and explicitly focuses 905
+        # (Back); its adjacent control 906 is Continue with ads. Confirm through
+        # native DPAD, never license/profile settings or a Python eval shortcut.
+        command('shell', 'input', 'keyevent', 'KEYCODE_DPAD_RIGHT')
+        command('shell', 'input', 'keyevent', 'KEYCODE_DPAD_CENTER')
+        time.sleep(3)
+        _, welcome_log = command('logcat', '-d', '-v', 'brief')
+        result['welcome_continue_906_observed'] = 'control_id=906' in welcome_log
+        if not result['welcome_continue_906_observed']:
+            result['cycle_blocker'] = 'original-continue-with-ads-not-confirmed'
+            return result
         command('shell', 'mkdir', '-p', '/sdcard/Movies/SmartedValidation')
         for name in SAMPLES:
             url = 'https://api.github.com/repos/mediaelement/mediaelement-files/contents/' + name
