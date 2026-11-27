@@ -7,7 +7,9 @@ from pathlib import Path
 import re
 import sys
 result = []
-for path in Path(sys.argv[1]).rglob('logcat.txt'):
+for path in Path(sys.argv[1]).rglob('*'):
+    if path.name not in ('logcat.txt', 'kodi.log'):
+        continue
     lines = path.read_text(errors='replace').splitlines()
     keys = ('SmartAds', 'smart_ads', 'ads_openings', 'Traceback', 'Error Type:', 'Error Contents:',
             'ModuleNotFoundError', 'SyntaxError', 'onClick recebido', 'Botao 312', 'Botao 906',
@@ -22,3 +24,15 @@ for path in Path(sys.argv[1]).rglob('logcat.txt'):
 payload = base64.b64encode(gzip.compress('\n'.join(result[-180:]).encode())).decode()
 for i in range(0, len(payload), 2500):
     print('::notice title=Android monitor diagnostic chunks::' + json.dumps(dict(part=i//2500, data=payload[i:i+2500])))
+
+# Optional APK source inspection is read-only; no runtime injection or requests.
+if len(sys.argv) > 2:
+    import ast
+    import zipfile
+    with zipfile.ZipFile(sys.argv[2]) as archive:
+        text = archive.read('assets/addons/service.smarted.bootstrap/smart_ads.py').decode()
+    tree = ast.parse(text)
+    names = {'_e_video', 'motor_anuncio', 'usar_vast'}
+    selected = {node.name: ast.get_source_segment(text, node) for node in tree.body
+                if isinstance(node, ast.FunctionDef) and node.name in names}
+    print('::notice title=Read-only APK eligibility source::' + json.dumps(selected))
