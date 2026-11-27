@@ -181,6 +181,58 @@ class Tests(unittest.TestCase):
         self.assertIsNone(ledger.claim('shared-stream', 'channel-one'))
         self.assertIsNotNone(ledger.claim('shared-stream', 'channel-two'))
 
+    def observer(self, h):
+        h.monitor.isPlayingVideo = lambda: h.playing
+        h.media = h.playing
+        kodi = types.SimpleNamespace(log=lambda msg, *a: h.logs.append(msg),
+                    getCondVisibility=lambda key: h.media if key == 'Player.HasMedia' else key == 'Window.IsActive(fullscreenvideo)',
+                    getInfoLabel=lambda key: '')
+        return kodi
+
+    def test_passive_native_observer_three_openings_without_any_av_callback(self):
+        h = Harness(); kodi = self.observer(h)
+        previous = ads_openings.observe(h.monitor, kodi); h.join()
+        for _ in range(20): previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.join(); self.assertEqual(h.calls, ['film-a'])
+        h.playing = h.media = False
+        previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.playing = h.media = True
+        previous = ads_openings.observe(h.monitor, kodi, previous); h.join()
+        h.file = 'film-b'
+        ads_openings.observe(h.monitor, kodi, previous); h.join()
+        self.assertEqual(h.calls, ['film-a', 'film-a', 'film-b'])
+
+    def test_passive_observer_stale_stop_does_not_claim_closing_video(self):
+        h = Harness(); kodi = self.observer(h)
+        previous = ads_openings.observe(h.monitor, kodi); h.join()
+        h.monitor.onPlayBackStopped()  # getter still exposes the old frame
+        previous = ads_openings.observe(h.monitor, kodi, (False, '', '')); h.join()
+        self.assertEqual(h.calls, ['film-a'])
+        h.playing = h.media = False
+        previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.playing = h.media = True
+        ads_openings.observe(h.monitor, kodi, previous); h.join()
+        self.assertEqual(h.calls, ['film-a', 'film-a'])
+
+    def test_passive_observer_buffering_reconnect_is_not_close(self):
+        h = Harness(); kodi = self.observer(h)
+        previous = ads_openings.observe(h.monitor, kodi); h.join()
+        h.playing, h.media = False, True
+        previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.playing = True
+        ads_openings.observe(h.monitor, kodi, previous); h.join()
+        self.assertEqual(h.calls, ['film-a'])
+
+    def test_passive_observer_live_eof_reconnect_does_not_repeat(self):
+        h = Harness(); kodi = self.observer(h)
+        previous = ads_openings.observe(h.monitor, kodi); h.join()
+        with patch.dict(sys.modules, {'ao_vivo': types.SimpleNamespace(eh_ao_vivo=lambda path: True)}):
+            h.playing = h.media = False
+            previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.playing = h.media = True
+        ads_openings.observe(h.monitor, kodi, previous); h.join()
+        self.assertEqual(h.calls, ['film-a'])
+
     def test_vip_exemption(self):
         h = Harness(); h.vip = True; h.callback(); h.join()
         self.assertEqual(h.calls, []); self.assertEqual(h.bookings, [])

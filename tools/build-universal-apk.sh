@@ -182,7 +182,9 @@ Tag exata: https://vast.yomeno.xyz/vast?spot_id=1508180 — sem parametros novos
 Uma oportunidade por abertura real, incluindo reabertura, fim VOD/episodio e Home; sem cooldown.
 Ledger em memoria deduplica callbacks/retorno nativo; flags persistidas antigas so sao limpas numa nova abertura aceita.
 Stop fecha a geracao mesmo se isPlayingVideo ainda apresentar estado antigo. Reconexao live por Ended nao a fecha.
-Monitor leve de Home usa waitForAbort, nao modifica skin/controles/player nem confunde OSD com Home.
+Observador passivo de bordas de video/Home usa waitForAbort; cobre callback AV ausente/cedo no cold-start.
+Sem comandos play/seek/pause/menu nesse observador; Player.HasMedia preserva pausa/buffering e a excecao de reconexao live.
+Flag de Stop impede nova tentativa para o ultimo frame stale antes do proximo inicio real.
 Sem lock de elegibilidade durante rede/anuncio/retomada; trabalho de VAST e pixels permanece fora do callback.
 VAST nativo nao espera recuperar foco Android como um anuncio externo. Retomada evita seek redundante, sobretudo em zero.
 Confirmacao de seek considera o avanco monotonicamente transcorrido; o relogio do filme nao precisa ficar congelado no alvo.

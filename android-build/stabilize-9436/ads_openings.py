@@ -67,7 +67,7 @@ class Opening:
 
     def close(self):
         with self.lock:
-            if self.in_ad:
+            if self.in_ad or self.closed:
                 return False
             self.closed, self.attempted = True, False
             return True
@@ -102,27 +102,70 @@ def state(monitor):
         return found
 
 
+def observe(monitor, kodi, previous=(False, '', '')):
+    """Passive fallback for native callbacks not delivered on cold bootstrap.
+
+    Only video edges/path/channel changes or explicit Home return call the
+    existing eligibility gate. Never issue play/seek/pause/menu commands here.
+    Player.HasMedia keeps buffering/pause from being mistaken for a close.
+    """
+    if getattr(monitor, '_em_vast', False):
+        return previous
+    ledger = state(monitor)
+    home = bool(kodi.getCondVisibility('Window.IsActive(home)'))
+    full = bool(kodi.getCondVisibility('Window.IsActive(fullscreenvideo)'))
+    playing = bool(monitor.isPlayingVideo())
+    media = bool(kodi.getCondVisibility('Player.HasMedia'))
+    path = (monitor._caminho() or '') if playing else ''
+    channel = (kodi.getInfoLabel('VideoPlayer.ChannelName') or '') if playing else ''
+    home_return = ledger.observe_ui(home, full)
+    was_video, old_path, old_channel = previous
+    if playing:
+        edge = not was_video or path != old_path or channel != old_channel
+        waiting = getattr(monitor, '_smarted_wait_for_video_boundary', False)
+        if home_return or (edge and not waiting):
+            emit(kodi, 'native-playback-observed', home_return=home_return)
+            monitor._talvez_mostrar()
+        return (True, path, channel)
+    if media:
+        return previous  # paused/buffering is not a new opening
+    if was_video:
+        live = False
+        try:
+            import ao_vivo
+            live = bool(ao_vivo.eh_ao_vivo(old_path))
+        except Exception:
+            pass
+        # Live's existing reconnect helper may temporarily release media. Home
+        # or an explicit native Stop closes it; EOF alone must not repeat ads.
+        if (not live or home) and ledger.close():
+            try:
+                monitor._limpar_retomada()
+            except Exception as exc:
+                emit(kodi, 'close-cleanup-failed', error=type(exc).__name__)
+            emit(kodi, 'opening-closed', boundary='observed-no-media')
+    monitor._smarted_wait_for_video_boundary = False
+    return (False, '', '')
+
+
 def watch_home(monitor, kodi):
-    """Observe navigation only, using Kodi's abortable wait; no UI/player commands."""
+    """Abortable state observer; fallback eligibility, not a player watchdog."""
     with _BATCH_LOCK:
         if getattr(monitor, '_smarted_home_observer', False):
             return
         monitor._smarted_home_observer = True
+    emit(kodi, 'state-observer-installed')
     def run():
         try:
             abort = kodi.Monitor()
+            previous = (False, '', '')
             while not abort.abortRequested():
-                if not getattr(monitor, '_em_vast', False):
-                    home = bool(kodi.getCondVisibility('Window.IsActive(home)'))
-                    full = bool(kodi.getCondVisibility('Window.IsActive(fullscreenvideo)'))
-                    if state(monitor).observe_ui(home, full):
-                        emit(kodi, 'home-return')
-                        monitor._talvez_mostrar()
+                previous = observe(monitor, kodi, previous)
                 if abort.waitForAbort(.25):
                     break
         except Exception as exc:
             emit(kodi, 'home-observer-unavailable', error=type(exc).__name__)
-    threading.Thread(target=run, name='smarted-opening-home-observer', daemon=True).start()
+    threading.Thread(target=run, name='smarted-opening-state-observer', daemon=True).start()
 
 
 def current():

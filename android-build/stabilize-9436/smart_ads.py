@@ -37,6 +37,7 @@ class MonitorPreRoll:
         generation = ledger.claim(_normalizar_caminho_chave(path), channel)
         if generation is None:
             return
+        self._smarted_wait_for_video_boundary = False
         context(generation)
         emit(xbmc, 'opening-claimed')
         self.sessao = generation
@@ -127,6 +128,7 @@ class MonitorPreRoll:
         # the old frame/file here; it must not veto closing the old opening.
         self._ate_ignorar_volta_vast = 0.0
         self._volta_vast_chave = ''
+        self._smarted_wait_for_video_boundary = True
         self._limpar_retomada()
         emit(xbmc, 'opening-closed', boundary='stop')
 
@@ -147,5 +149,6 @@ class MonitorPreRoll:
         if state(self).close():
             self._ate_ignorar_volta_vast = 0.0
             self._volta_vast_chave = ''
+            self._smarted_wait_for_video_boundary = True
             self._limpar_retomada()
             emit(xbmc, 'opening-closed', boundary='end')
