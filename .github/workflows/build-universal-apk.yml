@@ -4,6 +4,10 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      publish_existing_run:
+        description: 'Anexar artefato ja auditado a prerelease existente; nao recompila'
+        type: string
+        default: ''
       read_publish_log:
         description: 'Diagnostico somente leitura de falha de publicacao existente'
         type: string
@@ -85,7 +89,7 @@ env:
 
 jobs:
   build:
-    if: ${{ inputs.read_publish_log == '' && !inputs.vast_comparison && !inputs.android_probe && inputs.android_log_run == '' }}
+    if: ${{ inputs.publish_existing_run == '' && inputs.read_publish_log == '' && !inputs.vast_comparison && !inputs.android_probe && inputs.android_log_run == '' }}
     name: Original SMARTED — patch restrito de anuncios
     runs-on: ubuntu-24.04
     timeout-minutes: 8
@@ -328,3 +332,30 @@ jobs:
           for i in range(0, len(data), 3500):
               print('::notice title=Publish diagnostic chunks::'+json.dumps({'part':i//3500,'data':data[i:i+3500]}))
           PYLOG
+
+  recover_publication:
+    if: inputs.publish_existing_run != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Anexar somente APK auditado a prerelease ja criada
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ inputs.publish_existing_run }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          tag="smarted-original-ads-${RUN_ID}-1"
+          source=$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID" --jq .head_sha)
+          target=$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)
+          test "$source" = "$target"
+          test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+          gh run download "$RUN_ID" --name SMARTED-original-ads-only --dir dist
+          (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
+          grep -F "$source" dist/INSTALLATION.txt
+          gh release upload "$tag" --clobber dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 dist/preservation.json dist/source-preservation.json dist/reference-preservation.json dist/signature.txt dist/badging.txt
+          gh release edit "$tag" --notes-file dist/INSTALLATION.txt
