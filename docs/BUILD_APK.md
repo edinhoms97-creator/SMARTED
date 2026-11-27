@@ -1,128 +1,78 @@
-# Build manual do APK universal SMARTEDTV
+# SMARTED original — somente anúncios, sem alterar a skin
 
-## Build concluído em 2026-11-27
+## Correção de escopo
 
-- **[Download direto: SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smartedtv-test-45989176676-1/SMARTEDTV-universal.apk)** — 268.035.241 bytes (~268 MB / 255,6 MiB).
-- [Pre-release e relatórios](https://github.com/edinhoms97-creator/SMARTED/releases/tag/smartedtv-test-45989176676-1).
-- [Execução bem-sucedida](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45989176676): criada 11:16:58 UTC, concluída 11:19:11 UTC (**2 min 13 s**, incluindo fila/publicação).
-- Fontes do binário: `7e300f2c6caa468b9412520fb2e61bbc1153ee67` (contém `0fea261`).
-- SHA256 do asset publicado, confirmado pela API GitHub: `ae4eba365443ab8ea00e2a00f5b7563a46c6e4129397a88d0d86ea956b93b862`.
-- 67 verificações VAST/AdMob + 15 testes de empacotamento passaram. Assinatura, zipalign, manifesto compilado, ABIs/dependências e comparação dos fontes/Dex/libs passaram no CI.
-- **Não testado em aparelho.** Assinatura debug; fazer backup antes de substituir instalação existente.
+O build `7e300f2` foi **reprovado pelo usuário: não passou da tela inicial**. Ele preservava os Dex/libs, mas isso não bastava: copiava uma skin separada, adicionava welcome/serviço de startup e modificava o manifesto. Foi retirado da publicação pública (release convertida em rascunho). Seus testes de empacotamento não comprovavam funcionamento no aparelho.
 
-## O que este pipeline faz (e o que ele não faz)
+Não usar esse build nem considerá-lo base para a correção. O empacotamento antigo e a cópia de skins foram removidos do pipeline.
 
-O repositório contém a welcome web, addons Python e skin Kodi, **não contém o projeto Android/Gradle nem os fontes nativos do Kodi**. Logo, não é possível compilar o player Kodi/NDK do zero aqui em 5–10 minutos.
+## Identidade do APK correto
 
-O pipeline reempacota um **APK-base Kodi existente**, preservando byte a byte todos os `classes*.dex` e bibliotecas `.so`. Decodifica os recursos com apktool, aplica os fontes atuais, registra os addons no manifesto Kodi, recompila os recursos, alinha e assina um único `SMARTEDTV-universal.apk` de teste. Não há WebView vazia fingindo ser o player, nem união de APKs incompatíveis.
+A auditoria somente leitura no runner GitHub confirmou o APK do **mesmo link Dropbox fornecido pelo usuário**:
 
-**Compatibilidade universal neste build:** um único APK com ARM32 (`armeabi-v7a`) **e** ARM64 (`arm64-v8a`), dependências nativas resolvidas e a mesma Activity em Mobile, TV Box e Projetor **Android**. Arquiteturas adicionais já presentes são preservadas. Não promete x86 quando a base não o contém, nem compatibilidade com todo Android/hardware. SDK mínimo e ABIs constam dos relatórios. Roteamento de dispositivo não seleciona outro provedor de anúncios: VAST é o mesmo caminho, AdMob permanece desligado.
+- Pacote: `smartedtv.full`.
+- Versão: `1.0.161`; versionCode `2103147`.
+- Launcher original: `smartedtv.full.Splash`.
+- ABIs originais: `arm64-v8a` e `armeabi-v7a`.
+- Skins próprias: `skin.smartedtv.classic` e `skin.novatv`, ambas versão `1.0.17` (nome SMARTEDTV), além da Estuary de fábrica.
+- Bootstrap original: `service.smarted.bootstrap` versão `1.0.9`.
+- Tamanho: 263.222.483 bytes.
+- Content hash Dropbox: `03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277`.
+- Metadados e URL fixados em `android-build/base-apk.json`. Outra base está proibida neste fluxo.
 
-> A base foi baixada e inspecionada pelo runner GitHub: contém **ARM32 e ARM64**. As listas de bibliotecas opcionais diferem entre as arquiteturas. O gate inicial por igualdade de nomes foi substituído pela checagem de núcleo Kodi em ambas e de `DT_NEEDED` via `readelf`, permitindo diferenças legítimas sem ignorar dependências ausentes. O CI confirmou essas verificações. Logs/artefatos hospedados nos CDNs de Azure/GitHub não podem ser baixados por este sandbox; o status das etapas e a publicação foram conferidos pela API GitHub.
+Auditorias: [identidade](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45990816856), [contratos dos módulos de anúncios](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45991553860). Nenhum APK foi gerado nessas auditorias.
 
-## Execução manual
+## Mudanças permitidas
 
-Arquivo: [`.github/workflows/build-universal-apk.yml`](../.github/workflows/build-universal-apk.yml).
+Plano explícito: `android-build/ads-only-plan.json`.
 
-**Primeiro registro no GitHub:** para um workflow com somente `workflow_dispatch` ser descoberto/disparável, seu arquivo precisa existir na branch padrão (`main`). O desenvolvimento e o push desta sessão continuam em `arena/16384c6f-smarted`; não há trigger de push para contornar essa restrição. Integrar a configuração por PR é uma ação separada; o pipeline não altera a branch padrão.
+1. `assets/addons/service.smarted.bootstrap/ads_vast.py`: apenas as funções de tag, transporte/tracking, reprodução do anúncio e confirmação de retomada. O parser, wrappers/VMAP e as rotas de reconexão originais são preservados.
+2. `assets/addons/service.smarted.bootstrap/smart_ads.py`: somente a função `motor_anuncio`, que retorna VAST para todos os dispositivos durante a validação. Todo o restante do módulo, inclusive frequência/VIP e fluxo original, permanece igual.
+3. `assets/addons/service.smarted.bootstrap/ads_admob.py`: configuração inerte separada, com IDs fornecidos e `ENABLED = False`. Nenhuma inicialização de SDK, novo serviço ou chamada de bridge.
 
-Depois de o workflow existir em `main`:
+Os hashes dos dois arquivos originais são conferidos antes de qualquer patch. Uma base de outra revisão faz o build falhar. As alterações de funções são feitas por intervalos do fonte; uma comparação AST exige que todos os nós não relacionados permaneçam iguais.
 
-```sh
-gh workflow run build-universal-apk.yml \
-  --ref arena/16384c6f-smarted \
-  -f publish_release=true
+## O que não pode mudar
 
-gh run list --workflow build-universal-apk.yml --limit 5
-# Usar o ID real retornado:
-# gh run watch ID --exit-status
-# gh run download ID --name SMARTEDTV-universal --dir dist
-```
+**Todo arquivo fora da lista acima**, exceto metadados criptográficos de assinatura do APK, deve ser idêntico ao original. Isso inclui:
 
-Também disponível na aba **Actions → Build SMARTEDTV universal APK (manual) → Run workflow**, escolhendo a branch/revisão desejada.
+- Todas as skins originais e suas imagens, texturas, XMLs, scripts, layouts e configurações.
+- `AndroidManifest.xml` binário, `resources.arsc`, ícone, nome, versão e launcher.
+- Bootstrap `service.py`, registros `addon.xml`/`assets/system/addon-manifest.xml` e preferências de interface.
+- Bibliotecas nativas, Dex, plugins, seed/perfil embutido e fluxos de VIP/pagamento.
 
-- **Somente** `workflow_dispatch`. Sem push, PR, cron, workflow_run ou cascata após releases.
-- Concorrência limitada por ref; não cancela um build em andamento.
-- `base_url` + `base_sha256`: opcionais, mas obrigatoriamente fornecidos juntos para outra base. Só HTTPS e SHA256 validado. Não inserir links temporários/privados com credenciais em inputs públicos.
-- `publish_release=true`: publica uma **pre-release de teste** com link direto para o APK apenas se todas as verificações passarem. Nunca promove automaticamente a versão estável.
-- O build exige que `0fea261` seja ancestral da revisão e empacota os fontes dessa revisão completa, não um arquivo baixado de outra branch.
+Não há substituição pelo HTML do repositório, nenhuma cópia de `skin.estilo.personalizado`, nenhum `script.smartedtv.welcome` novo nem `service.smartedtv.startup`. Os fontes web/welcome separados continuam disponíveis no Git como referência, mas **não entram neste APK**.
 
-## Base fixada e cache
+## Empacotamento e verificações
 
-`android-build/base-apk.json` registra o link público fornecido, tamanho `263222483`, revisão Dropbox `016612000089f9e00000003401bbf21` e content hash verificado pelo conector em 2026-11-27:
+O novo pipeline **não usa apktool para reconstruir recursos ou manifesto**. Faz patch ZIP dos três módulos permitidos sobre o APK original, preserva os demais conteúdos, executa zipalign e assina para teste.
 
-```
-03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277
-```
+`tools/apk_preservation.py` compara SHA256 de **todas** as entradas antes e depois da assinatura. Qualquer modificação/remoção/adição fora da lista bloqueia publicação. Arquivos META-INF que não são assinatura também devem ser preservados. A mudança de certificado e bloco de assinatura é inevitável sem a chave original.
 
-Esse é o **Dropbox content hash**, não o SHA256 simples do arquivo. O helper implementa o algoritmo de blocos de 4 MiB. Ambos os hashes são calculados e relatados. A base é verificada mesmo quando veio do cache. Uma revisão trocada silenciosamente no Dropbox interrompe o build.
+O pipeline também:
 
-Apktool 2.12.1 fixado por SHA256 publicado na API do release upstream:
+- Confere hash do APK original e integridade de sua assinatura.
+- Executa testes rápidos JS/Python existentes e testes negativos de proteção da skin/manifesto/startup.
+- Testa o parser e as funções **do próprio original já corrigido** com doubles de rede/player; isso é separado da demo welcome.
+- Verifica TLS 1.2+ com certificado/hostname, UA Chrome Android, no-fill, fallback, tracking sem complete falso e seek confirmado.
+- Executa `apksigner verify`, `zipalign -c`, gera badging e checksum final.
 
-```
-66cf4524a4a45a7f56567d08b2c9b6ec237bcdd78cee69fd4a59c8a0243aeafa
-```
+**Nada disso substitui teste de inicialização e reprodução em aparelho.** Não declarar o travamento corrigido apenas porque o CI passou. `preservation.json` comprova o escopo dos arquivos, não a reprodução em hardware.
 
-Caches: npm, APK-base por hash, Android build-tools 35.0.0, JAR apktool e chave **apenas de debug**. O runner Ubuntu já fornece SDK/cmdline-tools. Só instala build-tools se ausentes. Java 17, Node 22, Python 3.11. **Não há Gradle/NDK para cachear**, porque este é um reempacotamento dos fontes disponíveis, não um projeto Gradle.
+## Workflow manual
 
-## Tempo
-
-Meta: **5–10 minutos com cache aquecido**, sem emulador, testes instrumentados ou compilação NDK. Testes unitários JS/Python + os 15 testes de empacotamento levam aproximadamente 1 segundo neste sandbox.
-
-O job de build tem timeout de **8 minutos**, e o de publicação de **2 minutos**. Esse orçamento interrompe uma execução lenta, **não garante produzir um APK em dez minutos**. Fila de runners, primeiro download de 263 MB, indisponibilidade do Dropbox/GitHub/SDK, base inválida ou falhas de recursos/assinatura podem impedir a entrega. A primeira execução bem-sucedida levou 2 min 13 s de ponta a ponta (acima); essa medição não é garantia para execuções futuras. Compressão do artefato desativada para não recomprimir o APK.
-
-## O que entra no APK
-
-- `assets/addons/script.smartedtv.welcome/`: VAST Python + adapter Kodi, incluindo no-fill, tracking e retomada com confirmação.
-- `assets/addons/service.smartedtv.startup/`: abre a welcome uma vez por processo, mesma rota em todos os dispositivos Android.
-- `assets/addons/skin.estilo.personalizado/`: skin do repositório (sem forçar sua seleção nas preferências existentes).
-- `assets/system/addon-manifest.xml`: registro dos addons como ativos do sistema, não apenas cópia de arquivos inertes.
-- `assets/smartedtv/`: fontes web exatos da revisão, VAST JS e AdMob isolado com flag `false`. Kodi executa o caminho Python; embutir o HTML não instala um runtime WebView/SDK AdMob.
-- `assets/smartedtv-build.json`: revisão Git completa e flags de anúncios para proveniência.
-- Manifesto Android: mesma Activity MAIN para LAUNCHER e LEANBACK_LAUNCHER; touchscreen/faketouch/leanback/television opcionais; banner TV e permissão INTERNET; sideload normal (sem `testOnly`). Mantém package ID e SDK da base.
-
-Não inventa canal, endpoint VIP, status de pagamento ou bridge AdMob. A welcome fecha e o fluxo Kodi existente continua; para iniciar conteúdo sem vídeo ativo, o addon principal deve fornecer seu destino. Não ativa automaticamente a nova skin nem remove serviços customizados desconhecidos da base. Deve-se verificar possíveis fluxos de inicialização já existentes no teste real.
-
-## Verificações obrigatórias antes de entregar
-
-1. Base: hash confiável, tamanho quando é a base padrão, CRC ZIP, caminhos seguros e assinatura válida.
-2. ABIs: ARM32+ARM64 reais, cabeçalho ELF correspondente a cada diretório, núcleo Kodi presente em ambas e dependências `DT_NEEDED` resolvidas por bibliotecas empacotadas da mesma ABI ou sonames públicos Android. Bibliotecas opcionais específicas de arquitetura são permitidas; `libc++_shared`, `libssl`, `libcrypto` não são presumidas bibliotecas públicas do sistema.
-3. Fontes: revisão contém `0fea261`; árvore rastreada limpa; AdMob desativado; tag #1508180 presente.
-4. Assinatura de teste automática com `keytool`/`apksigner`, esquemas v1+v2+v3.
-5. `apksigner verify --verbose --print-certs` após assinatura.
-6. `zipalign -P 16 -c -v 4` no APK assinado.
-7. `apkanalyzer manifest print` no manifesto **compilado**; valida package/SDK/rota contra o manifesto preparado. `aapt2 dump badging` incluído no relatório.
-8. Conteúdo: todo arquivo web/addon/skin comparado byte a byte com a revisão; registro Kodi conferido; SHA256 de todos os Dex/libs idêntico ao da base.
-9. SHA256 do APK final publicado ao lado do arquivo. Falha em qualquer gate impede publicação do APK; apenas diagnósticos são enviados em caso de erro.
-
-Alinhar o ZIP em 16 KiB **não** recompila bibliotecas ELF feitas só para páginas de 4 KiB. Suporte nativo a aparelhos Android com páginas de 16 KiB depende da base. Sem testes de hardware, a instalação/reprodução não pode ser certificada.
-
-## Download e instalação
-
-Após **sucesso real**, a aba Summary do job `publish` e a pre-release gerada exibem o link direto de `SMARTEDTV-universal.apk`. O job `build` também tem um artefato ZIP `SMARTEDTV-universal` (retenção de 14 dias; pode exigir login GitHub). Cada pre-release aponta para a revisão exata e contém o checksum e os relatórios. Nenhum link de APK novo é válido antes desse sucesso.
-
-**Assinatura de debug não atualiza o APK original assinado com outra chave.** Fazer backup; pode ser necessário desinstalar a versão anterior (apagando dados). A chave de debug é cacheada, não uma chave de produção; perda/expiração do cache pode mudar o certificado entre testes. Não distribuir este build como release de produção, nem versionar keystores.
-
-## Reproduzir os gates localmente
+`.github/workflows/build-universal-apk.yml`: somente `workflow_dispatch`. Publicação é **false por padrão**; só ocorre com solicitação explícita.
 
 ```sh
-npm ci
-npm test
-python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v
-npm run build:standalone
-# Com JDK 17, SDK build-tools 35 + cmdline-tools e o JAR fixado:
-# export ANDROID_HOME=/caminho/android-sdk
-# export APKTOOL_JAR=/caminho/apktool_2.12.1.jar
-# bash tools/build-universal-apk.sh
+gh workflow run build-universal-apk.yml --ref arena/16384c6f-smarted -f publish_release=true
 ```
 
-Artefatos, downloads, diretórios de trabalho e chaves ficam em `dist/` / `.cache/`, ignorados pelo Git. A validação real do VAST e da retomada no aparelho permanece obrigatória: [VAST.md](VAST.md).
+Não aceitar `base_url`/`base_sha256` alternativos: os campos antigos permanecem somente para compatibilidade do registro, e o helper recusa overrides. Cache da base é revalidado por hash em toda execução; chave de debug é cacheada separadamente. Sem emulador, NDK/Gradle ou recompilação de skin.
 
-## Histórico da execução inicial
+Alterações corretivas estão na branch da sessão e no PR #2; nenhuma integração adicional à main foi executada nesta correção.
 
-- PR #1 integrado com autorização para registrar o workflow na branch padrão.
-- [Execução 45988666985](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45988666985): gate inicial bloqueou listas ARM32/ARM64 distintas. Não publicou APK.
-- [Execução 45988908051](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45988908051): mesmo gate, com erro agora exposto nas anotações Checks para diagnóstico neste sandbox restrito.
-- Corrigida a regra para dependências nativas efetivas; [execução 45989176676](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45989176676) concluiu todos os gates e publicou o APK.
+## Instalação de teste
 
-Nenhuma verificação de assinatura/manifesto/conteúdo foi desativada para obter o binário. Todas as execuções foram manuais.
+A assinatura é de debug, diferente da chave do APK original. Não substituir uma instalação assinada com outra chave esperando atualização direta. Fazer backup antes de qualquer remoção; remover app pode apagar dados. Uma instalação limpa pode ajudar a separar dados persistidos da versão anterior, mas não deve ser imposta sem backup.
+
+Aguardar resultado do build corretivo e conferir seu relatório de preservação antes de usar o novo link. O APK anterior foi retirado por falha relatada no dispositivo.

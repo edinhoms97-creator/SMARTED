@@ -43,19 +43,18 @@ python3 -m http.server 8000
 Ou abra `smartedtv/standalone/smartedtv-preview.html` direto no navegador
 (funciona offline, tudo inline).
 
-## Build APK universal sob demanda
+## APK: preservar exatamente o SMARTED original
 
-Workflow manual: [`.github/workflows/build-universal-apk.yml`](.github/workflows/build-universal-apk.yml).
-Guia de execução, cache, assinatura de teste e limitações: [`docs/BUILD_APK.md`](docs/BUILD_APK.md).
-Reempacota o Kodi-base, preservando Dex/libs; não substitui o player por uma WebView.
-O build só publica `SMARTEDTV-universal.apk` se confirmar ARM32+ARM64 reais,
-manifesto, assinatura, dependências nativas e conteúdo. Não há builds por push.
+**O primeiro APK de teste foi retirado:** o usuário relatou travamento na tela inicial.
+Ele adicionava skin/startup indevidos. A correção usa somente o original
+`smartedtv.full` **1.0.161**, do link Dropbox abaixo.
 
-**[Baixar SMARTEDTV-universal.apk — teste, 268 MB](https://github.com/edinhoms97-creator/SMARTED/releases/download/smartedtv-test-45989176676-1/SMARTEDTV-universal.apk)**
+O pipeline atual permite alterações apenas nos módulos de anúncios originais.
+**Skin, layout, texturas, tela inicial, bootstrap, manifesto e recursos devem
+permanecer idênticos byte a byte.** Nenhuma welcome/skin nova é empacotada.
 
-[Build concluído em 2 min 13 s](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45989176676),
-fontes `7e300f2`. Assinatura de debug: backup antes de substituir o app original;
-pode ser necessário desinstalá-lo. Testes em aparelho e VAST real ainda pendentes.
+Guia e evidências: [`docs/BUILD_APK.md`](docs/BUILD_APK.md).
+Publicação sob demanda e desligada por padrão. CI não comprova funcionamento em aparelho.
 
 ## APK original (Dropbox)
 
@@ -89,4 +88,4 @@ AdMob mobile separado e desligado: [docs/ADMOB.md](docs/ADMOB.md).
 
 `npm ci && npm test` executa os testes locais (Node + Python).
 Demo de reprodução: `smartedtv/demo-vast.html`. Validação da tag real e
-em dispositivos ainda pendente; o novo APK de teste foi reempacotado a partir do original, sem recompilar o Kodi/NDK.
+em dispositivos ainda pendente. O primeiro APK de teste foi reprovado e retirado; o pipeline corretivo preserva a interface original.

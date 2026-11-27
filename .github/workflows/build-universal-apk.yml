@@ -1,20 +1,19 @@
-name: SMARTED original — auditoria sem alterar skin
-run-name: SMARTED original · auditoria · ${{ github.ref_name }}
+name: SMARTED original — somente anuncios, skin intacta
+run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 
-# Read-only until the original ad hook has been identified. No APK publication.
 on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Desativado: usar somente o APK original fixado'
+        description: 'Desativado: somente o APK original fixado e permitido'
         type: string
         default: ''
       base_sha256:
-        description: 'Desativado: identidade original pelo content hash Dropbox'
+        description: 'Desativado: a identidade original e validada pelo hash Dropbox'
         type: string
         default: ''
       publish_release:
-        description: 'Publicacao bloqueada durante correcao; nenhum APK sera publicado'
+        description: 'Publicar APK de teste somente apos conferir preservacao integral da skin'
         type: boolean
         default: false
 
@@ -30,10 +29,10 @@ env:
   INPUT_BASE_SHA256: ${{ inputs.base_sha256 }}
 
 jobs:
-  audit:
-    name: Inspecionar exatamente o original (sem modificar APK)
+  build:
+    name: Original SMARTED — patch restrito de anuncios
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -45,10 +44,12 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
-      - name: Testes rapidos do motor de anuncios
+      - name: Testes rapidos e gates de preservacao
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           npm test
+          python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v
+          bash -n tools/build-universal-apk.sh
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
@@ -57,39 +58,63 @@ jobs:
         with:
           path: .cache/smartedtv-base
           key: smartedtv-base-dropbox-03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277
-      - name: Baixar e conferir identidade do original, sem substituicoes
-        run: |
-          test -z "$INPUT_BASE_URL" && test -z "$INPUT_BASE_SHA256" || { echo '::error::Outra base esta proibida nesta correcao'; exit 1; }
-          mkdir -p dist
-          python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk --report dist/original-identity.json
-      - name: Identificar pacote e pontos de anuncios existentes (somente leitura)
-        run: |
-          tools="$ANDROID_HOME/build-tools/35.0.0"
-          "$tools/apksigner" verify --verbose --print-certs .cache/smartedtv-base/base.apk > dist/original-signature.txt
-          "$tools/aapt2" dump badging .cache/smartedtv-base/base.apk > dist/original-badging.txt
-          python3 - <<'PY'
-          from pathlib import Path
-          lines = Path('dist/original-badging.txt').read_text().splitlines()
-          for line in lines:
-              if line.startswith(('package:', 'application-label:', 'launchable-activity:', 'native-code:', 'sdkVersion:', 'targetSdkVersion:')):
-                  safe = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-                  print('::notice title=SMARTED original identity::' + safe)
-          PY
-          python3 tools/audit_original_apk.py .cache/smartedtv-base/base.apk dist/original-inventory.json
-      - name: Contrato original de transporte VAST (somente leitura)
-        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk transport
-      - name: Contrato original de retomada (somente leitura)
-        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk resume
-      - name: Contrato original de roteamento (somente leitura)
-        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk routing
-      - name: Fluxo original de no-fill (somente leitura)
-        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk fetchflow
-      - name: Tracking original (somente leitura)
-        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk playback
-      - name: Relatorio apenas (nenhum APK)
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .cache/smartedtv-signing
+          key: smartedtv-test-debug-key-v1
+      - name: Empacotar somente anuncios; verificar todos os outros arquivos
+        run: bash tools/build-universal-apk.sh
+      - name: APK de teste e relatorio de preservacao
+        id: artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: SMARTED-original-audit
+          name: SMARTED-original-ads-only
           path: dist/
+          compression-level: 0
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
+      - name: Diagnostico sem APK se falhar
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: SMARTED-original-diagnostics
+          path: |
+            dist/*.json
+            dist/*.txt
+          if-no-files-found: ignore
+      - name: Resumo sem alegar teste em aparelho
+        run: |
+          {
+            echo '## SMARTED original — anuncios apenas'
+            echo 'Skin, bootstrap e manifesto binario preservados. Sem novo servico ou welcome.'
+            echo 'Teste de inicializacao/reproducao em aparelho ainda pendente.'
+            cat dist/preservation.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Disponibilizar build corretivo de teste
+    needs: build
+    if: inputs.publish_release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: SMARTED-original-ads-only
+          path: dist
+      - name: Publicar somente o artefato conferido
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
+          tag="smarted-original-ads-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
+            --title 'SMARTED original — anuncios apenas (teste em aparelho pendente)' \
+            --notes-file dist/INSTALLATION.txt \
+            dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
+            dist/preservation.json dist/signature.txt dist/badging.txt
+          gh release view "$tag" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"

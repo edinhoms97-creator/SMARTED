@@ -145,14 +145,34 @@ class Tests(unittest.TestCase):
         self.assertNotIn("def prepare", source)
         self.assertNotIn("shutil.copytree", source)
         script = Path(__file__).with_name("build-universal-apk.sh").read_text()
-        self.assertIn("exit 1", script)
+        self.assertIn("tools/apk_preservation.py", script)
         self.assertNotIn('apktool', script.lower())
 
-    def test_workflow_only_audits_no_release(self):
+    def test_workflow_manual_and_no_automatic_publication(self):
         workflow = (apk.ROOT / ".github/workflows/build-universal-apk.yml").read_text()
         self.assertIn("  workflow_dispatch:", workflow)
-        for text in ("  push:", "  pull_request:", "gh release create", "build-universal-apk.sh"):
+        for text in ("  push:", "  pull_request:", "shutil.copytree", "apktool") :
             self.assertNotIn(text, workflow)
+        self.assertIn('default: false', workflow)
+        self.assertIn('if: inputs.publish_release', workflow)
+
+    def test_function_patch_leaves_non_ad_code_unchanged(self):
+        from patch_original_ads import replace_functions
+        original = "TIMEOUT_HTTP = 12\nVAST_TAG_PADRAO = 'old'\ndef baixar(url):\n    return 'old'\ndef untouched_ui():\n    return 'original skin route'\n"
+        result = replace_functions(original, "def baixar(url):\n    return None\n", {'TIMEOUT_HTTP': 8})
+        self.assertIn("def untouched_ui():\n    return 'original skin route'", result)
+        self.assertIn('TIMEOUT_HTTP = 8', result)
+        self.assertIn("VAST_TAG_PADRAO = 'old'", result)
+
+    def test_patch_fails_on_unexpected_function_contract(self):
+        from patch_original_ads import replace_functions
+        with self.assertRaisesRegex(ValueError, 'contract changed'):
+            replace_functions('def original(): pass', 'def different(): pass')
+
+    def test_new_startup_cannot_masquerade_as_ad_config(self):
+        plan = {'reviewed': True, 'changes': {AD: {'new_file': True, 'original_sha256': None}}}
+        with self.assertRaisesRegex(ValueError, 'Only the inert'):
+            preserve.validate_plan(plan)
 
 
 if __name__ == "__main__":

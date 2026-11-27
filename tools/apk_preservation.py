@@ -61,7 +61,10 @@ def validate_plan(plan):
         raise ValueError("No reviewed ads-only patch plan: build/publication blocked")
     for path, entry in plan["changes"].items():
         check_ad_path(path)
-        if not re.fullmatch(r"[0-9a-f]{64}", entry.get("original_sha256", "")):
+        if entry.get("new_file") is True:
+            if path != 'assets/addons/service.smarted.bootstrap/ads_admob.py' or entry.get('original_sha256') is not None:
+                raise ValueError('Only the inert AdMob configuration module may be added')
+        elif not re.fullmatch(r"[0-9a-f]{64}", entry.get("original_sha256", "")):
             raise ValueError("An original source SHA256 is required for " + path)
 
 
@@ -71,10 +74,14 @@ def patch(base, output, replacements, plan):
         raise ValueError("Replacements differ from reviewed plan")
     with zipfile.ZipFile(base) as source:
         for path, entry in plan["changes"].items():
+            if entry.get('new_file'):
+                if path in source.namelist():
+                    raise ValueError('Expected new config module already exists: ' + path)
+                continue
             original = source.read(path)
             if hashlib.sha256(original).hexdigest() != entry["original_sha256"]:
                 raise ValueError("Original ad source hash mismatch: " + path)
-        # Only existing ad modules can be replaced. No new startup service,
+        # Only the inert ad config may be added. No new startup service,
         # skin, welcome screen, launcher or activation workflow is injected.
         with zipfile.ZipFile(output, "w") as target:
             target.comment = source.comment
@@ -85,4 +92,30 @@ def patch(base, output, replacements, plan):
                 if data is None:
                     data = source.read(info.filename)
                 target.writestr(info, data)
+            for path, entry in plan['changes'].items():
+                if entry.get('new_file'):
+                    target.writestr(path, replacements[path], compress_type=zipfile.ZIP_DEFLATED)
     return compare(base, output, set(replacements))
+
+
+if __name__ == '__main__':
+    import argparse
+    import json
+    from pathlib import Path
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('base', type=Path)
+    parser.add_argument('result', type=Path)
+    parser.add_argument('--report', type=Path, required=True)
+    args = parser.parse_args()
+    plan = json.loads((Path(__file__).resolve().parent.parent / 'android-build/ads-only-plan.json').read_text())
+    validate_plan(plan)
+    try:
+        report = compare(args.base, args.result, set(plan['changes']))
+        if set(report['changed']) != set(plan['changes']):
+            raise ValueError('Final APK must contain exactly the reviewed ad changes')
+        args.report.write_text(json.dumps(report, indent=2) + '\n')
+        print('::notice title=Original APK preservation::' + json.dumps(report))
+    except Exception as exc:
+        safe = str(exc).replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D')
+        print('::error title=Original APK preservation::' + safe, flush=True)
+        raise

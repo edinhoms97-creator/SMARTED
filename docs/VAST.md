@@ -6,7 +6,7 @@
 - Web: `smartedtv/js/vast.js`, conectado a `ads.startSession()`.
 - Kodi: `vast.py` (transporte/parser) + `vast_player.py` (player/tracking/retomada), conectados à confirmação da janela welcome em uma thread de trabalho.
 - AdMob separado: `smartedtv/js/admob.js`, **`admob.enabled: false`**; IDs fornecidos em `config.js`. Sem SDK/bridge Android neste repositório. Ver [ADMOB.md](ADMOB.md).
-- Atualização de build: **APK de teste reempacotado e publicado**, com fontes web/addon desta entrega e runtime nativo da base preservado. Sem compilação Kodi/NDK do zero. Download e validações em [BUILD_APK.md](BUILD_APK.md). A tag real e o hardware ainda precisam de validação.
+- **Correção após teste em aparelho:** o primeiro APK foi reprovado por travamento na inicialização e retirado da publicação. A interface web/welcome descrita neste documento é uma implementação separada e não deve substituir a UI do SMARTED original. O pipeline corretivo atua apenas nos módulos de anúncios já existentes no APK; skins e startup ficam intactos. Ver [BUILD_APK.md](BUILD_APK.md).
 
 ## Transporte por plataforma
 
