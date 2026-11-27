@@ -1,108 +1,154 @@
-# VAST 1508249 — diagnóstico restrito a uma função
+# VAST 1508249 — correção de seleção, somente `ads_vast.exibir()`
 
-## Entrega e limites
+## APK liberado para teste físico
 
-**APK novo para teste físico:** [SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-vast-only-46078577850-1/SMARTEDTV-universal.apk).
+**[Baixar SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-vast-only-46079704676-1/SMARTEDTV-universal.apk)**
 
-- Build/laboratório: [46078577850](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46078577850), concluído com sucesso; fonte `12a161928e32b195c60dd9dd88faf0c24838adf7`.
+- Build: [46079704676 — concluído com sucesso](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46079704676).
+- Fonte do APK: `9329fbabbcdf6c690285623ea7733c4f9303b5d8`.
+- SHA-256: **`919e97db0929ab90f189c9503722f4a5139feda573a28c96d79973a8e70e6087`**.
+- Tamanho: **263.230.975 bytes**, ARM32+ARM64. Novo payload/hash; não é APK antigo renomeado.
+- Tag efetiva fixa: **`https://vast.yomeno.xyz/vast?spot_id=1508249`**, sem fallback automático antigo.
 - Base exata: APK 46074593488, SHA-256 `2b64c443f42902cb07031db1106137a59d852ae39bb8fbd8b9379b8a6d2682bc`.
-- **Novo SHA-256:** `be858543111b725d741ff2ec2d1238a40ea3256c28e0c91ff87856db2d4e5bd7` (digest do asset publicado, conferência também no pipeline).
-- Tamanho: 263.230.975 bytes. Mesmo tamanho não significa mesmo arquivo: o hash é diferente e o payload foi auditado.
-- Única entrada de código diferente da base: `assets/addons/service.smarted.bootstrap/ads_vast.py`; **8.053 entradas não-assinatura preservadas**.
-- Dentro desse arquivo, **somente `exibir()`**: todos os bytes anteriores/posteriores e a AST das demais definições/constantes foram comparados e preservados.
-- ARM32+ARM64, manifesto/recursos/skin/bootstrap, assinatura de teste, welcome, VIP/pagamento, AdMob, player/retomada, Home/navegação e monitor preservados. `ads_tracking.py` não foi modificado. Zipalign e apksigner passaram; certificado SHA-256 comparado com a base.
+- Única entrada de código alterada contra essa base: `assets/addons/service.smarted.bootstrap/ads_vast.py`; **8.053 outras entradas não-assinatura preservadas**.
+- Dentro de `ads_vast.py`, **apenas `exibir()`**. Comparação de bytes anteriores/posteriores e AST das demais definições/constantes passou.
+- Apksigner/zipalign passaram; certificado conferido contra o APK-base. Assinatura de teste preservada, não prova de chave oficial. Fazer backup antes de qualquer desinstalação.
 
-**Não foi demonstrado que a regressão das aberturas no aparelho físico está resolvida.** Não foi reproduzido bloqueio persistente dentro da função autorizada. Esta entrega troca a tag e melhora a separação diagnóstica, sem inventar um defeito nem modificar gates externos proibidos. Browser, regressões com doubles e build não comprovam anúncio no Kodi/Android ou impressão em painel.
+**Limite da conclusão:** descartes específicos foram reproduzidos e corrigidos. A matriz passou, mas isso não é garantia universal de todas as variantes VAST, de decodificação de todo MediaFile nem de reprodução física Android. O APK está liberado justamente para esse teste. Não se atribui todo o problema relatado a inventário vazio.
 
-O relatório anterior `VAST_REGRESSION_RELEASE.md` descreve a entrega histórica 46074593488/tag 1508180, não esta entrega. As alterações históricas já presentes naquela base não foram reaplicadas/modificadas agora.
+O candidato 46078577850 era intermediário, com diagnóstico e tag apenas; **o APK indicado agora é 46079704676**, que contém a correção de seleção solicitada na etapa adicional. `VAST_REGRESSION_RELEASE.md` descreve uma entrega histórica, não esta.
 
-## Ordem da investigação
+## Defeitos reproduzidos antes do novo patch
 
-1. Commit `a977e9b`: laboratório isolado criado **antes** de qualquer novo patch de produção.
-2. Baseline [46078100066](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46078100066): executou o módulo da base, chamando diretamente `exibir(tag=nova_tag)`. As três consultas reais retornaram `<VAST/>`; isso não significa que a configuração antiga já utilizava a nova tag.
-3. O download do MP4 público do laboratório falhou por HTTPError. A seleção de mídia já estava comprovada, **a reprodução de fixture ainda não**. Não foi tratado como anúncio reproduzido.
-4. Build 46078577850: antes do patch, o mesmo módulo-base foi retestado com fixtures e vídeo local determinístico; todos os casos válidos avançaram no Chromium. Só depois disso foi aplicado o patch de `exibir()` e gerado o APK novo.
-5. O APK assinado novo foi extraído e usado no laboratório depois da alteração: três chamadas reais + fixtures. As três chamadas reais novamente receberam XML vazio; todas as fixtures válidas reproduziram o padrão local, inclusive após vazio/erro/timeout.
-6. Coleta complementar, sem reconstruir o APK e sem novas consultas reais: regressões dos módulos completos do mesmo APK e fixtures com captura dos logs nativos. O vídeo da fixture é um **padrão de teste**, não um anúncio da Clickadilla.
+Laboratório isolado criado no commit `a977e9b`, antes de alterações de produção desta missão. A expansão da matriz foi executada em [46079223776](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46079223776) **antes da correção do seletor**; o build final repetiu a matriz antes/depois sobre a base exata e o APK novo.
 
-## Alteração de produção efetiva
+### 1. Encerramento no primeiro ramo, ignorando alternativas válidas
 
-Em `exibir()` apenas:
-
-- Define a raiz efetiva como `https://vast.yomeno.xyz/vast?spot_id=1508249` para toda chamada, independentemente do argumento legado. Não há fallback automático para 1508180 nem para MP4.
-- Gera `vast_attempt_id` por invocação e acrescenta aos logs locais emitidos pela função e ao recibo. UUID não é enviado na tag/pixels; não é parâmetro de frequência.
-- Emite `vast-entry-called` com a raiz pública fixa e `vast-selection-diagnostic` com `ad_present` e motivo `empty-vast` ou `ad-without-supported-media`.
-- Não altera seletor, transporte, headers, limites/timeout, mapeamento, reprodução, tracking, Error code/dispatch nem retorno fail-open existente.
-
-Por restrição literal de função única, constantes históricas e `tag_configurada()` continuam byte-idênticas à base. A tag antiga pode portanto existir como texto no pacote, **mas não é raiz efetiva nem fallback de `exibir()`**. O teste passa argumentos antigos e vazios e exige exclusivamente a raiz nova.
-
-## Onde acontece o retorno sem anúncio — e onde NÃO foi provado defeito
-
-Cadeia em `ads_vast.exibir()`:
+Fluxo anterior:
 
 ```
-baixar(current) -> data
-  data is None                 -> falha-rede-vast / 301
-  not data or not data.strip() -> no-fill / 303
-  XML inválido                 -> xml-invalido / 100
-  escolher_anuncio(data, altura_tela)
-    mídia encontrada           -> reproduzir(ad, ...)
-    não encontrada             -> tag_do_wrapper(data) or tag_do_vmap(data)
-      sem target               -> no-fill-ou-sem-midia / 303
-      com target               -> próximo hop (visited/deadline locais)
+escolher_anuncio(data) não seleciona mídia
+  -> tag_do_wrapper(data) or tag_do_vmap(data) retorna apenas o primeiro destino
+  -> substitui data pelo resultado desse destino
+  -> vazio / XML inválido / ciclo: retorna imediatamente
 ```
 
-**Condição exata que confundia os diagnósticos:** `if not target` depois de `escolher_anuncio()` não selecionar mídia. O recibo genérico incluía tanto VAST sem `Ad` quanto `Ad` sem mídia compatível. O log novo diferencia esses casos; a seleção e o recibo genérico foram mantidos por compatibilidade. Não há prova de que uma mídia compatível real esteja sendo descartada aí. Remover esse retorno de XML vazio não criaria MediaFile e seria uma falsa correção.
+A lista original de `Ad`/Wrappers/fontes VMAP era perdida. Uma resposta podia conter outro ramo com criativo válido e, mesmo assim, ser encerrada como sem anúncio.
 
-`visited`, prazo de 8s e listas Wrapper são recriados em cada invocação. No teste de mesma instância de módulo, a chamada 009, após 006 vazio, 007 rede e 008 timeout, fez seu próprio request e selecionou mídia. O mesmo criativo de fixture foi aceito consecutivamente: não há deduplicação/cache de criativo nessa entrada.
+**Evidência 020:** raiz com dois Wrappers; primeiro destino `<VAST/>`, segundo destino com MP4 válido. Antes: dois GETs e retorno sem mídia. Depois: três GETs (raiz, primeiro destino, segundo destino), `creative-selected`, mídia encaminhada ao adaptador do laboratório e avanço do vídeo de teste. Não houve nova consulta à raiz para tentar obter fill.
 
-### Gates externos identificados, NÃO alterados
+Os casos 021/022 reproduzem o mesmo problema após XML inválido/ciclo. O caso 023 demonstra alternativa de pré-roll VMAP após a primeira responder vazia.
 
-Leitura do código existente em `android-build/stabilize-9436/`:
+### 2. Mídia e duração/ID de criativos diferentes
 
-- `MonitorPreRoll._talvez_mostrar()`: `_em_vast`, vídeo/caminho ainda indisponível e VIP podem impedir chegar à função; `Opening.claim()` pode retornar `None`.
-- `Opening.claim()`: recusa enquanto `in_ad`; conserva a mesma identidade para alias/canal e recusa se `attempted` já é verdadeiro. Esse estado evita callbacks/seek/reconexão duplicados; não é prova de cache de resposta VAST.
-- `observe()`: cerca de Stop e reconhecimento de nova borda/Home influem no envio ao gate.
-- `_ciclo_vast()`: encerra geração e distingue conteúdo novo de alias após tentativa sem mídia.
+`escolher_anuncio()` usava o primeiro `Linear` para duração/eventos e `_media_escolhido(inline)` procurava mídia no `InLine` inteiro. Com dois criativos, podia selecionar o MediaFile do segundo e atribuir metadados do primeiro.
 
-Não houve sequência nativa de logs do aparelho que comprove qual desses gates causou o relato. Eles estão **fora da autorização atual**, assim como qualquer alteração no tracking. Nenhum foi relaxado ou removido nesta entrega. Os logs existentes `attempt-blocked`/`opening-claimed`, combinados com o novo `vast-entry-called`, separam uma abertura que nem chegou a VAST de uma chamada VAST com resposta vazia.
+**Evidência 024:** antes, MP4 do criativo `chosen` com duração **29s** e ID **`wrong`**; depois, a mesma mídia com duração **5s**, ID **`chosen`** e eventos do Linear correto. Player não foi modificado para compensar metadados errados.
 
-## Matriz de evidências
+### 3. XML/destinos válidos não reconhecidos
 
-Último laboratório com rede: 2026-11-27, aproximadamente 22:47 UTC, runner GitHub; não é IP do celular.
+A matriz também reproduziu falhas com `VASTAdTagURL` legado, URL relativa de Wrapper, namespace declarado com aspas simples, MediaFile com URL iniciada por `//` e VAST embutido como texto CDATA no VMAP.
 
-| Caso | Fonte | Resultado observado |
+A normalização/travessia dessas formas foi acrescentada **dentro de `exibir()`**, sem modificar `sem_namespace`, `tag_do_wrapper`, `tag_do_vmap`, `escolher_anuncio` ou `_media_escolhido` compartilhados.
+
+### 4. VMAP de mid-roll não é pré-roll
+
+A base podia selecionar o anúncio embutido de um intervalo `00:10:00` durante uma abertura. Esta entrada de pré-roll agora considera os intervalos iniciais, sem antecipar mid/post-roll. Esse caso retorna `vmap-sem-preroll`, não é tratado como inventário global vazio. Não foi criado um agendador de mid-roll.
+
+## Correção efetiva — uma função em produção
+
+Fonte revisável: [`android-build/vast-function-only/ads_vast.py`](../android-build/vast-function-only/ads_vast.py). O patcher aplica somente essa função sobre o APK-base e rejeita qualquer byte diferente fora dela.
+
+- Uma raiz nova por invocação, sempre tag 1508249. `vast_attempt_id` novo nos logs e recibo; UUID não é enviado como parâmetro da tag ou pixel.
+- Percorre alternativas **declaradas na resposta** em ordem; falha de um ramo não encerra os ramos irmãos ainda possíveis.
+- Trata VAST 3.0, namespaces/CDATA, Wrapper simples/encadeado, VAST embutido e URI externa de pré-roll VMAP, `VASTAdTagURI`/`VASTAdTagURL`, URLs relativas/protocolo relativo.
+- Para cada `Linear`, chama o **seletor nativo inalterado** com somente aquele criativo. MediaFile, duração, ID, skip e eventos ficam associados ao mesmo Linear.
+- Herança de Impression/Error/Tracking é montada pelo caminho selecionado; ramo descartado não doa impressão ao criativo escolhido. Os testes conferem isso. Funções de tracking, macros, UA e envio não foram modificados; o laboratório não envia pixels.
+- A política nativa MP4/WebM/HLS permanece; nenhum filtro novo de codec, resolução, bitrate ou duplicidade de criativo foi adicionado. Um criativo repetido continua elegível se retornado novamente.
+- XML realmente vazio termina sem interromper o conteúdo. Mídia não aceita recebe `sem-midia-compativel`; não se promete MediaFile onde o XML não contém um.
+- Mantidos orçamento total **8s**, limite nativo de profundidade Wrapper, proteção de ciclo e fail-open. Timeout/limite/ciclo não são confundidos com inventário vazio. Não foram adicionadas tentativas artificiais à raiz nem delays.
+
+Por escopo literal, constantes históricas e `tag_configurada()` permanecem byte-idênticas à base. O texto de uma tag antiga pode ainda existir no APK, mas **não é raiz efetiva nem fallback de `exibir()`**; teste com argumento antigo/vazio exige exclusivamente a raiz nova.
+
+## Matriz visual — resultado final
+
+**27 cenários dirigidos; 11 divergências antes, zero depois.** São nove falhas de recuperação/normalização, um pareamento incorreto e uma seleção indevida de mid-roll. Não são 11 anúncios reais do provedor.
+
+| IDs | Cenário | Depois |
 |---|---|---|
-| 001 primeira chamada | Real, tag nova | HTTP 200, 7 bytes, `<VAST/>`, sem Ad/MediaFile, sem player |
-| 002 segunda chamada | Real, tag nova | HTTP 200, 7 bytes, `<VAST/>`, request próprio |
-| 003 terceira chamada | Real, tag nova | HTTP 200, 7 bytes, `<VAST/>`, request próprio |
-| 004 outro conteúdo A | Fixture válida | Seletor nativo aceitou video/mp4; padrão local avançou no Chromium |
-| 005 outro conteúdo B | Fixture válida | Request/seleção próprios; mesmo padrão local aceito novamente |
-| 006 VAST vazio | Fixture | Falha aberta, sem mídia/player/impressão |
-| 007 conexão falha | Fixture URLError | Transporte registra classe; recibo falha-rede-vast |
-| 008 timeout | Fixture TimeoutError | Transporte marca timeout; recibo genérico falha-rede-vast preservado |
-| 009 chamada após 006–008 | Fixture válida, mesmo processo | Novo request, seleção e avanço no browser (0,2118s, readyState 4, 640×360, sem erro) |
+| 010–013 | VAST 3.0, namespace, MediaFile válido após inválido, outro Ad válido | Mídia selecionada |
+| 014–016 | Wrapper, cadeia de Wrappers, VASTAdTagURL legado | Mídia selecionada |
+| 017–019 | VMAP URI externa, VASTAdData embutido, VMAP → Wrapper → VAST | Mídia selecionada |
+| 020–022 | Ramo irmão após vazio, XML inválido ou ciclo | Segundo ramo selecionado |
+| 023 | Outra fonte de pré-roll VMAP após vazio | Mídia selecionada |
+| 024 | Duração/ID do mesmo criativo do MediaFile | 5s / `chosen`, sem metadados do primeiro |
+| 025–028 | URL relativa, namespace com aspas simples, `//` no MediaFile, MediaFile vazio antes de válido | Mídia selecionada |
+| 029–031 | WebM/HLS e ausência de novo filtro de codec/resolução | Política de seleção nativa mantida |
+| 032 | VAST em CDATA no VMAP | Mídia selecionada |
+| 033 | Intervalo somente de mid-roll | Não antecipado como pré-roll |
+| 034–036 | VAST vazio, NonLinear, formato não aceito | Não inventa anúncio |
 
-HTTP200 por si só não foi considerado anúncio. O SHA-256 bruto de cada resposta real vazia é `093777a16300e4bfada4768dee58e25a3d45de477682d97ea21d728210853801`. No baseline anterior houve outras três respostas iguais. Isso comprova somente essas respostas nesse ambiente e não falta de inventário global, no celular ou no histórico do usuário.
+As fixtures válidas usam um **padrão de vídeo local MP4**, identificado como fixture. A seleção de uma URL WebM/HLS na matriz comprova encaminhamento/política do seletor, **não decodificação real desse formato**; o padrão local do browser não substitui esse teste. O navegador registra avanço inicial, não conclusão Kodi.
 
-## Testes e honestidade de escopo
+### Chamadas independentes / vazio anterior
 
-- `npm run verify`: passou localmente e no build. Casos dependentes de APK completo são explicitamente skipped no comando local, não contados como executados.
-- **8 testes novos**, também contra a função extraída da base exata no runner: bytes/AST fora da função; primeira/segunda/terceira chamadas com IDs únicos; vazio/rede/timeout/XML inválido seguidos de válido; argumento antigo/vazio sem fallback; vazio vs mídia incompatível; criativo repetido; ciclo Wrapper sem envenenar a chamada seguinte; herança Wrapper/pixels e argumentos do player preservados.
-- Laboratório antes e depois passou com fixtures; player nativo foi substituído SOMENTE no laboratório por captura do anúncio selecionado. Browser recebe padrão local para fixtures, nunca mídia inventada enviada como anúncio real. Pixels suprimidos em todos os cenários de laboratório.
-- Completar uma reprodução Kodi, ouvir áudio, usar controles e retornar ao conteúdo original em Android físico ainda está **pendente**. A etapa Android da entrega histórica ficou bloqueada no welcome; ela não valida este APK novo e não foi citada como aprovação.
-- Testes de conteúdos diferentes no laboratório chamam diretamente a função com IDs distintos; **não exercitam navegação/catálogo nem provam que o monitor nativo fez três claims**.
+| Caso final | Fonte | Resultado |
+|---|---|---|
+| 001 — primeira chamada | Rede real | HTTP 200, 7 bytes, `<VAST/>`, sem Ad/MediaFile |
+| 002 — segunda chamada | Rede real | Novo GET/ID; HTTP 200, 7 bytes, `<VAST/>` |
+| 003 — terceira chamada | Rede real | Novo GET/ID; HTTP 200, 7 bytes, `<VAST/>` |
+| 004/005 — conteúdos A/B | Fixtures válidas | GETs e seleções próprios; vídeo de teste avançou |
+| 006 — vazio | Fixture | Fail-open sem mídia/player/impressão |
+| 007/008 — conexão/timeout | Fixtures | Erros de transporte registrados; sem cache de falha |
+| 009 — após 006–008, mesmo processo | Fixture válida | Novo GET, seleção e avanço de 0,2062s no browser |
 
-## Evidências para outro agente, sem reexecução
+As três respostas reais finais foram obtidas em **2026-11-27, aproximadamente 22:59 UTC**, no runner GitHub, não no IP do celular. SHA-256 bruto de cada XML vazio: `093777a16300e4bfada4768dee58e25a3d45de477682d97ea21d728210853801`.
 
-- Pasta versionada [evidence/vast-function-1508249](evidence/vast-function-1508249): `before-live.json`, `before-fixtures.json`, `after.json`, `preservation.json` e previews de screenshots reais. JSON contém todas as respostas XML sanitizadas, requests, URLs efetivas, HTTP/headers selecionados, horários UTC, hash bruto, eventos, MediaFile, recibos e resultado browser.
-- No [run 46078577850](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46078577850), baixar `vast-visual-lab-evidence`: pastas `baseline/evidence` e `after/evidence`, tentativas sequenciais 001–009. Cada uma tem quatro PNGs reais de request/HTTP-XML/seleção/resultado, JSON e JSONL; `index.html` permite inspeção offline. Retenção do artefato: 30 dias.
-- `SMARTED-vast-single-function` contém o APK, auditorias, `exibir.diff`, plano, assinaturas e informações de instalação.
-- [Arquivo durável de evidências](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-vast-only-46078577850-1/VAST-1508249-evidence.zip): cópia dos artefatos inicial e antes/depois, mais fixtures com logs internos; sem novo APK ou reexecução de rede. Publicação complementar separada da compilação.
-- Query strings sensíveis foram ocultadas; hashes brutos conservados. Não há reenvio de impression/start/complete nem aprovação atribuída ao painel.
+Isso comprova respostas vazias **nessas consultas**, não ausência global de inventário nem causa única da regressão do aparelho. HTTP200 não foi contado como anúncio reproduzido. Baseline real anterior 46078100066 e rodada intermediária 46078577850 também estão preservados como históricos.
 
-## Teste físico recomendado
+**Confirmação com limite explícito:** cada invocação da função realiza nova consulta; não existe reaproveitamento de XML vazio entre invocações. Os testes de ciclo exercitam elegibilidade com doubles, mas três aberturas reais do catálogo/monitor no telefone ainda precisam de validação física. Chamar diretamente `exibir()` no laboratório não prova que um gate externo autorizou a abertura.
 
-Instalar o APK novo e abrir três conteúdos elegíveis, uma vez cada. Guardar apenas linhas `[SmartAdsOpening]` relevantes do `kodi.log` (o restante pode conter dados de provedores). Para cada abertura: `opening-claimed` → `vast-entry-called`/ID → `vast-request` → resposta → seleção ou motivo. Se houver anúncio real: `ad-start-observed` → eventos de tracking → saída → conteúdo liberado. Se não houver `vast-entry-called`, investigar gate anterior **sem culpar inventário**; se XML for vazio, não repetir automaticamente a mesma abertura até obter fill. Pausa/seek/reconexão/callback duplicado não são novas oportunidades.
+## Gates externos — evidência separada, nenhuma alteração
 
-Não sobrescrito o Dropbox oficial. Nenhum merge. A integração AdMob permanece como estava, sem reativação.
+Ver [VAST_EXTERNAL_GATES_1508249.md](VAST_EXTERNAL_GATES_1508249.md). Ele identifica condições de `_talvez_mostrar`, `Opening.claim` e observação nativa que podem impedir a chamada antes de VAST. Não houve evidência física suficiente para atribuir a regressão atual a uma delas. Foram apenas lidas; não foram relaxadas/modificadas.
+
+Player, tracking, AdMob, VIP, monitor, Home, retomada, navegação, welcome e outras funções de anúncios permanecem exatamente como na base desta missão. Nenhum merge ou substituição do Dropbox oficial.
+
+## Testes executados
+
+- `npm run verify`: passou localmente e no runner. Casos locais que exigem APK completo são explicitamente skipped, não foram contados como executados.
+- **19 testes de função**, incluindo matriz de 27 cenários, contra a função candidata e os helpers do APK exato no runner. Cobrem IDs únicos, ausência de fallback/cache, repetição de criativo, herança do ramo selecionado, limite de profundidade e prazo que não reinicia entre irmãos.
+- **33 regressões de ciclo**, incluindo importação/casos de módulos completos extraídos do **novo APK**. São doubles das APIs Kodi; não se anunciam como 33 reproduções Android. Incluem completion único, tracking mantido, pause/seek/reconexão sem nova oportunidade, Stop/Home/nova seleção e VIP.
+- Laboratório visual antes/depois: **36 tentativas por rodada**; três chamadas reais somente na rodada final, demais casos claramente identificados como fixtures. Baseline imediatamente anterior ao patch usou fixtures, sem repetir rede real.
+- Auditoria ZIP/AST/bytes, assinatura contra a base, ARM32+ARM64 e zipalign: passaram.
+- Reprodução física Android, áudio/controles/retorno com anúncio real e contagem no painel: **pendentes**. O teste Android histórico bloqueado no welcome não valida este APK e não foi usado como aprovação.
+
+## Prints e logs, leitura independente sem reexecução
+
+**[Baixar pacote completo de evidências — 202,9 MB](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-vast-only-46079704676-1/VAST-1508249-evidence.zip)**
+
+- SHA-256 do ZIP: `be23dc3a36081d6a1f80ca502e7fae80b18c68295370d3ab542adcb14676b49e`.
+- Publicado como asset da prerelease, não depende da retenção de 30 dias do artefato Actions.
+- `baseline/evidence/index.html` e `after/evidence/index.html`: abrir offline; pastas 001–036 com **quatro screenshots PNG reais por etapa**, JSON/JSONL e XML completo sanitizado. Os PNGs de página inteira são maiores e mais legíveis que os previews abaixo.
+- `previous-live` preserva o laboratório inicial anterior às alterações; `selection-before` preserva a matriz que reproduziu os defeitos antes da correção.
+- Logs incluem `vast-entry-called`, request/resposta, rejeição de ramo, seleção, recibo, MediaFile e resultado browser, com horários e IDs. URLs de query sensíveis são ocultadas; hash bruto é mantido.
+- Pasta `audit`: diff exato da função, relatórios de preservação, certificado/badging e instruções. [Diff também disponível separadamente](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-vast-only-46079704676-1/exibir.diff).
+- Pasta versionada [evidence/vast-function-1508249](evidence/vast-function-1508249): `selection-final-before.json`, `selection-final-after.json`, auditorias e previews. Permite comparar os 27 cenários sem baixar todos os PNGs ou executar código.
+
+### Print real: seleção após primeiro ramo vazio (fixture, não anúncio real)
+
+![Fixture 020 depois da correção](evidence/vast-function-1508249/020-final-preview.jpg)
+
+### Print real: resposta vazia da chamada live
+
+![Chamada live 001](evidence/vast-function-1508249/001-final-preview.jpg)
+
+## Próximo teste: aparelho físico
+
+Instalar o APK **46079704676** e abrir três conteúdos elegíveis, uma vez cada. Para cada abertura, procurar no `kodi.log` somente as linhas `[SmartAdsOpening]` relevantes:
+
+`opening-claimed` → `vast-entry-called`/ID → `vast-request` → resposta → `creative-selected` ou motivo final.
+
+Com anúncio real: observar início/avanço, conclusão única, tracking e retorno ao conteúdo. Sem `vast-entry-called`, a interrupção ocorreu antes da função; preservar o motivo de `attempt-blocked` e não culpar inventário. Com XML vazio, liberar conteúdo; não solicitar automaticamente a mesma raiz até obter fill. Pausa, seek, reconexão e callbacks duplicados não são novas aberturas.
+
+Não enviar o log inteiro sem revisão: outras linhas podem conter URLs/dados de provedores. AdMob permanece adiado, sem reativação nesta entrega.

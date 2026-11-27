@@ -1,0 +1,61 @@
+{
+  "build_run": 46079704676,
+  "job": 140775593290,
+  "source_commit": "9329fbabbcdf6c690285623ea7733c4f9303b5d8",
+  "apk_sha256": "919e97db0929ab90f189c9503722f4a5139feda573a28c96d79973a8e70e6087",
+  "apk_bytes": 263230975,
+  "tag": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+  "scope": "Only ads_vast.exibir; bytes outside function and all other entries unchanged except signing metadata",
+  "new_entry_test_methods": 19,
+  "selection_matrix_cases": 27,
+  "cycle_regression_test_methods": 33,
+  "selection_divergences_before": [
+    "wrapper-legacy-url",
+    "sibling-wrapper-after-empty",
+    "sibling-wrapper-after-malformed",
+    "sibling-wrapper-after-cycle",
+    "vmap-next-preroll-after-empty",
+    "linear-pairing",
+    "relative-wrapper",
+    "namespace-single-quote",
+    "protocol-relative-media",
+    "vmap-embedded-cdata",
+    "vmap-midroll-not-preroll"
+  ],
+  "selection_divergences_after": [],
+  "first_second_third": [
+    {
+      "id": "001",
+      "attempt_id": "deb1d3f0601846b6b3848fe4d7cec707",
+      "requests": 1,
+      "http_status": 200,
+      "xml_bytes": 7
+    },
+    {
+      "id": "002",
+      "attempt_id": "5e9cb29f60914343962e8e8cff672b5c",
+      "requests": 1,
+      "http_status": 200,
+      "xml_bytes": 7
+    },
+    {
+      "id": "003",
+      "attempt_id": "5c07a73e583146fbbd673a513a1e4d26",
+      "requests": 1,
+      "http_status": 200,
+      "xml_bytes": 7
+    }
+  ],
+  "post_empty_error_timeout_case": {
+    "exibido": false,
+    "motivo": "lab-selected-native-player-not-invoked",
+    "vast_attempt_id": "b62802c21c56457991d51c8a7d92eed0",
+    "tipo_midia": "video/mp4",
+    "duracao_anuncio": 5.0
+  },
+  "native_android_playback_validated": false,
+  "physical_phone_validated": false,
+  "dashboard_impression_validated": false,
+  "live_empty_vast_is_not_global_inventory_verdict": true,
+  "external_gates_changed": false
+}
