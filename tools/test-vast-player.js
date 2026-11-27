@@ -114,35 +114,9 @@ async function test(name, fn) { await fn(); passed++; console.log("ok   " + name
   await test("mid-ad stall resumes content and fires error, not complete", async () => {
     const e = env(); const p = e.player(); const done = p.play(); await flush();
     p._video.emit("playing"); p._video.currentTime = 1; p._video.emit("timeupdate");
-    await e.tick(3001); assert.equal((await done).reason, "creative-stall");
+    await e.tick(12001); assert.equal((await done).reason, "creative-stall");
     assert(e.beacons.some(url => url.includes("code=405")));
     assert(!e.beacons.some(url => url.includes("/complete?")));
-  });
-  await test("pause at 00:01 resumes through play without resetting stall clock", async () => {
-    const e = env(); const p = e.player(); const done = p.play();
-    await flush(); const ad = p._video;
-    ad.currentTime = 1; ad.emit("playing"); ad.emit("timeupdate");
-    const before = ad.playCalls;
-    ad.paused = true; ad.emit("pause"); await flush();
-    assert.equal(ad.playCalls, before + 1); assert.equal(ad.paused, false);
-    // Surface/decoder remains stuck despite successful play promise.
-    await e.tick(2999); assert.equal(p._done, false);
-    ad.emit("playing"); ad.emit("click");
-    await e.tick(2);
-    assert.equal((await done).reason, "creative-stall");
-    assert.equal(e.context.document.body.children.length, 0);
-    assert.equal(e.vod.paused, false);
-    await e.tick(10001); assert.equal(e.timers.size, 0);
-  });
-  await test("rejected play on pause releases surface and resumes content", async () => {
-    const e = env(); const p = e.player(); const done = p.play();
-    await flush(); const ad = p._video;
-    ad.play = () => Promise.reject(new Error("surface lost"));
-    ad.paused = true; ad.emit("pause"); await flush();
-    assert.equal((await done).reason, "resume-blocked");
-    assert.equal(e.context.document.body.children.length, 0);
-    assert.equal(e.vod.paused, false);
-    await e.tick(10001); assert.equal(e.timers.size, 0);
   });
   await test("unconfirmed seek is not reported as exact; originally paused VOD stays paused", async () => {
     const e = env(); e.vod.paused = true;

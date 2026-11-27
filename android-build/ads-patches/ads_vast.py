@@ -220,7 +220,6 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
     progress_at = start
     last_position = 0.0
     no_frame_at = None
-    paused_at, resume_sent = None, False
 
     def error():
         urls = list(anuncio.get('errors') or []) + list(events.get('error') or [])
@@ -232,16 +231,13 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
             needs_restore = _arquivo_atual() != anterior or not _player_tocando_video()
             # Do not enter the original wait helper: its independent startup
             # timeout could outlive the entire pre-roll watchdog budget.
-            startup_deadline = min(deadline, start + 3.0)
+            startup_deadline = min(deadline, _agora() + 8.0)
             while _agora() < startup_deadline:
                 if _player_tocando_video() and _arquivo_atual() not in ('', anterior):
                     break
                 dormir(.5)
             if not (_player_tocando_video() and _arquivo_atual() not in ('', anterior)):
                 reason = 'nao-iniciou'
-                # Async play may have replaced the old surface after tocar
-                # returned. Re-evaluate instead of retaining the initial flag.
-                needs_restore = _arquivo_atual() in ('', anuncio['url']) or not _player_tocando_video()
             else:
                 owned_file[0] = _arquivo_atual()
                 # The old VOD's clock is not proof that the ad has started.
@@ -249,7 +245,6 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                     reason = 'anuncio-nao-assumiu-player'
                 else:
                     needs_restore = True
-                    _garantir_tela_cheia()  # once: do not steal control focus every tick
                     observer.active = True
                     reason = 'interrompido'
                     progress_at = _agora()
@@ -273,27 +268,6 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                                       'erro-player' if observer.failed else 'interrompido')
                             break
                         now = _agora()
-                        # A paused Kodi video still reports isPlayingVideo().
-                        # Resume idempotently (not PlayMedia/reopen), once per
-                        # pause episode. Neither clicks nor callbacks reset
-                        # the clock-based three-second watchdog.
-                        paused = bool(xbmc.getCondVisibility('Player.Paused'))
-                        if paused:
-                            paused_at = now if paused_at is None else paused_at
-                            if not resume_sent and now - paused_at >= .5:
-                                resume_sent = True
-                                try:
-                                    import json as _json
-                                    xbmc.executeJSONRPC(_json.dumps({'jsonrpc': '2.0', 'id': 1,
-                                        'method': 'Player.PlayPause',
-                                        'params': {'playerid': 1, 'play': True}}))
-                                except Exception:
-                                    # Older Kodi bindings: toggle only when
-                                    # the owned creative is demonstrably paused.
-                                    if xbmc.getCondVisibility('Player.Paused'):
-                                        xbmc.Player().pause()
-                        else:
-                            paused_at, resume_sent = None, False
                         no_frame = _audio_sem_quadro_video()
                         if no_frame:
                             no_frame_at = now if no_frame_at is None else no_frame_at
@@ -316,6 +290,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                             reason = 'travamento'
                             break
                         if started:
+                            _garantir_tela_cheia()
                             duration = duration or anuncio.get('duracao') or 0
                             if duration > 0:
                                 for name, threshold in (('firstQuartile', .25), ('midpoint', .5), ('thirdQuartile', .75)):
@@ -336,21 +311,13 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
         # the untouched VOD (refusal/no-fill) or a newer user-selected video.
         if needs_restore:
             current = _arquivo_atual()
-            if current and current != anterior and current in (owned_file[0], anuncio['url']):
+            if current and current != anterior and (not owned_file[0] or current == owned_file[0]):
                 try:
                     xbmc.Player().stop()
                 except Exception:
                     pass
-            if not current or current in (owned_file[0], anterior):
-                try:
-                    xbmc.executebuiltin('Dialog.Close(videoosd,true)')
-                    xbmc.executebuiltin('Dialog.Close(seekbar,true)')
-                except Exception:
-                    pass
     eligible = started and reason in ('concluido', 'pulado')
     if reason == 'concluido' and started:
-        # A real end callback authorizes complete, not fabricated quartiles
-        # that were never observed on the media clock.
         _disparar_eventos(events.get('complete') or [])
         fired.add('complete')
     elif reason == 'pulado' and started:

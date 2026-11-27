@@ -1,20 +1,29 @@
 # Retomada resolvida e auditoria de pixels VAST
 
-## Correção de pausa e primeiras aberturas (revisão seguinte)
+## Base 3 s / 5 s restaurada
 
-A inspeção encontrou três gates que podiam impedir a consulta inicial: `_talvez_mostrar` ainda consultava `ad_return.e_volta` legado, a sessão era comparada sem comparar conteúdo, e `exibir_e_devolver` retornava antes da busca da tag quando o snapshot ainda não estava pronto. Esses casos agora têm regressões determinísticas. Sem logs do aparelho não é possível afirmar qual deles explica cada uma das duas falhas reportadas, nem distinguir isso de no-fill real.
+A revisão de referência é `b86570a`, cujo `reproduzir` é idêntico ao de `91a21e6`: primeira implementação no histórico com 3 s sem avanço e margem de duração + 5 s. A escolha é verificável no histórico; estabilidade/ausência de tela preta em todos os aparelhos não pode ser certificada pelo sandbox.
 
-- `onPlayBackStarted` tenta o pre-roll assim que o vídeo está pronto, sem depender só de `onAVStarted`; callbacks duplicados continuam consumindo uma única oportunidade.
-- O caminho VAST não consulta `Retomada.e_volta` legado; apenas o retorno conhecido da sessão atual é suprimido. Conteúdos diferentes não são bloqueados pelo contador inicial nem pelo intervalo antigo.
-- A consulta da tag não depende do snapshot inicial. Antes de substituir o vídeo, um snapshot válido é obrigatório e pode ser recapturado após o download da tag. Se não for possível retomar com segurança, o conteúdo não é interrompido; consultar não garante disponibilidade/exibição de anúncio.
-- `_tocar` original do APK é preservado sem substituição: nenhum player ou ListItem de anúncio novo é injetado. O monitor externo de progresso/pausa/tracking continua separado da entrada original. O watchdog verifica startup sem progresso com orçamento de 3 s após o despacho original; chamadas nativas síncronas continuam dependentes do runtime Kodi.
-- Pausa detectada no anúncio: tenta `Player.PlayPause(play=true)` uma vez por episódio de pausa, sem reabrir a URL; fallback para toggle apenas se a API estiver indisponível e ainda estiver pausado. O watchdog não reinicia com clique, callback, foco ou tentativa de play. Após 3 s sem avanço, stop e retomada direta.
-- Recuperação de fullscreen no anúncio apenas na entrada, não a cada 500 ms: não disputar continuamente o foco dos controles. Na saída, stop da peça ainda pertencente à sessão e fechamento dos OSDs nativos `videoosd`/`seekbar`; a retomada restaura fullscreen do conteúdo. Não fecha janelas arbitrárias de uma nova seleção do usuário.
-- Na referência web separada, `pause` tenta `video.play()`; rejeição encerra e limpa o overlay. O watchdog é de 3 s e não é renovado por interação. Essa referência web **não substitui o player/UI do APK**.
+O ciclo de controle foi restaurado a essa base, não reimplementado:
 
-Por escolha do usuário, não substituir o player antigo para obter impressões. Impression/start exigem progresso real da mídia, quartis exigem limiares observados e complete exige término real; o término não fabrica quartis ausentes.
+- `_tocar` original do APK intacto, sem outro player, ListItem/atividade/overlay de anúncio novo.
+- Janela original de inicialização de até **8 s**, limitada pelo prazo absoluto. Removido o corte posterior de startup em 3 s: **3 s não é a duração máxima do anúncio**.
+- Amostragem a cada 500 ms; após o player assumir o anúncio, 3 s sem avanço ou sem quadro abortam. Um criativo saudável de 25 s não deve parar em 1, 3 ou 5 s.
+- Teto absoluto: mínimo de duração + 5 s, 35 s e orçamento restante da sessão. **5 s é margem sobre a duração, não corte em 5 s**.
+- Removidos o auto-PlayPause, o toggle de pausa injetado e os comandos adicionais de fechamento de OSD. Controles/foco/fullscreen e stop voltam ao ciclo-base. Pausa/retomada voluntária usa os controles originais; pausa sem progresso continua sujeita ao watchdog-base.
+- Referência web separada: retirados os hooks novos de pause/click e restaurado seu orçamento anterior de espera. Ela não substitui o player do APK.
 
-Novas regressões: primeiro e segundo VOD por callbacks com estado legado, callbacks duplicados, sessão zero compartilhada entre conteúdos, snapshot inicial ausente com consulta VAST, pausa em 00:01 com retomada, pausa/buffer travado em 00:01 com stop em 3 s após o último avanço, decoder sem superfície, VOD/live direto e limpeza do OSD/overlay. A aprovação em hardware continua pendente.
+A única diferença dentro de `reproduzir` é tracking: Error usa a expansão comum de macros/UA; o término envia complete sem fabricar quartis nunca observados. Todos os nós Impression da cadeia Wrapper/Inline selecionada são herdados e emitidos com start após progresso real; `[CACHEBUSTER]` e `[CACHEBUSTING]` são expandidos. As mudanças do monitor para primeiras consultas/deduplicação permanecem fora do ciclo do player.
+
+A retomada direta isolada continua usando snapshot resolvido, ListItem/metadados, posição VOD e alternativas diretas; nunca reabre a rota de escolha de servidor. No-fill/rede/timeout antes do anúncio mantêm o conteúdo original, sem substituir sua superfície. AdMob permanece desativado.
+
+### Proteção contra nova regressão do fluxo-base
+
+`test_player_control_flow_matches_reviewed_three_and_five_second_base` compara a AST de `reproduzir` com um hash calculado da revisão `b86570a`, excluindo **somente** construção de pixels de erro e bloco de tracking do término. Todos os waits, controles, stop, fullscreen, callbacks, ownership e watchdogs ficam protegidos. O CI também executa esse teste sobre o módulo original corrigido.
+
+Hash de controle: `b688706cb050448812c10e5694f372d47f4d76964d7ee31e75e28b222435e8e6`.
+
+Regressões adicionais: anúncio saudável de 25 s completo, decoder demorando 4 s sem corte prematuro, congelamento em 5 s com aborto por volta de 8 s, pausa/retomada manual sem auto-comandos, pausa/buffer parado em 1 s, Wrapper/Inline/macros, retorno direto VOD/live, callback duplicado e primeiras consultas. Testes com doubles não comprovam superfície/codec real nem recebimento de pixels pela Clickadilla.
 
 ## Causas confirmadas na inspeção somente leitura
 

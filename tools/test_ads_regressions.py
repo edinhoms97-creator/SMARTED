@@ -11,6 +11,34 @@ ORIGINAL = None
 PATCHES = Path(__file__).resolve().parent.parent / 'android-build/ads-patches'
 
 
+def stable_player_control_hash(source):
+    """Pin b86570a/91a21e6 player control flow; only tracking may differ.
+
+    Ignore exactly error-pixel construction and the natural-end tracking
+    block. Dedicated tracking tests cover those; all waits, controls, stop,
+    focus, callbacks, sampling, ownership and watchdog branches stay pinned.
+    Ignore empty Python 3.12+ type_params for cross-version AST stability.
+    """
+    import copy
+    import hashlib
+    import json
+    node = copy.deepcopy(next(n for n in ast.parse(source).body
+                              if isinstance(n, ast.FunctionDef) and n.name == 'reproduzir'))
+    for child in ast.walk(node):
+        if isinstance(child, ast.FunctionDef) and child.name == 'error':
+            child.body = [ast.Pass()]
+        if isinstance(child, ast.If) and ast.unparse(child.test) == "reason == 'concluido' and started":
+            child.body = [ast.Pass()]
+    def encode(value):
+        if isinstance(value, ast.AST):
+            return [type(value).__name__, {name: encode(item) for name, item in ast.iter_fields(value)
+                                          if name != 'type_params'}]
+        if isinstance(value, list):
+            return [encode(item) for item in value]
+        return value
+    return hashlib.sha256(json.dumps(encode(node), sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
 class Runtime:
     def __init__(self, mode='ended'):
         self.mode = mode
@@ -161,17 +189,38 @@ class Regressions(unittest.TestCase):
                   estado={'caminho': 'https://media.invalid/movie.mp4', 'posicao': 42.125})
         return result
 
-    def test_unstarted_decoder_is_stopped_at_three_seconds_not_eight(self):
+    def test_player_control_flow_matches_reviewed_three_and_five_second_base(self):
+        source = ((ORIGINAL or PATCHES) / 'ads_vast.py').read_text()
+        self.assertEqual(stable_player_control_hash(source),
+                         'b688706cb050448812c10e5694f372d47f4d76964d7ee31e75e28b222435e8e6')
+
+    def test_healthy_25s_ad_is_not_cut_at_one_three_or_five_seconds(self):
+        runtime = Runtime('healthy-25')
+        runtime.duration = 25
+        normal_sleep = runtime.sleep
+        def finish_at_25(seconds):
+            normal_sleep(seconds)
+            if runtime.file == 'ad' and runtime.now - runtime.start >= 25:
+                runtime.playing = False
+                runtime.observer.onPlayBackEnded()
+        env = runtime.env()
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25, 'impressao': ['impression'],
+                                    'eventos': {'start': ['start'], 'complete': ['complete']}},
+                                   tocar=runtime.play_ad, dormir=finish_at_25)
+        self.assertEqual(receipt['motivo'], 'concluido')
+        self.assertGreaterEqual(runtime.stop_times[0] - runtime.start, 25)
+        self.assertEqual(runtime.events.count('impression'), 1)
+        self.assertEqual(runtime.events.count('start'), 1)
+        self.assertEqual(runtime.events.count('complete'), 1)
+
+    def test_original_startup_window_does_not_cut_a_delayed_decoder_at_three_seconds(self):
         runtime = Runtime()
         env = runtime.env()
-        def start_without_surface(url, log):
-            runtime.file, runtime.playing, runtime.start = 'ad', False, runtime.now
-            return True
-        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=start_without_surface, dormir=runtime.sleep)
-        self.assertEqual(receipt['motivo'], 'nao-iniciou')
-        self.assertTrue(receipt['precisa_restaurar'])
-        self.assertLessEqual(runtime.stop_times[0] - runtime.start, 3.0)
-        self.assertEqual(runtime.stops, ['ad'])
+        env['_player_tocando_video'] = lambda: runtime.playing and runtime.now - runtime.start >= 4.0
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(receipt['motivo'], 'concluido')
+        self.assertTrue(receipt['iniciado'])
+        self.assertGreaterEqual(runtime.stop_times[0] - runtime.start, 15.0)
 
     def test_original_ad_player_entrypoint_is_not_replaced(self):
         replacements = ast.parse((PATCHES / 'ads_vast.py').read_text())
@@ -188,18 +237,19 @@ class Regressions(unittest.TestCase):
         self.assertEqual(runtime.events.count('complete'), 1)
         self.assertNotIn('thirdQuartile', runtime.events)  # last observed clock was 14.5/25
 
-    def test_pause_at_one_resumes_without_reopening_ad_or_stealing_focus(self):
+    def test_click_pause_and_manual_resume_use_only_original_player_controls(self):
         runtime = Runtime('pause-resume')
+        normal_sleep = runtime.sleep
+        def manual_resume(seconds):
+            normal_sleep(seconds)
+            if runtime.file == 'ad' and runtime.now - runtime.start >= 2.0:
+                runtime.paused = False  # original Kodi control resumes it
         env = runtime.env()
-        fullscreen = []
-        env['_garantir_tela_cheia'] = lambda: fullscreen.append(runtime.now)
-        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=runtime.play_ad, dormir=runtime.sleep)
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=runtime.play_ad, dormir=manual_resume)
         self.assertEqual(receipt['motivo'], 'concluido')
-        self.assertEqual(len(runtime.resumes), 1)
-        self.assertEqual(runtime.resumes[0][0], 'ad')
-        self.assertIs(runtime.resumes[0][2], True)
-        self.assertEqual(len(fullscreen), 1)  # not once per watchdog tick
-        self.assertEqual(runtime.restores, [])  # play=true, never reopen
+        self.assertEqual(runtime.resumes, [])  # no injected PlayPause/toggle
+        self.assertEqual(runtime.restores, [])  # never reopen the creative
+        self.assertEqual(runtime.builtins, [])  # no new dialog/focus commands
 
     def test_pause_or_buffer_stuck_at_one_stops_and_restores_within_three_seconds(self):
         for mode in ('pause-stuck', 'buffer-at-one'):
@@ -212,8 +262,7 @@ class Regressions(unittest.TestCase):
                 self.assertTrue(result['retomada_confirmada'])
                 self.assertEqual(runtime.file, 'https://media.invalid/movie.mp4')
                 self.assertLessEqual(runtime.restore_times[0] - runtime.stop_times[0], .1)
-                self.assertIn('Dialog.Close(videoosd,true)', runtime.builtins)
-                self.assertIn('Dialog.Close(seekbar,true)', runtime.builtins)
+                self.assertEqual(runtime.builtins, [])  # baseline has no new OSD commands
                 self.assertNotIn('complete', runtime.events)
 
     def test_stuck_ad_restarts_live_cleanly_without_seek_or_overlay(self):
@@ -226,7 +275,7 @@ class Regressions(unittest.TestCase):
         self.assertTrue(receipt['retomada_confirmada'])
         self.assertEqual(runtime.seek_calls, [])
         self.assertEqual(runtime.stops, ['ad'])
-        self.assertIn('Dialog.Close(videoosd,true)', runtime.builtins)
+        self.assertEqual(runtime.builtins, [])
 
     def test_query_is_not_skipped_when_initial_snapshot_is_not_ready(self):
         runtime = Runtime()

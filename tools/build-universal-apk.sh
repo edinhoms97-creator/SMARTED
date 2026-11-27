@@ -43,7 +43,7 @@ fi
 python3 tools/apk_preservation.py "$BASE" "$OUT/SMARTEDTV-universal.apk" --report "$OUT/preservation.json"
 (cd "$OUT" && sha256sum SMARTEDTV-universal.apk > SMARTEDTV-universal.apk.sha256)
 cat > "$OUT/INSTALLATION.txt" <<EOF
-SMARTED ORIGINAL — PAUSA VAST + PRIMEIROS VODS / BUILD DE TESTE
+SMARTED ORIGINAL — BASE VAST 3s/5s + TRACKING / BUILD DE TESTE
 Fonte: $(git rev-parse HEAD)
 Base original: smartedtv.full 1.0.161 (APK do link Dropbox fornecido).
 Skin, layout, XMLs, service.py, AndroidManifest.xml, resources.arsc e bibliotecas preservados byte a byte.
@@ -51,7 +51,8 @@ Somente anuncios (ads_vast, smart_ads, ads_regra, ads_admob inerte, ads_resume, 
 Classes/metodos de interface originais preservados; somente helper de URL e constantes da welcome corrigidos.
 Validacao VIP, pagamento, skin e inicializacao preservados.
 Watchdog: progresso a cada 500ms; 3s sem avanco aborta; limite absoluto min(duracao+5s,35s), incluindo inicio do decoder.
-Player original preservado (_tocar sem substituicao): pausa tenta PlayPause(play=true); sem progresso por 3s faz stop e retomada direta, fechando OSD do anuncio.
+Player original preservado (_tocar intacto); ciclo-base b86570a/91a21e6 restaurado e protegido por teste de AST.
+Startup original ate 8s, sem corte em 3s; 3s e watchdog sem avanco, 5s e margem sobre duracao. Sem auto-PlayPause ou novos hooks de clique.
 Primeiro e segundo VOD consultam a tag sem gate de retorno legado; callbacks duplicados nao repetem a oportunidade.
 MP4 progressivo conservador (ate 1080p/5000kbps), preferencia 720p AVC baseline/main quando declarado.
 Baixar/Atualizar abrem SMARTEDTV.apk oficial no Dropbox (dl=1); compartilhar envia/exibe esse mesmo link.
