@@ -98,6 +98,7 @@ def prepare(report, sdk, apk):
             if not apk or not apk.is_file():
                 report['status'] = 'android-booted-no-apk'
                 return
+            execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'wm', 'size', '540x960'])
             report['install'] = execute([tools['adb'], '-s', 'emulator-5554', 'install', '-r', '-g', str(apk)], timeout=100)
             if report['install']['code'] != 0:
                 report['status'] = 'apk-install-failed'
@@ -105,6 +106,35 @@ def prepare(report, sdk, apk):
                 return
             report['launch'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'am', 'start', '-W',
                                          '-n', 'smartedtv.full/smartedtv.full.Splash'], timeout=60)
+            # The original native permission explainer is shown even with -g.
+            # Accept only known media/storage permission controls, never account,
+            # license/payment or generic Kodi dialogs.
+            report['permission_actions'] = []
+            for _ in range(5):
+                execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'uiautomator', 'dump', '/sdcard/smarted-permission.xml'])
+                raw = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'shell', 'cat', '/sdcard/smarted-permission.xml'], capture_output=True, text=True, timeout=20).stdout
+                try:
+                    root = ET.fromstring(raw)
+                except ET.ParseError:
+                    break
+                selected = None
+                for node in root.iter('node'):
+                    label = (node.get('text') or '').lower()
+                    package = node.get('package') or ''
+                    if ((package == 'smartedtv.full' and label == 'continue' and 'requires access to your device media' in raw)
+                        or ('permissioncontroller' in package and label in ('allow', 'allow access to media only', 'while using the app'))):
+                        selected = node
+                        break
+                if selected is None:
+                    break
+                import re
+                numbers = list(map(int, re.findall(r'\d+', selected.get('bounds', ''))))
+                if len(numbers) != 4:
+                    break
+                x, y = (numbers[0]+numbers[2])//2, (numbers[1]+numbers[3])//2
+                report['permission_actions'].append(selected.get('text'))
+                execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'input', 'tap', str(x), str(y)])
+                time.sleep(8)
             time.sleep(35)
             evidence = Path('.cache/android-validation')
             evidence.mkdir(parents=True, exist_ok=True)
@@ -150,6 +180,12 @@ def main():
     parts = [payload[i:i+2500] for i in range(0, len(payload), 2500)]
     for i, part in enumerate(parts):
         print('::notice title=Android result chunks::' + json.dumps(dict(part=i, total=len(parts), data=part)))
+    screen = Path('.cache/android-validation/screen.png')
+    if screen.exists():
+        payload = base64.b64encode(screen.read_bytes()).decode()
+        parts = [payload[i:i+2500] for i in range(0, len(payload), 2500)]
+        for i, part in enumerate(parts):
+            print('::notice title=Android screenshot chunks::' + json.dumps(dict(part=i, total=len(parts), data=part)))
     # Log only native lifecycle/errors for remote inspection, not film/tracking URLs.
     log = Path('.cache/android-validation/logcat.txt')
     if log.exists():

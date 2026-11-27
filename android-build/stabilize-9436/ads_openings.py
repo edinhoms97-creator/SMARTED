@@ -49,6 +49,8 @@ class Opening:
                 self.generation += 1
                 self.aliases, self.channel = {path}, channel
                 self.attempted, self.closed = False, False
+            if same and channel and not self.channel:
+                self.channel = channel
             if self.attempted:
                 return None
             self.attempted, self.in_ad = True, True

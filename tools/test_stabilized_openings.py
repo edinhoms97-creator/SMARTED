@@ -174,6 +174,13 @@ class Tests(unittest.TestCase):
         self.assertTrue(ledger.observe_ui(False, True))
         h.callback(); h.join(); self.assertEqual(len(h.calls), 2)
 
+    def test_late_channel_metadata_binds_identity_without_extra_attempt(self):
+        ledger = ads_openings.Opening()
+        first = ledger.claim('shared-stream')
+        ledger.finish(first, 'shared-stream')
+        self.assertIsNone(ledger.claim('shared-stream', 'channel-one'))
+        self.assertIsNotNone(ledger.claim('shared-stream', 'channel-two'))
+
     def test_vip_exemption(self):
         h = Harness(); h.vip = True; h.callback(); h.join()
         self.assertEqual(h.calls, []); self.assertEqual(h.bookings, [])
