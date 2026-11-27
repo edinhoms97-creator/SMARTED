@@ -2,20 +2,22 @@
 
 ## Novo build corretivo disponível
 
-- **[Baixar SMARTEDTV-universal.apk — player original + pausa/primeiros VODs + pixels VAST](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46009053458-1/SMARTEDTV-universal.apk)**.
+- **[Baixar SMARTEDTV-universal.apk — base original 3s/5s restaurada + pixels VAST](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46010858326-1/SMARTEDTV-universal.apk)**.
 - Tamanho: **263.230.973 bytes** (~263 MB), universal ARM32/ARM64.
-- [Execução 46009053458](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46009053458): sucesso em 2026-11-27; build e publicação concluídos.
-- Revisão do binário: `ef235bd56756c8b754dac98563a705be347416fa`.
-- [Checksum publicado](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46009053458-1/SMARTEDTV-universal.apk.sha256).
-- [Relatório preservation.json](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46009053458-1/preservation.json): **8.046 entradas preservadas; somente os oito caminhos de anúncios/ações de link listados abaixo mudaram**.
+- [Execução 46010858326](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46010858326): sucesso em 2026-11-27; build e publicação concluídos.
+- Revisão do binário: `311450bf90a2422e0af3d3be3ddfc118221c1089`.
+- [Checksum publicado](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46010858326-1/SMARTEDTV-universal.apk.sha256).
+- [Relatório preservation.json](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46010858326-1/preservation.json): **8.046 entradas preservadas; somente os oito caminhos de anúncios/ações de link listados abaixo mudaram**.
 - Gates rápidos, testes do motor original corrigido, teste de aberturas contra os módulos originais, assinatura/alinhamento e preservação concluídos com sucesso no CI. Os testes usam doubles de rede/player, não um aparelho.
 - **Inicialização, anúncios reais e reprodução em aparelho ainda precisam de validação.**
 
-### Player original, pausa e primeiras consultas
+### Base original 3 s / 5 s restaurada
 
-Por escolha explícita do usuário, `_tocar` original é preservado sem substituição: não se injeta outro player de anúncio no APK. Impressão/start exigem avanço da mídia; quartis só pelos limiares observados; complete apenas no término real, sem preencher quartis ausentes. Retomada de pausa usa PlayPause idempotente e watchdog de 3 s sem progresso; OSD do anúncio é fechado na saída. Consulta nas primeiras aberturas não depende do estado legado de retorno nem do snapshot inicial; antes de interromper o conteúdo, continua obrigatório ter um stream direto salvo para retomá-lo.
+Ciclo de controle restaurado à revisão `b86570a` (idêntico a `91a21e6`), com teste de hash da AST repetido sobre o original corrigido no CI. `_tocar` permanece intacto. **3 s é watchdog sem avanço; 5 s é margem sobre a duração, não duração máxima da peça.** Janela de startup original até 8 s; removidos o corte de startup em 3 s, auto-PlayPause e comandos adicionais de OSD/clique. Não há outro player de anúncio ou overlay novo no APK.
 
-Testes locais e do original corrigido passaram no [CI](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46009053458); o build anterior `46008783731` foi cancelado em favor desta escolha. Teste em aparelho e recebimento de pixels pela Clickadilla continuam pendentes.
+Impressão/start exigem avanço da mídia; todos os Impression dos Wrappers/Inline selecionados são herdados. `[CACHEBUSTER]` e `[CACHEBUSTING]` são expandidos. Quartis pelos limiares observados, complete apenas no término real. Snapshot/retomada direta VOD/live e deduplicação de consultas permanecem isolados do ciclo de controle.
+
+Testes locais e do original corrigido passaram no [CI](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46010858326), incluindo anúncio saudável de 25 s, inicialização atrasada em 4 s e travamento em 5 s com aborto após outros 3 s. Teste em aparelho e recebimento de pixels pela Clickadilla continuam pendentes.
 
 ### Retomada e pixels
 
