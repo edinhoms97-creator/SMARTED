@@ -53,3 +53,12 @@ O link fornecido foi confirmado no Dropbox como `/SMARTEDTV UNIVERSAL/SMARTEDTV.
 - Demais testes JS/Python, proteção do escopo, hash da base, assinatura e alinhamento permanecem obrigatórios.
 
 Esses são testes determinísticos com doubles de mídia/rede. Reiniciar o app no aparelho e repetir abertura de canais/filmes/episódios continua obrigatório antes de declarar aprovação de hardware.
+
+## Build publicado e evidência
+
+- Fonte do APK: `91a21e69a66cd8a72b84c65715e0a8b215d4e9a1`.
+- [Build manual 46000575890](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46000575890), concluído com sucesso em 2026-11-27, 12:40:15–12:42:02 UTC.
+- [SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46000575890-1/SMARTEDTV-universal.apk), ARM32/ARM64, 263.222.581 bytes, assinatura de teste.
+- [Preservação](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46000575890-1/preservation.json): 8.046 entradas originais preservadas; exatamente os seis arquivos revisados de anúncios/links alterados.
+- A etapa de empacotamento executou os testes de parser, oportunidades, watchdog e ações reais da welcome sobre os módulos originais corrigidos. Os casos dependentes do original são intencionalmente pulados na execução local sem APK, mas não no build.
+- Aprovação de reprodução/cold start em hardware continua pendente. Fazer backup antes de remover uma instalação assinada com outra chave.

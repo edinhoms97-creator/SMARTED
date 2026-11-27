@@ -49,14 +49,19 @@ Ou abra `smartedtv/standalone/smartedtv-preview.html` direto no navegador
 Ele adicionava skin/startup indevidos. A correção usa somente o original
 `smartedtv.full` **1.0.161**, do link Dropbox abaixo.
 
-O pipeline atual permite alterações apenas nos módulos de anúncios originais.
+O pipeline atual permite alterações apenas nos módulos de anúncios originais
+e nos handlers do link oficial de download/compartilhamento.
 **Skin, layout, texturas, tela inicial, bootstrap, manifesto e recursos devem
 permanecer idênticos byte a byte.** Nenhuma welcome/skin nova é empacotada.
 
-**[Baixar APK corretivo — SMARTED original, anúncios apenas (263 MB)](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45996397116-1/SMARTEDTV-universal.apk)**
+**[Baixar APK corretivo — SMARTED original, anúncios apenas (263 MB)](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46000575890-1/SMARTEDTV-universal.apk)**
 
-Comparação do APK assinado: **8.048 entradas idênticas ao original**;
-somente os quatro arquivos permitidos de anúncios mudaram.
+Comparação do APK assinado: **8.046 entradas idênticas ao original**;
+somente os quatro arquivos de anúncios e ações/helper/constantes de link do APK
+em `vip.py` e na welcome original mudaram. Classes e XMLs de interface preservados.
+Watchdog: 3 s sem progresso abortam a peça; teto absoluto de 35 s.
+Baixar/Atualizar/Compartilhar usam o APK oficial do Dropbox, sem troca de layout.
+[Inspeção, limites e testes do watchdog](docs/VAST_WATCHDOG.md).
 Regra atual: **uma tentativa de anúncio por abertura de canal, filme ou episódio,
 sem intervalo de dois minutos**. Pause, seek, reconexão e retorno do anúncio não
 repetem a tentativa; no-fill/falha libera o conteúdo. VIP continua isento. Nenhuma skin/startup nova.
