@@ -44,18 +44,22 @@ fi
 python3 tools/apk_preservation.py "$BASE" "$OUT/SMARTEDTV-universal.apk" --report "$OUT/preservation.json"
 (cd "$OUT" && sha256sum SMARTEDTV-universal.apk > SMARTEDTV-universal.apk.sha256)
 cat > "$OUT/INSTALLATION.txt" <<EOF
-SMARTED ORIGINAL — BASE 3s/5s + TRANSICAO SEM MENUS / BUILD DE TESTE
+SMARTED ORIGINAL — CICLO VAST CANAIS/FILMES/EPISODIOS / VALIDACAO EM APARELHO
 Fonte: $(git rev-parse HEAD)
 Base original: smartedtv.full 1.0.161 (APK do link Dropbox fornecido).
 Skin, layout, XMLs, service.py, AndroidManifest.xml, resources.arsc e bibliotecas preservados byte a byte.
 Somente anuncios (ads_vast, smart_ads, ads_regra, ads_admob inerte, ads_resume, ads_tracking) e links oficiais em vip.py/welcome default.py mudaram.
-Base VAST b86570a restaurada: player _tocar original, startup ate 8s, progresso a cada 500ms, stall 3s, duracao+5s/teto 35s.
-MediaFile e gatilhos originais da base, sem fallback MP4, novo filtro ou auto-PlayPause. Diagnostico posterior removido.
+Player _tocar original; startup ate 8s, progresso a cada 500ms, stall nao pausado 3s, duracao+5s/teto 35s de tempo ativo.
+MediaFile e tracking preservados da base bd62cbd; sem fallback MP4, novo filtro ou auto-PlayPause.
+Pausa nativa excluida dos watchdogs; fullscreen apenas na transicao, nao a cada amostra.
+Monitor instalado verifica AV ja em andamento; identidade por conteudo/sessao; vigia live nao disputa com anuncio enfileirado.
+Diagnostico local Kodi: SmartAdsLifecycle, sem URLs/tokens. Registra posicao, ultimo progresso observado, deteccao e ultimo callback antes da limpeza.
+Nao comprova decoder/audio/surface nem recebimento/contagem de impressoes no painel.
 Mapeamento Wrapper/Inline e macros preservados; pixels usam UA real do Kodi. Tag usa headers legados da base.
 Apos inicio real do anuncio e retorno confirmado: guarda UI nao bloqueante fecha apenas menus identificados de player/legendas da sessao.
 Guarda limitada a 5s, sem alterar os prazos da midia; nao fecha menus de outro filme/VIP/pagamento nem desativa legendas.
 Retomada direta via stream/ListItem, sem reexecutar provider/seletor; mesma identidade de abertura na URL de retorno.
-Hashes de controle do player e da selecao de midia conferidos contra a base no CI.
+Hashes do novo ciclo revisado e da selecao de midia inalterada conferidos no CI.
 TESTE ANDROID PRATICO NAO EXECUTADO: sem adb/emulador/SDK/KVM no ambiente desta sessao. Testes Kodi usam doubles.
 Validacao VIP, pagamento, skin e inicializacao preservados; AdMob continua desativado.
 Baixar/Atualizar abrem SMARTEDTV.apk oficial no Dropbox (dl=1); compartilhar envia/exibe esse mesmo link.

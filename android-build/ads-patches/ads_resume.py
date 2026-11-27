@@ -468,3 +468,16 @@ def restore(state, kodi, gui=None, wait=20, sleep=None, clock=None, ad_url='', f
         return False
     finally:
         observer.active = False
+
+
+def write_lifecycle(receipt, kodi):
+    """Bounded, URL-free Kodi diagnostic. No upload, tokens or content labels."""
+    import json
+    fields = ('motivo', 'iniciado', 'segundos', 'retomada_confirmada',
+              'last_native_event', 'freeze_position', 'freeze_wall_ms', 'freeze_detected_wall_ms', 'player_trace')
+    safe = {key: receipt.get(key) for key in fields}
+    try:
+        kodi.log('[SmartAdsLifecycle] ' + json.dumps(safe, ensure_ascii=True),
+                 getattr(kodi, 'LOGINFO', 1))
+    except Exception:
+        pass  # logging must never interrupt the saved direct return

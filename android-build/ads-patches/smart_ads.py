@@ -1,4 +1,13 @@
 # Function/method replacements in the original ad module only; no UI changes.
+def iniciar_monitor(log=None, intervalo=None):
+    """Install the original native observer; catch up if AV preceded install."""
+    monitor = _smarted_iniciar_monitor_original(log, intervalo)
+    if monitor is not None and usar_vast():
+        # Event-driven catch-up, not a startup delay or a second player.
+        monitor._talvez_mostrar()
+    return monitor
+
+
 def motor_anuncio(agora=None):
     return (MOTOR_VAST, 'validacao-clickadilla-1508180-admob-desativado')
 
@@ -29,7 +38,7 @@ def tocar_anuncio_de_video(log=None):
         if log:
             # No film URLs, tracking tokens, account IDs or personal settings.
             import json as _json
-            safe = {key: receipt.get(key) for key in ('motivo', 'iniciado', 'segundos', 'retomada_confirmada', 'tipo_midia', 'duracao_anuncio')}
+            safe = {key: receipt.get(key) for key in ('motivo', 'iniciado', 'segundos', 'retomada_confirmada', 'tipo_midia', 'duracao_anuncio', 'last_native_event', 'freeze_position', 'freeze_wall_ms', 'freeze_detected_wall_ms', 'player_trace')}
             safe['anuncio_confirmado'] = success
             log('[SmartAdsDiag] ' + _json.dumps(safe, ensure_ascii=True))
         return success
@@ -47,8 +56,6 @@ def mostrar_preroll(log=None, intervalo=None, agora=None, caminho=None, chave=No
     with _LOCK_OPORTUNIDADE:
         if vip_ativo():
             return False  # retain the original VIP exemption
-        if not forcar and sessao is not None and sessao == globals().get('_ultima_sessao'):
-            return False
         key = chave or _chave_conteudo(caminho)
         if not globals().get('_smarted_regra_iniciada'):
             # A new app process must not inherit the previous process's
@@ -58,6 +65,11 @@ def mostrar_preroll(log=None, intervalo=None, agora=None, caminho=None, chave=No
                 data.pop(field, None)
             ads_regra._gravar(data)
             globals()['_smarted_regra_iniciada'] = True
+            globals()['_ultima_sessao'] = None
+            globals()['_ultimo_caminho_preroll'] = None
+        if (not forcar and sessao is not None and sessao == globals().get('_ultima_sessao')
+                and key == globals().get('_ultimo_caminho_preroll')):
+            return False
         if not forcar:
             ads_regra.abrir_troca(key)
             allowed, reason = ads_regra.pode_anunciar(key, agora)
@@ -86,8 +98,38 @@ def mostrar_preroll(log=None, intervalo=None, agora=None, caminho=None, chave=No
 
 
 class MonitorPreRoll:
-    # Only the listed ad dispatch/stop methods are replaced. All other methods/attributes in
+    # Only listed VAST gate/dispatch/stop methods are replaced. Other methods/attributes in
     # the ORIGINAL MonitorPreRoll class are preserved by AST scope checks.
+    def _talvez_mostrar(self):
+        if not usar_vast():
+            return self._smarted_talvez_mostrar_original()
+        if self._em_vast:
+            return
+        try:
+            if not _e_video(self):
+                return  # onAVStarted invokes this again; no timer/sleep
+            path = self._caminho()
+            if not path:
+                return
+            normalized = _normalizar_caminho_chave(path)
+            if (self._ate_ignorar_volta_vast > time.monotonic()
+                    and self._volta_vast_chave and normalized == self._volta_vast_chave):
+                return
+            if normalized != self._volta_vast_chave:
+                self._ate_ignorar_volta_vast, self._volta_vast_chave = 0.0, ''
+            # Legacy AdMob Retomada.e_volta is not a VAST opening identity.
+            # Do not let that other lifecycle swallow the first content.
+            self.ultimo_caminho = path
+            mostrar_preroll(self.log, self.intervalo, caminho=path,
+                            chave=_chave_conteudo(path), sessao=self.sessao,
+                            disparar=self._disparar)
+            if not self._em_vast:
+                self._vigiar_imagem(path)  # VIP/dedup: original live helper, never with a queued ad
+        except Exception as exc:
+            if self.log:
+                log_message = '[SmartAdsDiag] abertura-vast:%s' % type(exc).__name__
+                self.log(log_message)
+
     def _disparar(self, atividade, log):
         if not usar_vast():
             return self._smarted_disparar_original(atividade, log)

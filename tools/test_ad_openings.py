@@ -104,7 +104,8 @@ class Harness:
             '_e_video': lambda player: self.playing, '_info': lambda _: '720',
             'esquecer': lambda: self.rule_env['encerrar_conteudo'](),
         }
-        names = {'motor_anuncio', 'mostrar_preroll', 'tocar_anuncio_de_video', 'esquecer'}
+        names = {'motor_anuncio', 'mostrar_preroll', 'tocar_anuncio_de_video', 'esquecer',
+                 'iniciar_monitor', '_smarted_iniciar_monitor_original'}
         definitions((ORIGINAL or PATCHES) / 'smart_ads.py', self.env, names=names, classes=True)
         self.env['_ads_vast'] = lambda: types.SimpleNamespace(tag_configurada=lambda _: 'tag', exibir_e_devolver=self.ad)
         self.env['abrir_anuncio'] = lambda activity, log: self.env['tocar_anuncio_de_video'](log)
@@ -117,6 +118,9 @@ class Harness:
         self.monitor._garantir_player_tela_cheia = lambda: None
         self.monitor._vigiar_imagem = lambda path: None
         self.monitor._limpar_retomada = lambda: self.rule_env['encerrar_conteudo']()
+        self.env['_monitor'] = self.monitor
+        if not ORIGINAL:
+            self.env['_smarted_iniciar_monitor_original'] = lambda log, intervalo: self.monitor
 
     def save(self, data):
         self.state.clear()
@@ -229,6 +233,66 @@ class Tests(unittest.TestCase):
         h.env['vip_ativo'] = lambda: True
         h.open('filme')
         self.assertEqual(h.calls, [])
+
+    def test_monitor_installed_after_av_catches_first_film_or_channel(self):
+        for first in ('filme1', 'canal1', 'serie/ep1'):
+            with self.subTest(first=first):
+                h = Harness([SUCCESS, SUCCESS, SUCCESS, SUCCESS])
+                # No PlaybackStarted/onAVStarted delivered: AV preceded observer install.
+                h.file, h.playing = first, True
+                self.assertEqual(h.monitor.sessao, 0)
+                h.env['iniciar_monitor'](h.logs.append, 0)
+                h.join()
+                h.env['iniciar_monitor'](h.logs.append, 0)
+                h.join()
+                for key in ('canal2', 'filme3', 'serie/ep4'):
+                    h.file = key  # AV callback without PlaybackStarted; same session number
+                    h.monitor._talvez_mostrar()
+                    h.join()
+                self.assertEqual(h.calls, [first, 'canal2', 'filme3', 'serie/ep4'])
+
+    def test_cold_zero_session_clears_stale_duplicate_state(self):
+        h = Harness([SUCCESS])
+        h.env.update(_ultima_sessao=0, _ultimo_caminho_preroll='canal')
+        h.state.update(conteudo='canal', tentativa='canal', anunciado=True)
+        h.file, h.playing = 'canal', True
+        h.env['iniciar_monitor'](h.logs.append, 0)
+        h.join()
+        self.assertEqual(h.calls, ['canal'])
+
+    def test_av_not_ready_is_not_consumed_until_video_callback(self):
+        h = Harness([SUCCESS])
+        h.file, h.playing = 'filme', False
+        h.env['iniciar_monitor'](h.logs.append, 0)
+        h.join()
+        self.assertEqual(h.calls, [])
+        self.assertNotIn('tentativa', h.state)
+        h.playing = True
+        h.monitor._talvez_mostrar()
+        h.join()
+        self.assertEqual(h.calls, ['filme'])
+
+    def test_no_competing_live_watchdog_is_started_while_ad_is_queued(self):
+        h = Harness([SUCCESS])
+        entered, release = threading.Event(), threading.Event()
+        real_ad = h.ad
+        def blocked_ad(**kw):
+            entered.set()
+            if not release.wait(timeout=2):
+                raise AssertionError('release missing')
+            return real_ad(**kw)
+        h.env['_ads_vast'] = lambda: types.SimpleNamespace(tag_configurada=lambda _: 'tag', exibir_e_devolver=blocked_ad)
+        watches = []
+        h.monitor._vigiar_imagem = lambda path: watches.append(path)
+        h.file, h.playing = 'canal', True
+        try:
+            h.monitor._talvez_mostrar()
+            self.assertTrue(entered.wait(timeout=2))
+            self.assertEqual(watches, [])
+        finally:
+            release.set()
+            h.join()
+        self.assertEqual(watches, ['canal'])
 
     @unittest.skipUnless(ORIGINAL, 'Original callbacks are available in the APK build runner')
     def test_original_playback_and_avstarted_callbacks_are_one_opportunity(self):

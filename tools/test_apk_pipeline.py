@@ -198,6 +198,21 @@ class Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unreviewed ad monitor method'):
             replace_functions(original, replacements)
 
+    def test_reviewed_vast_gate_and_monitor_install_preserve_original_aliases(self):
+        from patch_original_ads import replace_functions
+        original = ("def iniciar_monitor(log=None, intervalo=None): return original_monitor\n"
+                    "class MonitorPreRoll:\n"
+                    "    def _talvez_mostrar(self): return 'legacy'\n"
+                    "    def onAVStarted(self): self._talvez_mostrar()\n")
+        replacements = ("def iniciar_monitor(log=None, intervalo=None): return _smarted_iniciar_monitor_original(log, intervalo)\n"
+                        "class MonitorPreRoll:\n"
+                        "    def _talvez_mostrar(self): return 'vast'\n")
+        result = replace_functions(original, replacements)
+        self.assertIn('def _smarted_iniciar_monitor_original(', result)
+        self.assertIn('def _smarted_talvez_mostrar_original(', result)
+        self.assertIn('def onAVStarted(self): self._talvez_mostrar()', result)
+        compile(result, 'reviewed-vast-gate', 'exec')
+
     def test_original_ad_player_function_is_preserved_verbatim(self):
         from patch_original_ads import replace_functions
         original_player = "def _tocar(url, log=None):\n    return original_player(url, log)\n"

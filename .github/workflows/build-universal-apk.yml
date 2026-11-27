@@ -123,7 +123,7 @@ jobs:
           (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
           tag="smarted-original-ads-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
-            --title 'SMARTED original — retomada direta e tracking Wrappers (teste)' \
+            --title 'SMARTED original — ciclo VAST canais/filmes/episodios (teste em aparelho)' \
             --notes-file dist/INSTALLATION.txt \
             dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
             dist/preservation.json dist/signature.txt dist/badging.txt

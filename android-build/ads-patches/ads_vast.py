@@ -181,6 +181,17 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
     anterior = anterior or _arquivo_atual()
     events = anuncio.get('eventos') or {}
     owned_file = ['']
+    trace_start, observed_position = _agora(), [0.0]
+    trace_rows, last_native_event = [], ['none']
+    def trace(event, native=False, accepted=True):
+        if native:
+            last_native_event[0] = event
+        row = {'ms': max(0, round((_agora() - trace_start) * 1000)),
+               'position': round(observed_position[0], 3), 'event': event,
+               'accepted': bool(accepted)}
+        if len(trace_rows) >= 64:
+            del trace_rows[1]
+        trace_rows.append(row)
 
     class _AdEvents(xbmc.Player):
         active = False
@@ -189,16 +200,34 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
         failed = False
 
         def onPlayBackEnded(self):
+            trace('ended', native=True, accepted=self.active and not _player_tocando_video())
             if self.active and not _player_tocando_video():
                 self.ended = True
 
         def onPlayBackStopped(self):
+            trace('stopped', native=True, accepted=self.active and not _player_tocando_video())
             if self.active and not _player_tocando_video():
                 self.stopped = True
 
         def onPlayBackError(self):
+            trace('error', native=True, accepted=self.active and (_arquivo_atual() == owned_file[0] or not _player_tocando_video()))
             if self.active and (_arquivo_atual() == owned_file[0] or not _player_tocando_video()):
                 self.failed = True
+
+        def onAVStarted(self):
+            trace('AVStarted', native=True, accepted=self.active)
+
+        def onAVChange(self):
+            trace('AVChange', native=True, accepted=self.active)
+
+        def onPlayBackPaused(self):
+            trace('paused-callback', native=True, accepted=self.active)
+
+        def onPlayBackResumed(self):
+            trace('resumed-callback', native=True, accepted=self.active)
+
+        def onPlayBackSeek(self, time, seekOffset):
+            trace('seek-callback', native=True, accepted=self.active)
 
     observer = _AdEvents()
     fired = set()
@@ -206,7 +235,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
     needs_restore = False
     reason = 'player-recusou'
     start = _agora()
-    # The absolute budget includes decoder startup, not just the playing loop.
+    # The active-time budget includes decoder startup, but excludes native pause.
     import math
     try:
         declared = float(anuncio.get('duracao') or 0)
@@ -219,6 +248,8 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
     progress_at = start
     last_position = 0.0
     no_frame_at = None
+    paused_at = None
+    paused_total = 0.0
 
     def error():
         urls = list(anuncio.get('errors') or []) + list(events.get('error') or [])
@@ -226,6 +257,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
         _disparar_eventos([expand(url, error_code=405, user_agent=device_user_agent(xbmc)) for url in urls])
 
     try:
+        trace('dispatch')
         if tocar(anuncio['url'], log):
             needs_restore = _arquivo_atual() != anterior or not _player_tocando_video()
             # Do not enter the original wait helper: its independent startup
@@ -245,6 +277,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                 else:
                     needs_restore = True
                     observer.active = True
+                    trace('owned')
                     reason = 'interrompido'
                     progress_at = _agora()
                     while _agora() < deadline:
@@ -267,6 +300,24 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                                       'erro-player' if observer.failed else 'interrompido')
                             break
                         now = _agora()
+                        paused = bool(xbmc.getCondVisibility('Player.Paused'))
+                        if paused:
+                            if paused_at is None:
+                                paused_at = now
+                                trace('paused-observed')
+                            # Native controls own play/pause. A paused clock
+                            # is not decoder failure. Do not toggle/reopen or
+                            # force fullscreen while controls have focus.
+                            progress_at, no_frame_at = now, None
+                            before_sleep = _agora()
+                            dormir(.5)
+                            pause_elapsed = max(0.0, _agora() - before_sleep)
+                            paused_total += pause_elapsed
+                            deadline += pause_elapsed
+                            continue
+                        if paused_at is not None:
+                            paused_at, progress_at, no_frame_at = None, now, None
+                            trace('resumed-observed')
                         no_frame = _audio_sem_quadro_video()
                         if no_frame:
                             no_frame_at = now if no_frame_at is None else no_frame_at
@@ -276,8 +327,9 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                         else:
                             no_frame_at = None
                         position, duration = _posicao_e_duracao()
+                        observed_position[0] = float(position or 0)
                         if duration and math.isfinite(float(duration)) and float(duration) > 0:
-                            deadline = min(deadline, start + float(duration) + 5.0)
+                            deadline = min(deadline, start + float(duration) + 5.0 + paused_total)
                         if position > last_position + .01:
                             last_position, progress_at = position, now
                             if not started and not no_frame:
@@ -285,13 +337,14 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                                 _disparar_eventos(anuncio.get('impressao') or [])
                                 _disparar_eventos(events.get('start') or [])
                                 fired.add('start')
+                                trace('real-start')
+                                _garantir_tela_cheia()
                                 from ads_resume import guard_transition
                                 guard_transition(xbmc, owned_file[0])
                         elif now - progress_at >= 3.0:
                             reason = 'travamento'
                             break
                         if started:
-                            _garantir_tela_cheia()
                             duration = duration or anuncio.get('duracao') or 0
                             if duration > 0:
                                 for name, threshold in (('firstQuartile', .25), ('midpoint', .5), ('thirdQuartile', .75)):
@@ -307,6 +360,8 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
         reason = 'excecao-player'
         needs_restore = _arquivo_atual() != anterior or not _player_tocando_video()
     finally:
+        terminal_native_event, detected_at = last_native_event[0], _agora()
+        trace(reason)
         observer.active = False
         # Never leave the failed creative playing under the VOD. Never stop
         # the untouched VOD (refusal/no-fill) or a newer user-selected video.
@@ -330,7 +385,11 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
         error()
     return {'exibido': eligible, 'iniciado': started, 'motivo': reason,
             'segundos': round(_agora() - start, 1), 'eventos': sorted(fired),
-            'precisa_restaurar': needs_restore, 'url_anuncio': anuncio['url']}
+            'precisa_restaurar': needs_restore, 'url_anuncio': anuncio['url'],
+            'player_trace': list(trace_rows), 'last_native_event': terminal_native_event,
+            'freeze_position': round(observed_position[0], 3) if reason in ('travamento', 'tela-preta-sem-quadro') else None,
+            'freeze_wall_ms': round(((no_frame_at if reason == 'tela-preta-sem-quadro' else progress_at) - trace_start) * 1000) if reason in ('travamento', 'tela-preta-sem-quadro') else None,
+            'freeze_detected_wall_ms': round((detected_at - trace_start) * 1000) if reason in ('travamento', 'tela-preta-sem-quadro') else None}
 
 
 def restaurar(estado, log=None, espera=20, dormir=None, agora=None, url_anuncio=''):
@@ -382,6 +441,8 @@ def exibir_e_devolver(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO
             receipt['caminho_devolvido'] = estado.get('_restored_path', '')
         if not confirmed:
             receipt['exibido'] = False  # failure must not consume the cooldown
+    from ads_resume import write_lifecycle
+    write_lifecycle(receipt, xbmc)
     return receipt
 
 

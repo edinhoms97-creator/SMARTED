@@ -13,11 +13,11 @@ PATCHES = Path(__file__).resolve().parent.parent / 'android-build/ads-patches'
 
 
 def stable_player_control_hash(source, function_name='reproduzir'):
-    """Pin b86570a/91a21e6 control flow; allow only error pixels/menu cleanup.
+    """Pin reviewed player lifecycle and unchanged media selector independently.
 
     Ignore exactly error-pixel construction and the menu-only hook.
-    Dedicated tests cover those; all waits, controls, stop,
-    focus, callbacks, sampling, ownership and watchdog branches stay pinned.
+    Dedicated tests cover those; all other changes require explicit review
+    and regression updates, including pause, focus and native diagnostics.
     Ignore empty Python 3.12+ type_params for cross-version AST stability.
     """
     import copy
@@ -196,10 +196,10 @@ class Regressions(unittest.TestCase):
                   estado={'caminho': 'https://media.invalid/movie.mp4', 'posicao': 42.125})
         return result
 
-    def test_player_control_flow_matches_reviewed_three_and_five_second_base(self):
+    def test_player_control_flow_matches_reviewed_lifecycle_fix(self):
         source = ((ORIGINAL or PATCHES) / 'ads_vast.py').read_text()
         self.assertEqual(stable_player_control_hash(source),
-                         'a10b78c4e558ff3ad36a0609f60f9cbb1e2b854a46595a2e4b6d81a21497ccc5')
+                         'c1c88abb862f98c4ff851f9cdcc0ed062e11293d87cb611ceda01855e1ad7db2')
 
     def test_media_selection_is_exactly_the_original_three_five_second_base(self):
         source = ((ORIGINAL or PATCHES) / 'ads_vast.py').read_text()
@@ -263,8 +263,8 @@ class Regressions(unittest.TestCase):
         self.assertEqual(runtime.restores, [])  # never reopen the creative
         self.assertEqual(runtime.builtins, [])  # no new dialog/focus commands
 
-    def test_pause_or_buffer_stuck_at_one_stops_and_restores_within_three_seconds(self):
-        for mode in ('pause-stuck', 'buffer-at-one'):
+    def test_unpaused_buffer_stuck_at_one_stops_and_restores_within_three_seconds(self):
+        for mode in ('buffer-at-one',):
             with self.subTest(mode=mode):
                 runtime = Runtime(mode)
                 result = self.session(runtime, duration=25)
@@ -277,8 +277,78 @@ class Regressions(unittest.TestCase):
                 self.assertEqual(runtime.builtins, [])  # baseline has no new OSD commands
                 self.assertNotIn('complete', runtime.events)
 
-    def test_stuck_ad_restarts_live_cleanly_without_seek_or_overlay(self):
+    def test_native_pause_longer_than_budget_is_not_a_stall_or_timeout(self):
+        runtime = Runtime('pause-resume')
+        normal_sleep = runtime.sleep
+        def user_resume(seconds):
+            normal_sleep(seconds)
+            if runtime.file == 'ad' and runtime.now - runtime.start >= 42:
+                runtime.paused = False
+        env = runtime.env()
+        fullscreen = []
+        env['_garantir_tela_cheia'] = lambda: fullscreen.append(runtime.now)
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25},
+                                   tocar=runtime.play_ad, dormir=user_resume)
+        self.assertEqual(receipt['motivo'], 'concluido')
+        self.assertGreater(receipt['segundos'], 40)
+        self.assertEqual(len(fullscreen), 1)
+        self.assertEqual(runtime.resumes, [])
+        self.assertTrue(all(at - runtime.start >= 42 for at in runtime.stop_times))
+        events = [row['event'] for row in receipt['player_trace']]
+        self.assertIn('paused-observed', events)
+        self.assertIn('resumed-observed', events)
+
+    def test_fullscreen_is_not_reasserted_on_each_progress_sample(self):
+        runtime = Runtime('ended')
+        env = runtime.env()
+        focus = []
+        env['_garantir_tela_cheia'] = lambda: focus.append(runtime.now)
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25},
+                                   tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(receipt['motivo'], 'concluido')
+        self.assertEqual(len(focus), 1)
+
+    def test_trace_records_exact_observed_freeze_time_and_last_native_event(self):
+        runtime = Runtime('mid-stall')
+        receipt, _ = runtime.play()
+        self.assertEqual(receipt['motivo'], 'travamento')
+        self.assertEqual(receipt['freeze_position'], 5.0)
+        self.assertEqual(receipt['freeze_wall_ms'], 5000)
+        self.assertEqual(receipt['freeze_detected_wall_ms'], 8000)
+        self.assertLessEqual(len(receipt['player_trace']), 64)
+        self.assertNotIn('http', str(receipt['player_trace']))
+        self.assertEqual(receipt['last_native_event'], 'none')
+
+    def test_native_stop_while_paused_releases_ad_without_auto_resume(self):
         runtime = Runtime('pause-stuck')
+        normal_sleep = runtime.sleep
+        def user_stop(seconds):
+            normal_sleep(seconds)
+            if runtime.file == 'ad' and runtime.now - runtime.start >= 6:
+                runtime.playing = False
+                runtime.observer.onPlayBackStopped()
+        env = runtime.env()
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25},
+                                   tocar=runtime.play_ad, dormir=user_stop)
+        self.assertEqual(receipt['motivo'], 'pulado')
+        self.assertEqual(receipt['last_native_event'], 'stopped')
+        self.assertEqual(runtime.resumes, [])
+        self.assertNotIn('complete', runtime.events)
+
+    def test_lifecycle_logger_drops_urls_tokens_and_cannot_break_return(self):
+        sys.path.insert(0, str(ORIGINAL or PATCHES))
+        from ads_resume import write_lifecycle
+        logs = []
+        kodi = types.SimpleNamespace(log=lambda message, level: logs.append(message))
+        write_lifecycle({'motivo': 'travamento', 'url_anuncio': 'secret-token',
+                         'caminho_devolvido': 'private-film'}, kodi)
+        self.assertEqual(len(logs), 1)
+        self.assertNotIn('secret-token', logs[0])
+        self.assertNotIn('private-film', logs[0])
+        write_lifecycle({}, types.SimpleNamespace())  # no logger cannot fail playback
+
+    def test_stuck_ad_restarts_live_cleanly_without_seek_or_overlay(self):
+        runtime = Runtime('buffer-at-one')
         env = runtime.env()
         env['exibir'] = lambda **kw: env['reproduzir']({'url': 'ad', 'duracao': 25},
                                                      tocar=kw['tocar'], dormir=runtime.sleep)
