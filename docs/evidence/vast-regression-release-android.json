@@ -1,0 +1,114 @@
+{
+  "apk_sha256": "2b64c443f42902cb07031db1106137a59d852ae39bb8fbd8b9379b8a6d2682bc",
+  "ro.build.version.release": "11",
+  "ro.build.version.sdk": "30",
+  "ro.product.cpu.abilist": "x86_64,x86,arm64-v8a,armeabi-v7a,armeabi",
+  "ro.dalvik.vm.native.bridge": "libndk_translation.so",
+  "install": {
+    "code": 0,
+    "output": "Performing Streamed Install\nSuccess\n"
+  },
+  "launch": {
+    "code": 0,
+    "output": "Starting: Intent { cmp=smartedtv.full/.Splash }\nStatus: ok\nLaunchState: COLD\nActivity: smartedtv.full/.Splash\nTotalTime: 2031\nWaitTime: 2039\nComplete\n"
+  },
+  "cycle_method": "real-Android-VIEW-public-samples-not-catalog-movies",
+  "cycle_blocker": "original-continue-with-ads-not-confirmed",
+  "welcome_free_312_observed": true,
+  "welcome_312_callback_confirmed": false,
+  "welcome_continue_906_observed": false,
+  "welcome_select_responses": [
+    "OK"
+  ],
+  "welcome_callback_diagnostics": [],
+  "cycles": [
+    {
+      "cycle": 1,
+      "content": "Big Buck Bunny public sample",
+      "status": "not-run",
+      "reason": "earlier-cycle-not-executed",
+      "vast_requests": null,
+      "ads_played": null,
+      "no_fill": null
+    },
+    {
+      "cycle": 2,
+      "content": "same Big Buck Bunny sample reopened",
+      "status": "not-run",
+      "reason": "earlier-cycle-not-executed",
+      "vast_requests": null,
+      "ads_played": null,
+      "no_fill": null
+    },
+    {
+      "cycle": 3,
+      "content": "Echo Here We Are different public sample",
+      "status": "not-run",
+      "reason": "earlier-cycle-not-executed",
+      "vast_requests": null,
+      "ads_played": null,
+      "no_fill": null
+    }
+  ],
+  "opening_stages": [
+    "{\"stage\": \"provider-selected\", \"opening\": null, \"monotonic_ms\": 140333, \"provider\": \"vast\", \"reason\": \"validacao-vast-celular-admob-adiado\"}",
+    "{\"stage\": \"state-observer-installed\", \"opening\": null, \"monotonic_ms\": 140574}"
+  ],
+  "apk_ad_module_sha256": {
+    "smart_ads.py": "d992255efeb14322606eff071a31b8530f23f3952a4036ed18f993b98dfa1d76",
+    "ads_vast.py": "4b92bbf4006d3eb98e0551fc0d2547479aa92d25f6a2986d18ab42c83e62f158",
+    "ads_regra.py": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b",
+    "ads_tracking.py": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f",
+    "ads_openings.py": "885c6650266125f3bc6750b783dddf940b6d2344a6bf78c8b14a6f062fea1672"
+  },
+  "runtime_ad_module_sha256": {
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/smart_ads.py": {
+      "code": 0,
+      "output": "d992255efeb14322606eff071a31b8530f23f3952a4036ed18f993b98dfa1d76  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/smart_ads.py\n"
+    },
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_vast.py": {
+      "code": 0,
+      "output": "4b92bbf4006d3eb98e0551fc0d2547479aa92d25f6a2986d18ab42c83e62f158  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_vast.py\n"
+    },
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_regra.py": {
+      "code": 0,
+      "output": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_regra.py\n"
+    },
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+      "code": 0,
+      "output": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_tracking.py\n"
+    },
+    "/data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_openings.py": {
+      "code": 0,
+      "output": "885c6650266125f3bc6750b783dddf940b6d2344a6bf78c8b14a6f062fea1672  /data/user/0/smartedtv.full/cache/apk/assets/addons/service.smarted.bootstrap/ads_openings.py\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/smart_ads.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/smart_ads.py: No such file or directory\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_vast.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_vast.py: No such file or directory\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_regra.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_regra.py: No such file or directory\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_tracking.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_tracking.py: No such file or directory\n"
+    },
+    "/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_openings.py": {
+      "code": 1,
+      "output": "sha256sum: /storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/service.smarted.bootstrap/ads_openings.py: No such file or directory\n"
+    }
+  },
+  "kodi_log_read_after_root": true,
+  "android_run": 46075912044,
+  "previous_probe_run": 46075278437,
+  "apk_build": 46074593488,
+  "apk_source": "27da6476440e837bdcb48637583a1926c48d6829",
+  "real_ad_playback_validated": false,
+  "actual_payload_tests": 33,
+  "notes": "Android job success is not ad playback success. Content cycles were NOT RUN; null counts are not no-fill. No app/profile/license changes to bypass welcome."
+}
