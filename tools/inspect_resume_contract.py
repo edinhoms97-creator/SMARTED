@@ -17,6 +17,16 @@ def emit(group, data):
 
 
 with zipfile.ZipFile(sys.argv[1]) as archive:
+    import zlib, base64, hashlib
     path = 'assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/default.py'
     tree = ast.parse(archive.read(path).decode('utf-8-sig'))
-    emit('wrapper', {'wrapper': ast.unparse(Redact().visit(tree))[:10000]})
+    # The audited wrapper is exactly base64(reverse(bytes)) then zlib. Decode
+    # data only; NEVER eval/exec/import the provider or its decrypted source.
+    call = next(n for n in tree.body if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Name) and n.value.func.id == 'exec').value
+    payload = ast.literal_eval(call.args[0].args[0])
+    raw = zlib.decompress(base64.b64decode(payload[::-1]))
+    decoded = ast.parse(raw.decode('utf-8-sig'))
+    functions = [n for n in ast.walk(decoded) if isinstance(n, ast.FunctionDef)]
+    emit('decoded', {'sha256': hashlib.sha256(raw).hexdigest(), 'size': len(raw),
+                     'functions': [{'name': n.name, 'lines': n.end_lineno - n.lineno} for n in functions],
+                     'selected': {n.name: ast.unparse(Redact().visit(n)) for n in functions if any(word in n.name.lower() for word in ('servid', 'server', 'playvideo', 'play_video', 'resolver')) and n.end_lineno - n.lineno < 180}})
