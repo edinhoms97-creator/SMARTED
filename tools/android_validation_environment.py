@@ -59,8 +59,12 @@ def prepare(report, sdk, apk):
     if not tools['adb'] or not tools['emulator']:
         report['status'] = 'adb-or-emulator-unavailable'
         return
+    avd_home = Path('.cache/android-avd').resolve()
+    avd_home.mkdir(parents=True, exist_ok=True)
+    os.environ['ANDROID_AVD_HOME'] = str(avd_home)
+    report['avd_home_explicit'] = True
     report['avd_create'] = execute([tools['avdmanager'], 'create', 'avd', '--force', '--name', 'SmartedValidation',
-                                    '--package', image, '--device', 'pixel_2'], timeout=45, input='no\n')
+                                    '--package', image, '--device', 'pixel_2', '--path', str(avd_home / 'SmartedValidation.avd')], timeout=45, input='no\n')
     if report['avd_create']['code'] != 0:
         report['status'] = 'avd-create-failed'
         return
