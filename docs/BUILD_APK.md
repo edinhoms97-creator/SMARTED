@@ -2,14 +2,20 @@
 
 ## Novo build corretivo disponível
 
-- **[Baixar SMARTEDTV-universal.apk — original, anúncios apenas](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45992589750-1/SMARTEDTV-universal.apk)**.
-- Tamanho: **263.222.581 bytes** (~263 MB).
-- [Execução 45992589750](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45992589750): sucesso; 11:41:54–11:43:32 UTC, **1 min 38 s** de ponta a ponta.
-- Revisão do binário: `6b45630cf007191c22f8c74305c3321647527949`.
-- SHA256 publicado: `f6ecfb6059bd1afbfadb9bd81065f45887781c1223e2d85b3bf19f748c7f44c6`.
-- [Relatório preservation.json](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45992589750-1/preservation.json): **8.049 entradas preservadas; somente os três módulos de anúncios listados abaixo mudaram**.
-- 67 verificações JS/Python existentes + 19 gates de preservação + 11 testes das funções do motor original corrigido passaram (**97 verificações**).
-- Assinatura/alinhamento válidos. **Inicialização, anúncios reais e reprodução em aparelho ainda não validados.**
+- **[Baixar SMARTEDTV-universal.apk — uma tentativa por conteúdo aberto](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45996397116-1/SMARTEDTV-universal.apk)**.
+- Tamanho: **263.222.581 bytes** (~263 MB), universal ARM32/ARM64.
+- [Execução 45996397116](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45996397116): sucesso em 2026-11-27, 12:10:16–12:11:38 UTC.
+- Revisão do binário: `9436b5ef63fe1e4d569328990c92ab1514ce9b0b`.
+- [Checksum publicado](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45996397116-1/SMARTEDTV-universal.apk.sha256).
+- [Relatório preservation.json](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45996397116-1/preservation.json): **8.048 entradas preservadas; somente os quatro arquivos de anúncios listados abaixo mudaram**.
+- Gates rápidos, testes do motor original corrigido, teste de aberturas contra os módulos originais, assinatura/alinhamento e preservação concluídos com sucesso no CI. Os testes usam doubles de rede/player, não um aparelho.
+- **Inicialização, anúncios reais e reprodução em aparelho ainda precisam de validação.**
+
+### Regra de frequência solicitada
+
+Sem intervalo de dois minutos: uma oportunidade VAST por abertura real de canal, filme, episódio ou outro VOD. A tentativa fica registrada antes de agendar o anúncio, evitando duplicidade. No-fill, timeout ou falha liberam o conteúdo sem outra tentativa na mesma abertura; só uma reprodução válida conta como anúncio exibido. Pause, seek, reconexão e retorno do anúncio não são novas aberturas. Trocar de conteúdo ou fechar e reabrir permite nova tentativa. VIP permanece isento; AdMob segue desativado.
+
+Foram adicionadas regressões para sete conteúdos consecutivos, falha de reprodução, vídeo sem imagem/progresso, callback antigo e retomada sem sobrescrever uma nova seleção do usuário. Isso não garante disponibilidade de anúncios nem compatibilidade de codecs em hardware.
 
 ## Correção de escopo
 
@@ -37,11 +43,12 @@ Auditorias: [identidade](https://github.com/edinhoms97-creator/SMARTED/actions/r
 
 Plano explícito: `android-build/ads-only-plan.json`.
 
-1. `assets/addons/service.smarted.bootstrap/ads_vast.py`: apenas as funções de tag, transporte/tracking, reprodução do anúncio e confirmação de retomada. O parser, wrappers/VMAP e as rotas de reconexão originais são preservados.
-2. `assets/addons/service.smarted.bootstrap/smart_ads.py`: somente a função `motor_anuncio`, que retorna VAST para todos os dispositivos durante a validação. Todo o restante do módulo, inclusive frequência/VIP e fluxo original, permanece igual.
-3. `assets/addons/service.smarted.bootstrap/ads_admob.py`: configuração inerte separada, com IDs fornecidos e `ENABLED = False`. Nenhuma inicialização de SDK, novo serviço ou chamada de bridge.
+1. `assets/addons/service.smarted.bootstrap/ads_vast.py`: funções revisadas de transporte/tracking, reprodução, falhas e confirmação da retomada. Parser e auxiliares originais fora do escopo são preservados.
+2. `assets/addons/service.smarted.bootstrap/smart_ads.py`: seleção VAST, reprodução, reserva da oportunidade e métodos revisados de `MonitorPreRoll` para agendamento, resultado assíncrono e encerramento real do conteúdo. Demais funções/métodos são preservados.
+3. `assets/addons/service.smarted.bootstrap/ads_regra.py`: elegibilidade por abertura e `INTERVALO = 0`, sem cooldown; auxiliares de armazenamento/transição permanecem originais.
+4. `assets/addons/service.smarted.bootstrap/ads_admob.py`: configuração inerte separada, com IDs fornecidos e `ENABLED = False`. Nenhuma inicialização de SDK, novo serviço ou chamada de bridge.
 
-Os hashes dos dois arquivos originais são conferidos antes de qualquer patch. Uma base de outra revisão faz o build falhar. As alterações de funções são feitas por intervalos do fonte; uma comparação AST exige que todos os nós não relacionados permaneçam iguais.
+Os hashes dos três arquivos originais são conferidos antes de qualquer patch. Uma base de outra revisão faz o build falhar. As alterações de funções/métodos são feitas por intervalos do fonte; uma comparação AST exige que todos os nós não relacionados permaneçam iguais.
 
 ## O que não pode mudar
 
@@ -56,7 +63,7 @@ Não há substituição pelo HTML do repositório, nenhuma cópia de `skin.estil
 
 ## Empacotamento e verificações
 
-O novo pipeline **não usa apktool para reconstruir recursos ou manifesto**. Faz patch ZIP dos três módulos permitidos sobre o APK original, preserva os demais conteúdos, executa zipalign e assina para teste.
+O novo pipeline **não usa apktool para reconstruir recursos ou manifesto**. Faz patch ZIP dos quatro arquivos permitidos sobre o APK original, preserva os demais conteúdos, executa zipalign e assina para teste.
 
 `tools/apk_preservation.py` compara SHA256 de **todas** as entradas antes e depois da assinatura. Qualquer modificação/remoção/adição fora da lista bloqueia publicação. Arquivos META-INF que não são assinatura também devem ser preservados. A mudança de certificado e bloco de assinatura é inevitável sem a chave original.
 
