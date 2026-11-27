@@ -7,6 +7,7 @@ actual selectable content and are reported NOT RUN by this environment probe.
 import argparse
 import base64
 import gzip
+import hashlib
 import xml.etree.ElementTree as ET
 import json
 import os
@@ -104,6 +105,8 @@ def prepare(report, sdk, apk):
                 report['status'] = 'apk-install-failed'
                 for row in report['cycles']: row['reason'] = 'apk-install-failed-no-abi-substitution'
                 return
+            report['apk_sha256'] = hashlib.sha256(apk.read_bytes()).hexdigest()
+            report['all_files_permission'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'appops', 'set', '--uid', 'smartedtv.full', 'MANAGE_EXTERNAL_STORAGE', 'allow'])
             report['launch'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'am', 'start', '-W',
                                          '-n', 'smartedtv.full/smartedtv.full.Splash'], timeout=60)
             # The original native permission explainer is shown even with -g.
@@ -149,6 +152,27 @@ def prepare(report, sdk, apk):
             execute([tools['adb'], '-s', 'emulator-5554', 'pull', '/sdcard/smarted-ui.xml', str(evidence / 'hierarchy.xml')])
             screenshot = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'exec-out', 'screencap', '-p'], capture_output=True, timeout=30)
             (evidence / 'screen.png').write_bytes(screenshot.stdout)
+            try:
+                from PIL import Image
+                import io
+                image = Image.open(io.BytesIO(screenshot.stdout)).convert('RGB')
+                image.thumbnail((480, 270))
+                for quality in (45, 30, 20, 10):
+                    compressed = io.BytesIO()
+                    image.save(compressed, format='JPEG', quality=quality, optimize=True)
+                    if len(compressed.getvalue()) <= 6000:
+                        break
+                (evidence / 'screen-preview.jpg').write_bytes(compressed.getvalue())
+            except Exception:
+                pass
+            paths = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'find', '/sdcard/Android/data/smartedtv.full/files', '-name', '*.log'])['output'].splitlines()
+            report['kodi_log_paths'] = [path for path in paths if path.endswith(('kodi.log', 'smartedtv.log'))]
+            for path in report['kodi_log_paths'][:1]:
+                content = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'shell', 'cat', path], capture_output=True, timeout=30).stdout
+                (evidence / 'kodi.log').write_bytes(content)
+                report['kodi_tail'] = content.decode(errors='replace')[-2500:]
+                report['opening_stages'] = [line.split('[SmartAdsOpening] ', 1)[-1] for line in content.decode(errors='replace').splitlines() if '[SmartAdsOpening]' in line]
+
             report['ui_hierarchy'] = (evidence / 'hierarchy.xml').read_text(errors='replace')[:12000] if (evidence / 'hierarchy.xml').exists() else 'unavailable'
             report['ui_labels'] = [node.get('text') or node.get('content-desc') for node in ET.fromstring(report['ui_hierarchy']).iter('node') if node.get('text') or node.get('content-desc')] if report['ui_hierarchy'] != 'unavailable' else []
             report['activity_tail'] = (evidence / 'activities.txt').read_text(errors='replace')[-2500:]
@@ -175,12 +199,12 @@ def main():
     if args.prepare: prepare(report, args.sdk, args.apk)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + '\n')
-    print('::notice title=Android environment actual result::' + json.dumps({k: v for k, v in report.items() if k not in ('sdk_install', 'avd_create', 'ui_hierarchy', 'activity_tail')}))
+    print('::notice title=Android environment actual result::' + json.dumps({k: v for k, v in report.items() if k not in ('sdk_install', 'avd_create', 'ui_hierarchy', 'activity_tail', 'kodi_tail', 'opening_stages')}))
     payload = base64.b64encode(gzip.compress(json.dumps(report).encode())).decode()
     parts = [payload[i:i+2500] for i in range(0, len(payload), 2500)]
     for i, part in enumerate(parts):
         print('::notice title=Android result chunks::' + json.dumps(dict(part=i, total=len(parts), data=part)))
-    screen = Path('.cache/android-validation/screen.png')
+    screen = Path('.cache/android-validation/screen-preview.jpg')
     if screen.exists():
         payload = base64.b64encode(screen.read_bytes()).decode()
         parts = [payload[i:i+2500] for i in range(0, len(payload), 2500)]
@@ -189,8 +213,8 @@ def main():
     # Log only native lifecycle/errors for remote inspection, not film/tracking URLs.
     log = Path('.cache/android-validation/logcat.txt')
     if log.exists():
-        lines = [line for line in log.read_text(errors='replace').splitlines() if any(token in line for token in ('FATAL EXCEPTION', 'dlopen failed', 'Kodi', 'kodi', 'python', 'SmartAds', 'SIGSEGV'))]
-        payload = base64.b64encode(gzip.compress('\n'.join(lines).encode())).decode()
+        lines = [line for line in log.read_text(errors='replace').splitlines() if any(token in line for token in ('FATAL EXCEPTION', 'Kodi', 'kodi', 'python', 'SmartAds', 'SIGSEGV'))][-25:]
+        payload = base64.b64encode(gzip.compress('\n'.join(lines)[-3000:].encode())).decode()
         parts = [payload[i:i+2500] for i in range(0, len(payload), 2500)]
         for i, part in enumerate(parts):
             print('::notice title=Android native log chunks::' + json.dumps(dict(part=i, total=len(parts), data=part)))

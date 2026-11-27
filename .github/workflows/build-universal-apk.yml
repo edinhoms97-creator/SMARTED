@@ -209,6 +209,8 @@ jobs:
           if [[ -e /dev/kvm ]]; then sudo chmod a+rw /dev/kvm; fi
           mkdir -p .cache/android-validation
           gh release download "$RELEASE_TAG" --pattern SMARTEDTV-universal.apk --dir .cache/android-validation
+      - name: Biblioteca para preview pequeno da evidencia visual
+        run: python3 -m pip install --disable-pip-version-check Pillow==11.3.0
       - name: Tentar criar AVD, boot e instalar APK sem mudar ABI
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
