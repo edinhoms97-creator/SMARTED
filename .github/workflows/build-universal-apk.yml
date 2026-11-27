@@ -62,6 +62,13 @@ jobs:
         with:
           path: .cache/smartedtv-signing
           key: smartedtv-test-debug-key-v1
+      - name: Inspecao somente leitura da regra original de anuncios
+        run: |
+          mkdir -p .cache/smartedtv-base
+          python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk
+          python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk frequency
+      - name: Inspecao somente leitura do monitor original
+        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk monitor
       - name: Empacotar somente anuncios; verificar todos os outros arquivos
         run: bash tools/build-universal-apk.sh
       - name: APK de teste e relatorio de preservacao

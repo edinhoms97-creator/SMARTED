@@ -18,6 +18,8 @@ GROUPS = {
     "routing": ("smart_ads.py", ("motor_anuncio", "usar_vast", "tocar_anuncio_de_video", "mostrar_preroll", "mostrar_abertura", "abrir_anuncio")),
     "fetchflow": ("ads_vast.py", ("exibir",)),
     "playback": ("ads_vast.py", ("reproduzir",)),
+    "frequency": ("ads_regra.py", ("abrir_troca", "pode_anunciar", "registrar_anuncio", "cancelar_anuncio", "marcar_conteudo")),
+    "monitor": ("smart_ads.py", ("tocar_anuncio", "tocar_anuncio_com_aviso", "monitor", "iniciar_monitor")),
 }
 
 
