@@ -4,6 +4,14 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      android_probe:
+        description: 'Preparar emulador real e testar compatibilidade de instalacao, sem gerar APK'
+        type: boolean
+        default: false
+      android_release:
+        description: 'Prerelease exata para validar no Android'
+        type: string
+        default: smarted-original-ads-46028834505-1
       confirmed_reference:
         description: 'Restaurar base confirmada 9436b5e e alterar SOMENTE tracking; tem prioridade sobre outros perfis'
         type: boolean
@@ -43,7 +51,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: smartedtv-apk-${{ github.ref }}
+  group: smartedtv-apk-${{ github.ref }}-${{ inputs.android_probe }}
   cancel-in-progress: false
 
 env:
@@ -56,6 +64,7 @@ env:
 
 jobs:
   build:
+    if: ${{ !inputs.android_probe }}
     name: Original SMARTED — patch restrito de anuncios
     runs-on: ubuntu-24.04
     timeout-minutes: 8
@@ -163,3 +172,43 @@ jobs:
             dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
             dist/preservation.json dist/source-preservation.json dist/signature.txt dist/badging.txt "${extra[@]}"
           gh release view "$tag" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
+
+  android:
+    if: inputs.android_probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar permissao KVM e obter o APK exato
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.android_release }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^smarted-original-ads-[0-9]+-[0-9]+$ ]]
+          if [[ -e /dev/kvm ]]; then sudo chmod a+rw /dev/kvm; fi
+          mkdir -p .cache/android-validation
+          gh release download "$RELEASE_TAG" --pattern SMARTEDTV-universal.apk --dir .cache/android-validation
+      - name: Tentar criar AVD, boot e instalar APK sem mudar ABI
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+        run: |
+          python3 tools/android_validation_environment.py --prepare \
+            --apk .cache/android-validation/SMARTEDTV-universal.apk \
+            --report .cache/android-validation/result.json
+      - name: Guardar resultado real, inclusive limitacoes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-environment-result
+          path: |
+            .cache/android-validation/result.json
+            .cache/android-emulator.log
+          if-no-files-found: warn
+          retention-days: 7
