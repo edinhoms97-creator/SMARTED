@@ -49,8 +49,13 @@ Workflow manual: [`.github/workflows/build-universal-apk.yml`](.github/workflows
 Guia de execução, cache, assinatura de teste e limitações: [`docs/BUILD_APK.md`](docs/BUILD_APK.md).
 Reempacota o Kodi-base, preservando Dex/libs; não substitui o player por uma WebView.
 O build só publica `SMARTEDTV-universal.apk` se confirmar ARM32+ARM64 reais,
-manifesto, assinatura e conteúdo. O workflow precisa existir na branch padrão
-para o primeiro disparo manual; não há builds automáticos por push.
+manifesto, assinatura, dependências nativas e conteúdo. Não há builds por push.
+
+**[Baixar SMARTEDTV-universal.apk — teste, 268 MB](https://github.com/edinhoms97-creator/SMARTED/releases/download/smartedtv-test-45989176676-1/SMARTEDTV-universal.apk)**
+
+[Build concluído em 2 min 13 s](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45989176676),
+fontes `7e300f2`. Assinatura de debug: backup antes de substituir o app original;
+pode ser necessário desinstalá-lo. Testes em aparelho e VAST real ainda pendentes.
 
 ## APK original (Dropbox)
 
@@ -84,4 +89,4 @@ AdMob mobile separado e desligado: [docs/ADMOB.md](docs/ADMOB.md).
 
 `npm ci && npm test` executa os testes locais (Node + Python).
 Demo de reprodução: `smartedtv/demo-vast.html`. Validação da tag real e
-em dispositivos ainda pendente; o APK original não foi recompilado.
+em dispositivos ainda pendente; o novo APK de teste foi reempacotado a partir do original, sem recompilar o Kodi/NDK.

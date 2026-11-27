@@ -1,14 +1,24 @@
 # Build manual do APK universal SMARTEDTV
 
+## Build concluído em 2026-11-27
+
+- **[Download direto: SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smartedtv-test-45989176676-1/SMARTEDTV-universal.apk)** — 268.035.241 bytes (~268 MB / 255,6 MiB).
+- [Pre-release e relatórios](https://github.com/edinhoms97-creator/SMARTED/releases/tag/smartedtv-test-45989176676-1).
+- [Execução bem-sucedida](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45989176676): criada 11:16:58 UTC, concluída 11:19:11 UTC (**2 min 13 s**, incluindo fila/publicação).
+- Fontes do binário: `7e300f2c6caa468b9412520fb2e61bbc1153ee67` (contém `0fea261`).
+- SHA256 do asset publicado, confirmado pela API GitHub: `ae4eba365443ab8ea00e2a00f5b7563a46c6e4129397a88d0d86ea956b93b862`.
+- 67 verificações VAST/AdMob + 15 testes de empacotamento passaram. Assinatura, zipalign, manifesto compilado, ABIs/dependências e comparação dos fontes/Dex/libs passaram no CI.
+- **Não testado em aparelho.** Assinatura debug; fazer backup antes de substituir instalação existente.
+
 ## O que este pipeline faz (e o que ele não faz)
 
 O repositório contém a welcome web, addons Python e skin Kodi, **não contém o projeto Android/Gradle nem os fontes nativos do Kodi**. Logo, não é possível compilar o player Kodi/NDK do zero aqui em 5–10 minutos.
 
 O pipeline reempacota um **APK-base Kodi existente**, preservando byte a byte todos os `classes*.dex` e bibliotecas `.so`. Decodifica os recursos com apktool, aplica os fontes atuais, registra os addons no manifesto Kodi, recompila os recursos, alinha e assina um único `SMARTEDTV-universal.apk` de teste. Não há WebView vazia fingindo ser o player, nem união de APKs incompatíveis.
 
-**Compatibilidade universal neste build:** um único APK com ARM32 (`armeabi-v7a`) **e** ARM64 (`arm64-v8a`), bibliotecas correspondentes e a mesma Activity em Mobile, TV Box e Projetor **Android**. Arquiteturas adicionais já presentes são preservadas. Não promete x86 quando a base não o contém, nem compatibilidade com todo Android/hardware. SDK mínimo e ABIs constam dos relatórios. Roteamento de dispositivo não seleciona outro provedor de anúncios: VAST é o mesmo caminho, AdMob permanece desligado.
+**Compatibilidade universal neste build:** um único APK com ARM32 (`armeabi-v7a`) **e** ARM64 (`arm64-v8a`), dependências nativas resolvidas e a mesma Activity em Mobile, TV Box e Projetor **Android**. Arquiteturas adicionais já presentes são preservadas. Não promete x86 quando a base não o contém, nem compatibilidade com todo Android/hardware. SDK mínimo e ABIs constam dos relatórios. Roteamento de dispositivo não seleciona outro provedor de anúncios: VAST é o mesmo caminho, AdMob permanece desligado.
 
-> A arquitetura do APK original ainda não foi inspecionada: o sandbox não acessa o Dropbox diretamente, e o conector não transfere o APK de 263 MB. O workflow **falha deliberadamente** se a base só tiver ARM32 ou só ARM64. Não inventa as bibliotecas ausentes nem publica um APK incorretamente chamado universal. Nesse caso, fornecer uma base Kodi genuinamente multi-ABI ou os fontes Android/NDK compatíveis.
+> A base foi baixada e inspecionada pelo runner GitHub: contém **ARM32 e ARM64**. As listas de bibliotecas opcionais diferem entre as arquiteturas. O gate inicial por igualdade de nomes foi substituído pela checagem de núcleo Kodi em ambas e de `DT_NEEDED` via `readelf`, permitindo diferenças legítimas sem ignorar dependências ausentes. O CI confirmou essas verificações. Logs/artefatos hospedados nos CDNs de Azure/GitHub não podem ser baixados por este sandbox; o status das etapas e a publicação foram conferidos pela API GitHub.
 
 ## Execução manual
 
@@ -57,9 +67,9 @@ Caches: npm, APK-base por hash, Android build-tools 35.0.0, JAR apktool e chave 
 
 ## Tempo
 
-Meta: **5–10 minutos com cache aquecido**, sem emulador, testes instrumentados ou compilação NDK. Testes unitários JS/Python + os 14 testes de empacotamento levam aproximadamente 1 segundo neste sandbox.
+Meta: **5–10 minutos com cache aquecido**, sem emulador, testes instrumentados ou compilação NDK. Testes unitários JS/Python + os 15 testes de empacotamento levam aproximadamente 1 segundo neste sandbox.
 
-O job de build tem timeout de **8 minutos**, e o de publicação de **2 minutos**. Esse orçamento interrompe uma execução lenta, **não garante produzir um APK em dez minutos**. Fila de runners, primeiro download de 263 MB, indisponibilidade do Dropbox/GitHub/SDK, base inválida ou falhas de recursos/assinatura podem impedir a entrega. Não há medição de build Android completo até uma execução real concluir. Compressão do artefato desativada para não recomprimir o APK.
+O job de build tem timeout de **8 minutos**, e o de publicação de **2 minutos**. Esse orçamento interrompe uma execução lenta, **não garante produzir um APK em dez minutos**. Fila de runners, primeiro download de 263 MB, indisponibilidade do Dropbox/GitHub/SDK, base inválida ou falhas de recursos/assinatura podem impedir a entrega. A primeira execução bem-sucedida levou 2 min 13 s de ponta a ponta (acima); essa medição não é garantia para execuções futuras. Compressão do artefato desativada para não recomprimir o APK.
 
 ## O que entra no APK
 
@@ -76,7 +86,7 @@ Não inventa canal, endpoint VIP, status de pagamento ou bridge AdMob. A welcome
 ## Verificações obrigatórias antes de entregar
 
 1. Base: hash confiável, tamanho quando é a base padrão, CRC ZIP, caminhos seguros e assinatura válida.
-2. ABIs: ARM32+ARM64 reais, cabeçalho ELF correspondente a cada diretório, mesmo conjunto de dependências nativas.
+2. ABIs: ARM32+ARM64 reais, cabeçalho ELF correspondente a cada diretório, núcleo Kodi presente em ambas e dependências `DT_NEEDED` resolvidas por bibliotecas empacotadas da mesma ABI ou sonames públicos Android. Bibliotecas opcionais específicas de arquitetura são permitidas; `libc++_shared`, `libssl`, `libcrypto` não são presumidas bibliotecas públicas do sistema.
 3. Fontes: revisão contém `0fea261`; árvore rastreada limpa; AdMob desativado; tag #1508180 presente.
 4. Assinatura de teste automática com `keytool`/`apksigner`, esquemas v1+v2+v3.
 5. `apksigner verify --verbose --print-certs` após assinatura.
@@ -107,3 +117,12 @@ npm run build:standalone
 ```
 
 Artefatos, downloads, diretórios de trabalho e chaves ficam em `dist/` / `.cache/`, ignorados pelo Git. A validação real do VAST e da retomada no aparelho permanece obrigatória: [VAST.md](VAST.md).
+
+## Histórico da execução inicial
+
+- PR #1 integrado com autorização para registrar o workflow na branch padrão.
+- [Execução 45988666985](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45988666985): gate inicial bloqueou listas ARM32/ARM64 distintas. Não publicou APK.
+- [Execução 45988908051](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45988908051): mesmo gate, com erro agora exposto nas anotações Checks para diagnóstico neste sandbox restrito.
+- Corrigida a regra para dependências nativas efetivas; [execução 45989176676](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45989176676) concluiu todos os gates e publicou o APK.
+
+Nenhuma verificação de assinatura/manifesto/conteúdo foi desativada para obter o binário. Todas as execuções foram manuais.
