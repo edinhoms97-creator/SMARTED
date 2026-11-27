@@ -373,7 +373,7 @@ jobs:
           gh release edit "$tag" --notes-file dist/INSTALLATION.txt
 
   vast_function_lab:
-    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup'
+    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -508,7 +508,7 @@ jobs:
           gh release view "$tag" --json url --jq .url
 
   historical_startup:
-    if: inputs.vast_function_lab == 'history-startup'
+    if: inputs.vast_function_lab == 'history-startup' || inputs.vast_function_lab == 'history-budget'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     permissions:
@@ -532,15 +532,23 @@ jobs:
           python3 -m pip install --disable-pip-version-check androguard==4.1.3 playwright==1.58.0 imageio-ffmpeg==0.6.0 pillow==12.1.0
       - name: Comparacao real de entradas, funcoes VAST e intervalo
         run: python3 tools/inspect_vast_history_startup.py compare
+      - name: Localizar os limites reais no APK, sem alterar player
+        run: python3 tools/inspect_vast_history_startup.py limits
+      - name: Replay com relogio virtual das cadeias de 6, 9 e 12 segundos, sem rede
+        run: python3 tools/compare_vast_request_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --out .cache/history-startup/request-budget-before.json
       - name: Ler somente codigo de inicializacao Python
+        if: inputs.vast_function_lab == 'history-startup'
         run: python3 tools/inspect_vast_history_startup.py startup
       - name: Ler manifesto e bytecode nativo Splash, sem reconstruir APK
+        if: inputs.vast_function_lab == 'history-startup'
         run: python3 tools/inspect_vast_history_startup.py dex
       - name: Tres chamadas reais historicas com TAG NOVA controlada e fixtures
+        if: inputs.vast_function_lab == 'history-startup'
         run: |
           set -o pipefail
           python3 tools/vast_visual_lab.py --apk .cache/history-startup/historical/SMARTEDTV-universal.apk --out .cache/history-startup/historical/evidence --live --selection 2>&1 | tee .cache/history-startup/historical.log
       - name: Tres chamadas reais atuais com TAG NOVA e fixtures
+        if: inputs.vast_function_lab == 'history-startup'
         run: |
           set -o pipefail
           python3 tools/vast_visual_lab.py --apk .cache/history-startup/current/SMARTEDTV-universal.apk --out .cache/history-startup/current/evidence --live --selection --expect-selection 2>&1 | tee .cache/history-startup/current.log

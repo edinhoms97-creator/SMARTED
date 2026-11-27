@@ -77,8 +77,32 @@ def dex():
     (ROOT/'startup-native.json').write_text(json.dumps(result,indent=2)+'\n')
     transfer('SMARTED startup native',result)
 
+def limits():
+    result={}
+    for label in ('historical','current'):
+        with zipfile.ZipFile(ROOT/label/'SMARTEDTV-universal.apk') as z:
+            source=z.read(PREFIX+'ads_vast.py').decode();tree=ast.parse(source)
+        constants={}
+        for n in tree.body:
+            if isinstance(n,ast.Assign):
+                for t in n.targets:
+                    if isinstance(t,ast.Name) and any(k in t.id for k in ('TEMPO','FOLGA','WRAPPER','TIMEOUT')):
+                        try:constants[t.id]=ast.literal_eval(n.value)
+                        except (ValueError,TypeError):pass
+        excerpts={}
+        for fn in tree.body:
+            if isinstance(fn,ast.FunctionDef) and fn.name in ('baixar','exibir','reproduzir','_aguardar_anuncio_tocar','restaurar'):
+                code=ast.get_source_segment(source,fn);lines=code.splitlines();idx=set()
+                for i,line in enumerate(lines):
+                    if any(k in line for k in ('deadline','tempo_maximo','TEMPO_','FOLGA','3.0','5.0','35.0','8.0','duration +','duracao +')):
+                        idx.update(range(max(0,i-1),min(len(lines),i+2)))
+                excerpts[fn.name]='\n'.join(f'{i+1}: {lines[i]}' for i in sorted(idx))
+        result[label]=dict(constants=constants,scoped_excerpts=excerpts)
+    (ROOT/'timeout-limits.json').write_text(json.dumps(result,indent=2)+'\n')
+    transfer('VAST actual timeout scopes',result)
+
 if __name__=='__main__':
-    try:{'compare':compare,'startup':startup,'dex':dex}[sys.argv[1]]()
+    try:{'compare':compare,'startup':startup,'dex':dex,'limits':limits}[sys.argv[1]]()
     except Exception as exc:
         import traceback
         print('::error title=Historical startup inspection::'+str(exc).replace('\n','%0A'))
