@@ -185,6 +185,7 @@ Stop fecha a geracao mesmo se isPlayingVideo ainda apresentar estado antigo. Rec
 Monitor leve de Home usa waitForAbort, nao modifica skin/controles/player nem confunde OSD com Home.
 Sem lock de elegibilidade durante rede/anuncio/retomada; trabalho de VAST e pixels permanece fora do callback.
 VAST nativo nao espera recuperar foco Android como um anuncio externo. Retomada evita seek redundante, sobretudo em zero.
+Confirmacao de seek considera o avanco monotonicamente transcorrido; o relogio do filme nao precisa ficar congelado no alvo.
 Ordem de rotas/proxy/plugin, MediaFile, tag/headers/TLS, callbacks do player e watchdogs sao os da referencia.
 Mapping Wrapper/InLine, macros, UA real e eventos existentes preservados; complete apenas no fim observado.
 Logs [SmartAdsOpening]: opening-claimed, vast-request/response, creative-selected, ad-start-observed,

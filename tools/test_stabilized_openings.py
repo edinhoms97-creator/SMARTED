@@ -248,6 +248,26 @@ class Tests(unittest.TestCase):
         self.assertEqual(seeks, [])
         self.assertEqual(sleeps, [])
 
+    def test_actual_seek_confirmation_allows_native_clock_to_keep_advancing(self):
+        case, player = self.actual_vast()
+        clock, sleeps = [0.0], []
+        old_seek, old_time = player.seekTime, player.getTime
+        def seek(self, target):
+            player.current = target
+            clock[0] += .4  # native seek/decode returned after clock advanced
+        try:
+            player.seekTime = seek
+            player.getTime = lambda self: player.current + clock[0]
+            def sleep(seconds):
+                clock[0] += seconds
+                sleeps.append(seconds)
+            ready = case.env['restaurar']({'caminho': 'movie', 'posicao': 42.125},
+                                          dormir=sleep, agora=lambda: clock[0])
+            self.assertTrue(ready)
+            self.assertEqual(sleeps, [])  # old fixed-target check waits/fails for 3s
+        finally:
+            player.seekTime, player.getTime = old_seek, old_time
+
     def test_actual_pixel_http_receipt_is_distinct_from_impression_queue(self):
         case, _ = self.actual_vast()
         received = []

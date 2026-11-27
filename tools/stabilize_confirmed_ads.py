@@ -144,6 +144,9 @@ def transform_vast(source):
     # Do not reset an already-positioned decoder, especially time zero. Original
     # candidate order, fallback, native seek and positive-target confirmation stay.
     restore = once(restore, '            if not live:\n                player.seekTime(target)', "            if not live and target > 0 and abs(float(player.getTime()) - target) > .25:\n                player.seekTime(target)")
+    restore = once(restore, '                player.seekTime(target)', '                seek_started = agora()\n                player.seekTime(target)')
+    restore = once(restore, '                    if abs(float(player.getTime()) - target) <= .25:',
+                   '                    observed = float(player.getTime())\n                    elapsed = max(0.0, agora() - seek_started)\n                    if target - .25 <= observed <= target + elapsed + .25:')
     restore = once(restore, '            return True', "            emit(xbmc, 'content-released', live=live)\n            return True")
     changes['restaurar'] = restore
 
