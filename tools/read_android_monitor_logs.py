@@ -38,9 +38,11 @@ if len(sys.argv) > 2:
     print('::notice title=Read-only APK eligibility source::' + json.dumps(selected))
 
     with zipfile.ZipFile(sys.argv[2]) as archive:
-        selected_sources = {name: archive.read('assets/addons/service.smarted.bootstrap/'+name).decode() for name in
-                            ('smart_ads.py', 'variante.py', 'ads_regra.py', 'ads_vast.py', 'ad_return.py')}
+        selected_sources = {'smart_ads.py': archive.read('assets/addons/service.smarted.bootstrap/smart_ads.py').decode()}
+        variant = archive.read('assets/addons/service.smarted.bootstrap/variante.py').decode()
+        selected_sources['variante_selection.py'] = '\n\n'.join(ast.get_source_segment(variant, n) for n in ast.parse(variant).body
+             if isinstance(n, ast.FunctionDef) and n.name in ('compatibilidade_admob', 'selecionar_motor_anuncio'))
     payload = base64.b64encode(gzip.compress(json.dumps(selected_sources).encode())).decode()
-    parts = [payload[i:i+18000] for i in range(0, len(payload), 18000)]
+    parts = [payload[i:i+3500] for i in range(0, len(payload), 3500)]
     for i, part in enumerate(parts):
         print('::notice title=Read-only native source chunks::' + json.dumps(dict(part=i, total=len(parts), data=part)))
