@@ -6,6 +6,7 @@ npm test
 python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v
 python3 tools/test_minimal_clickadilla.py
 python3 tools/test_delivery_probe.py
+python3 tools/test_stabilized_openings.py
 python3 tools/test_confirmed_tracking.py
 python3 tools/test_ads_regressions.py
 python3 tools/test_resolved_resume.py

@@ -5,6 +5,9 @@ No mocks, ABI substitution, fake cycles or ad pixels. Content cycles require
 actual selectable content and are reported NOT RUN by this environment probe.
 """
 import argparse
+import base64
+import gzip
+import xml.etree.ElementTree as ET
 import json
 import os
 from pathlib import Path
@@ -117,6 +120,7 @@ def prepare(report, sdk, apk):
             screenshot = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'exec-out', 'screencap', '-p'], capture_output=True, timeout=30)
             (evidence / 'screen.png').write_bytes(screenshot.stdout)
             report['ui_hierarchy'] = (evidence / 'hierarchy.xml').read_text(errors='replace')[:12000] if (evidence / 'hierarchy.xml').exists() else 'unavailable'
+            report['ui_labels'] = [node.get('text') or node.get('content-desc') for node in ET.fromstring(report['ui_hierarchy']).iter('node') if node.get('text') or node.get('content-desc')] if report['ui_hierarchy'] != 'unavailable' else []
             report['activity_tail'] = (evidence / 'activities.txt').read_text(errors='replace')[-2500:]
             report['status'] = 'apk-launch-attempted-content-cycles-not-executed'
             for row in report['cycles']: row['reason'] = 'requires-real-content-selection-and-visual-validation'
@@ -141,7 +145,19 @@ def main():
     if args.prepare: prepare(report, args.sdk, args.apk)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2) + '\n')
-    print('::notice title=Android environment actual result::' + json.dumps(report))
+    print('::notice title=Android environment actual result::' + json.dumps({k: v for k, v in report.items() if k not in ('sdk_install', 'avd_create', 'ui_hierarchy', 'activity_tail')}))
+    payload = base64.b64encode(gzip.compress(json.dumps(report).encode())).decode()
+    parts = [payload[i:i+2500] for i in range(0, len(payload), 2500)]
+    for i, part in enumerate(parts):
+        print('::notice title=Android result chunks::' + json.dumps(dict(part=i, total=len(parts), data=part)))
+    # Log only native lifecycle/errors for remote inspection, not film/tracking URLs.
+    log = Path('.cache/android-validation/logcat.txt')
+    if log.exists():
+        lines = [line for line in log.read_text(errors='replace').splitlines() if any(token in line for token in ('FATAL EXCEPTION', 'dlopen failed', 'Kodi', 'kodi', 'python', 'SmartAds', 'SIGSEGV'))]
+        payload = base64.b64encode(gzip.compress('\n'.join(lines).encode())).decode()
+        parts = [payload[i:i+2500] for i in range(0, len(payload), 2500)]
+        for i, part in enumerate(parts):
+            print('::notice title=Android native log chunks::' + json.dumps(dict(part=i, total=len(parts), data=part)))
 
 
 if __name__ == '__main__': main()

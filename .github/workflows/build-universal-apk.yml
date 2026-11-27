@@ -12,6 +12,10 @@ on:
         description: 'Prerelease exata para validar no Android'
         type: string
         default: smarted-original-ads-46028834505-1
+      stabilize_openings:
+        description: '9436b5e + tracking preservado + estabilizacao restrita de aberturas/transicao'
+        type: boolean
+        default: false
       confirmed_reference:
         description: 'Restaurar base confirmada 9436b5e e alterar SOMENTE tracking; tem prioridade sobre outros perfis'
         type: boolean
@@ -55,6 +59,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  STABILIZE_OPENINGS: ${{ inputs.stabilize_openings }}
   CONFIRMED_REFERENCE: ${{ inputs.confirmed_reference }}
   VAST_SOURCE: ${{ inputs.vast_source }}
   MINIMAL_CLICKADILLA: ${{ inputs.minimal_clickadilla }}
@@ -109,6 +114,9 @@ jobs:
           python3 tools/probe_ad_delivery.py .cache/smartedtv-base/base.apk --report .cache/delivery-probe.json
       - name: Empacotar somente anuncios; verificar todos os outros arquivos
         if: ${{ !inputs.inspect_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: bash tools/build-universal-apk.sh
       - name: APK de teste e relatorio de preservacao
         if: ${{ !inputs.inspect_only }}
@@ -165,6 +173,9 @@ jobs:
           if [[ "${CONFIRMED_REFERENCE}" == "true" ]]; then
             title="SMARTED — base confirmada 9436b5e, somente tracking (teste)"
             extra+=(dist/reference-preservation.json)
+          fi
+          if [[ "${STABILIZE_OPENINGS}" == "true" ]]; then
+            title="SMARTED — 9436b5e, ciclo por abertura e transicao nativa (teste)"
           fi
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
             --title "$title" \

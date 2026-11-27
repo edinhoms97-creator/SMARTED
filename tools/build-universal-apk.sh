@@ -13,7 +13,13 @@ git diff --exit-code HEAD -- tools android-build .github
 python3 tools/apk_pipeline.py download "$BASE" --report "$OUT/base-identity.json"
 "$TOOLS/apksigner" verify --verbose --print-certs "$BASE" > "$OUT/base-signature.txt"
 "$TOOLS/aapt2" dump badging "$BASE" > "$OUT/base-badging.txt"
-if [[ "${CONFIRMED_REFERENCE:-false}" == "true" ]]; then
+if [[ "${STABILIZE_OPENINGS:-false}" == "true" ]]; then
+  PLAN="$WORK/stabilized-modules/plan.json"
+  python3 tools/stabilize_confirmed_ads.py "$BASE" "$WORK/unsigned.apk" \
+    --work "$WORK/stabilized-modules" --report "$OUT/source-preservation.json"
+  python3 "$WORK/stabilized-modules/reference_tests.py" "$WORK/stabilized-modules"
+  python3 tools/test_stabilized_openings.py --original "$WORK/stabilized-modules"
+elif [[ "${CONFIRMED_REFERENCE:-false}" == "true" ]]; then
   PLAN="$WORK/confirmed-modules/plan.json"
   python3 tools/restore_confirmed_tracking.py "$BASE" "$WORK/unsigned.apk" \
     --work "$WORK/confirmed-modules" --report "$OUT/source-preservation.json"
@@ -51,6 +57,12 @@ fi
   --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --v4-signing-enabled false \
   --out "$OUT/SMARTEDTV-universal.apk" "$WORK/aligned.apk"
 "$TOOLS/apksigner" verify --verbose --print-certs "$OUT/SMARTEDTV-universal.apk" > "$OUT/signature.txt"
+if [[ "${STABILIZE_OPENINGS:-false}" == "true" ]]; then
+  mkdir -p "$WORK/signature-reference"
+  gh release download smarted-original-ads-46028834505-1 --pattern signature.txt --dir "$WORK/signature-reference" --clobber
+  diff <(grep 'Signer #1 certificate SHA-256 digest:' "$WORK/signature-reference/signature.txt") \
+       <(grep 'Signer #1 certificate SHA-256 digest:' "$OUT/signature.txt")
+fi
 "$TOOLS/zipalign" -P 16 -c -v 4 "$OUT/SMARTEDTV-universal.apk" > "$OUT/zipalign.txt"
 "$TOOLS/aapt2" dump badging "$OUT/SMARTEDTV-universal.apk" > "$OUT/badging.txt"
 # This comparison is stronger than comparing selected manifest attributes:
@@ -148,5 +160,39 @@ reference-preservation.json compara TODAS as entradas com a referencia, alem da 
 Este build nao fez novas consultas reais de anuncios. Testes de tracking/player sao doubles, nao validacao fisica de imagem/audio ou painel.
 Universal ARM32+ARM64. Assinatura de teste/debug; fazer backup antes de remover qualquer instalacao.
 APK oficial do Dropbox nao foi substituido. Nenhum PR foi mesclado.
+EOF
+fi
+
+if [[ "${STABILIZE_OPENINGS:-false}" == "true" ]]; then
+  python3 - <<'PYREPORT'
+import json
+from pathlib import Path
+source = json.loads(Path('dist/source-preservation.json').read_text())
+Path('dist/reference-preservation.json').write_text(json.dumps(source['comparison_with_confirmed_reference_and_tracking'], indent=2) + '\n')
+PYREPORT
+  cat > "$OUT/INSTALLATION.txt" <<EOF
+SMARTEDTV — 9436b5e + TRACKING RESTAURADO + ESTABILIZACAO POR ABERTURA (TESTE)
+Fonte: $(git rev-parse HEAD)
+Referencia obrigatoria: build 45996397116 / 9436b5e, reconstruida antes da camada restrita.
+Tag exata: https://vast.yomeno.xyz/vast?spot_id=1508180 — sem parametros novos ou outro provedor.
+Uma oportunidade por abertura real, incluindo reabertura, fim VOD/episodio e Home; sem cooldown.
+Ledger em memoria deduplica callbacks/retorno nativo; flags persistidas antigas so sao limpas numa nova abertura aceita.
+Stop fecha a geracao mesmo se isPlayingVideo ainda apresentar estado antigo. Reconexao live por Ended nao a fecha.
+Monitor leve de Home usa waitForAbort, nao modifica skin/controles/player nem confunde OSD com Home.
+Sem lock de elegibilidade durante rede/anuncio/retomada; trabalho de VAST e pixels permanece fora do callback.
+VAST nativo nao espera recuperar foco Android como um anuncio externo. Retomada evita seek redundante, sobretudo em zero.
+Ordem de rotas/proxy/plugin, MediaFile, tag/headers/TLS, callbacks do player e watchdogs sao os da referencia.
+Mapping Wrapper/InLine, macros, UA real e eventos existentes preservados; complete apenas no fim observado.
+Logs [SmartAdsOpening]: opening-claimed, vast-request/response, creative-selected, ad-start-observed,
+impression-queued, tracking-event-queued, tracking-http-response/failure, ad-player-released,
+resume-begin/route/content-released e cycle-finished. Sem URLs/tokens. HTTP 2xx nao comprova contagem no painel.
+No-fill/falha consome tentativa, nao impressao. Nao ha criativo em cache ou impressao simulada.
+Testes automatizados de ciclo sao doubles; nao equivalem a ciclos Android nem prova de imagem/audio/tracking do provedor.
+Android: consultar docs/STABILIZED_OPENINGS_VALIDATION.md e o run de validacao; instalacao nao prova reproducao.
+Preservacao integral das demais entradas do APK verificada em preservation.json/reference-preservation.json.
+Mesmo pacote smartedtv.full, ARM32+ARM64 e chave de teste em cache dos builds anteriores.
+A chave original de distribuicao nao esta disponivel; pode nao atualizar instalacao oficial. Fazer backup antes de remover.
+VIP, outros modulos, skin/welcome/pagamento/inicializacao/bibliotecas nao alterados por esta camada.
+Nenhum PR mesclado; APK oficial Dropbox nao substituido.
 EOF
 fi
