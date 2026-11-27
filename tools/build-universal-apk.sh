@@ -13,17 +13,25 @@ git diff --exit-code HEAD -- tools android-build .github
 python3 tools/apk_pipeline.py download "$BASE" --report "$OUT/base-identity.json"
 "$TOOLS/apksigner" verify --verbose --print-certs "$BASE" > "$OUT/base-signature.txt"
 "$TOOLS/aapt2" dump badging "$BASE" > "$OUT/base-badging.txt"
-python3 tools/patch_original_ads.py "$BASE" "$WORK/unsigned.apk" \
-  --work "$WORK/patched-modules" --report "$OUT/source-preservation.json"
-# Tests against the ORIGINAL parser/functions just patched, not the separate
-# welcome/demo implementation. Test doubles only; no UI or emulator launched.
-python3 tools/test_original_ad_patch.py "$WORK/patched-modules"
-python3 tools/test_ad_openings.py --original "$WORK/patched-modules"
-python3 tools/test_ads_regressions.py --original "$WORK/patched-modules"
-python3 tools/test_resolved_resume.py --original "$WORK/patched-modules"
-python3 tools/test_vast_tracking.py --original "$WORK/patched-modules"
-python3 tools/test_vast_transition_menus.py --original "$WORK/patched-modules"
-python3 tools/test_apk_links.py --original "$WORK/patched-modules"
+if [[ "${MINIMAL_CLICKADILLA:-false}" == "true" ]]; then
+  PLAN="android-build/clickadilla-minimal-plan.json"
+  python3 tools/patch_minimal_clickadilla.py "$BASE" "$WORK/unsigned.apk" \
+    --work "$WORK/minimal-modules" --report "$OUT/source-preservation.json"
+  python3 tools/test_minimal_clickadilla.py --original "$WORK/minimal-modules" --base "$BASE"
+else
+  PLAN="android-build/ads-only-plan.json"
+  python3 tools/patch_original_ads.py "$BASE" "$WORK/unsigned.apk" \
+    --work "$WORK/patched-modules" --report "$OUT/source-preservation.json"
+  # Tests against the ORIGINAL parser/functions just patched, not the separate
+  # welcome/demo implementation. Test doubles only; no UI or emulator launched.
+  python3 tools/test_original_ad_patch.py "$WORK/patched-modules"
+  python3 tools/test_ad_openings.py --original "$WORK/patched-modules"
+  python3 tools/test_ads_regressions.py --original "$WORK/patched-modules"
+  python3 tools/test_resolved_resume.py --original "$WORK/patched-modules"
+  python3 tools/test_vast_tracking.py --original "$WORK/patched-modules"
+  python3 tools/test_vast_transition_menus.py --original "$WORK/patched-modules"
+  python3 tools/test_apk_links.py --original "$WORK/patched-modules"
+fi
 "$TOOLS/zipalign" -P 16 -f 4 "$WORK/unsigned.apk" "$WORK/aligned.apk"
 KEYSTORE="$PWD/.cache/smartedtv-signing/debug.keystore"
 mkdir -p "$(dirname "$KEYSTORE")"
@@ -41,7 +49,7 @@ fi
 "$TOOLS/aapt2" dump badging "$OUT/SMARTEDTV-universal.apk" > "$OUT/badging.txt"
 # This comparison is stronger than comparing selected manifest attributes:
 # EVERY entry other than the 8 reviewed ad/link files/signatures must be identical.
-python3 tools/apk_preservation.py "$BASE" "$OUT/SMARTEDTV-universal.apk" --report "$OUT/preservation.json"
+python3 tools/apk_preservation.py "$BASE" "$OUT/SMARTEDTV-universal.apk" --report "$OUT/preservation.json" --plan "$PLAN"
 (cd "$OUT" && sha256sum SMARTEDTV-universal.apk > SMARTEDTV-universal.apk.sha256)
 cat > "$OUT/INSTALLATION.txt" <<EOF
 SMARTED ORIGINAL — CICLO VAST CANAIS/FILMES/EPISODIOS / VALIDACAO EM APARELHO
@@ -75,3 +83,26 @@ Antes de remover qualquer instalacao, fazer backup dos dados.
 Teste em aparelho ainda obrigatorio: nao declarar inicializacao/reproducao aprovadas apenas pelo CI.
 Relatorio preservation.json demonstra exatamente os arquivos modificados.
 EOF
+
+if [[ "${MINIMAL_CLICKADILLA:-false}" == "true" ]]; then
+  cat > "$OUT/INSTALLATION.txt" <<EOF
+SMARTED ORIGINAL DROPBOX — SOMENTE CLICKADILLA + TRACKING / TESTE
+Fonte: $(git rev-parse HEAD)
+Base: /SMARTEDTV UNIVERSAL/SMARTEDTV.apk, smartedtv.full 1.0.161, ARM32+ARM64.
+Hash Dropbox: 03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277
+APK reconstruido a partir do original, nao do APK experimental anterior.
+Somente tres entradas: ads_vast.py, smart_ads.py (tag/motor) e ads_tracking.py (novo).
+Tag: https://vast.yomeno.xyz/vast?spot_id=1508180 — sem parametros/IDs inventados.
+VAST em todos os dispositivos; selecao de AdMob nao utilizada neste teste.
+Wrapper + InLine: Impression, Tracking e Error herdados do ramo selecionado; macros e UA runtime nos pixels; TLS verificado minimo 1.2.
+Tracking: impression/start so apos progresso observado; complete nao e sintetizado em stall/stop; skip somente por callback nativo de stop.
+IMPORTANTE: o corte antecipado de fim do player original foi preservado. Se ele retorna antes do fim real, complete nao e inventado.
+Player, _tocar, MediaFile, tempos, fullscreen, MonitorPreRoll, retomada, VIP, pagamento, skin, welcome, links e inicializacao originais preservados.
+Frequencia ORIGINAL preservada, inclusive intervalo de 2 minutos. Este perfil nao inclui os ajustes de uma tentativa por abertura dos APKs anteriores.
+Nao inclui ads_resume.py nem os watchdogs/gates/guardas de menu novos das tentativas anteriores.
+Relatorios source-preservation.json e preservation.json conferem o escopo contra o APK original.
+Testes automatizados sao doubles, nao execucao Android; imagem/audio/toque e impressao no painel ainda NAO validados em aparelho.
+Assinatura de teste/debug; pode nao atualizar instalacao assinada por outra chave. Fazer backup antes de remover qualquer instalacao.
+O APK oficial no Dropbox nao foi substituido. Esta e uma prerelease separada para teste.
+EOF
+fi

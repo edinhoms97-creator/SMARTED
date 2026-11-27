@@ -4,6 +4,10 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      minimal_clickadilla:
+        description: 'Original Dropbox: somente tag Clickadilla + tracking, sem os patches anteriores de player'
+        type: boolean
+        default: true
       inspect_only:
         description: 'Somente inspecao de contratos originais, sem gerar/publicar APK'
         type: boolean
@@ -28,6 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  MINIMAL_CLICKADILLA: ${{ inputs.minimal_clickadilla }}
   ANDROID_HOME: /usr/local/lib/android/sdk
   INPUT_BASE_URL: ${{ inputs.base_url }}
   INPUT_BASE_SHA256: ${{ inputs.base_sha256 }}
@@ -123,8 +128,8 @@ jobs:
           (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
           tag="smarted-original-ads-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
-            --title 'SMARTED original — ciclo VAST canais/filmes/episodios (teste em aparelho)' \
+            --title 'SMARTED original Dropbox — Clickadilla + tracking (teste)' \
             --notes-file dist/INSTALLATION.txt \
             dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
-            dist/preservation.json dist/signature.txt dist/badging.txt
+            dist/preservation.json dist/source-preservation.json dist/signature.txt dist/badging.txt
           gh release view "$tag" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"

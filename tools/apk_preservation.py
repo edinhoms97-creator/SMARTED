@@ -110,8 +110,9 @@ if __name__ == '__main__':
     parser.add_argument('base', type=Path)
     parser.add_argument('result', type=Path)
     parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--plan', type=Path, default=Path(__file__).resolve().parent.parent / 'android-build/ads-only-plan.json')
     args = parser.parse_args()
-    plan = json.loads((Path(__file__).resolve().parent.parent / 'android-build/ads-only-plan.json').read_text())
+    plan = json.loads(args.plan.read_text())
     validate_plan(plan)
     try:
         report = compare(args.base, args.result, set(plan['changes']))

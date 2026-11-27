@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 npm test
 python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v
+python3 tools/test_minimal_clickadilla.py
 python3 tools/test_ads_regressions.py
 python3 tools/test_resolved_resume.py
 python3 tools/test_vast_tracking.py
@@ -13,5 +14,5 @@ python3 tools/test_ad_openings.py
 python3 tools/test_apk_links.py
 node tools/test-apk-links.js
 bash -n tools/build-universal-apk.sh
-python3 -m py_compile tools/patch_original_ads.py android-build/ads-patches/*.py
+python3 -m py_compile tools/patch_original_ads.py tools/patch_minimal_clickadilla.py android-build/ads-patches/*.py android-build/clickadilla-minimal/*.py
 git diff --check
