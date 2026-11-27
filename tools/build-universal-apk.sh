@@ -102,7 +102,7 @@ Teste em aparelho ainda obrigatorio: nao declarar inicializacao/reproducao aprov
 Relatorio preservation.json demonstra exatamente os arquivos modificados.
 EOF
 
-if [[ "${MINIMAL_CLICKADILLA:-false}" == "true" ]]; then
+if [[ "${MINIMAL_CLICKADILLA:-false}" == "true" && "${STABILIZE_OPENINGS:-false}" != "true" ]]; then
   cat > "$OUT/INSTALLATION.txt" <<EOF
 SMARTED ORIGINAL DROPBOX — FONTE VAST RESTAURADA / DIAGNOSTICO DE ENTREGA / TESTE
 Fonte: $(git rev-parse HEAD)
@@ -130,7 +130,7 @@ O APK oficial no Dropbox nao foi substituido. Esta e uma prerelease separada par
 EOF
 fi
 
-if [[ "${CONFIRMED_REFERENCE:-false}" == "true" ]]; then
+if [[ "${CONFIRMED_REFERENCE:-false}" == "true" && "${STABILIZE_OPENINGS:-false}" != "true" ]]; then
   python3 - "$WORK/confirmed-modules/reference-9436b5e.apk" "$OUT/SMARTEDTV-universal.apk" "$OUT/reference-preservation.json" <<'PYREF'
 import json, sys
 from pathlib import Path
@@ -164,11 +164,15 @@ EOF
 fi
 
 if [[ "${STABILIZE_OPENINGS:-false}" == "true" ]]; then
-  python3 - <<'PYREPORT'
-import json
+  python3 - "$WORK/stabilized-modules/reference-9436b5e-tracking.apk" "$OUT/SMARTEDTV-universal.apk" <<'PYREPORT'
+import json, sys
 from pathlib import Path
-source = json.loads(Path('dist/source-preservation.json').read_text())
-Path('dist/reference-preservation.json').write_text(json.dumps(source['comparison_with_confirmed_reference_and_tracking'], indent=2) + '\n')
+sys.path.insert(0, 'tools')
+from apk_preservation import compare
+from stabilize_confirmed_ads import PREFIX
+report = compare(sys.argv[1], sys.argv[2], {PREFIX + name for name in ('ads_vast.py', 'smart_ads.py', 'ads_openings.py')})
+Path('dist/reference-preservation.json').write_text(json.dumps(report, indent=2) + '\n')
+print('::notice title=Signed APK versus confirmed reference with restored tracking::' + json.dumps(report))
 PYREPORT
   cat > "$OUT/INSTALLATION.txt" <<EOF
 SMARTEDTV — 9436b5e + TRACKING RESTAURADO + ESTABILIZACAO POR ABERTURA (TESTE)
