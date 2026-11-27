@@ -15,7 +15,9 @@ BASE = "assets/addons/service.smarted.bootstrap/"
 GROUPS = {
     "transport": ("ads_vast.py", ("tag_configurada", "escolher_anuncio", "baixar", "disparar")),
     "resume": ("ads_vast.py", ("estado_do_conteudo", "restaurar", "exibir_e_devolver")),
-    "routing": ("smart_ads.py", ()),
+    "routing": ("smart_ads.py", ("motor_anuncio", "usar_vast", "tocar_anuncio_de_video", "mostrar_preroll", "mostrar_abertura", "abrir_anuncio")),
+    "fetchflow": ("ads_vast.py", ("exibir",)),
+    "playback": ("ads_vast.py", ("reproduzir",)),
 }
 
 
