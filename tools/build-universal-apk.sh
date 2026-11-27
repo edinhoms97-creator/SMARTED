@@ -186,7 +186,7 @@ Observador passivo de bordas de video/Home usa waitForAbort; cobre callback AV a
 Sem comandos play/seek/pause/menu nesse observador; Player.HasMedia preserva pausa/buffering e a excecao de reconexao live.
 Flag de Stop cerca somente o ultimo caminho; troca direta A->B sem amostra sem midia libera a nova abertura.
 Metadados ainda indisponiveis sao relidos localmente, sem repetir request da tag apos um claim.
-Selecao nativa de compatibilidade/saude restaurada: AdMob compativel prioritario, VAST se incompativel.
+ETAPA ATUAL AUTORIZADA: VAST tambem no celular; AdMob preservado, mas ativacao adiada ate aprovacao do VAST.
 provider-selected, attempt-blocked e blocking-state-reset explicam os gates antes da tag.
 Sem lock de elegibilidade durante rede/anuncio/retomada; trabalho de VAST e pixels permanece fora do callback.
 VAST nativo nao espera recuperar foco Android como um anuncio externo. Retomada evita seek redundante, sobretudo em zero.

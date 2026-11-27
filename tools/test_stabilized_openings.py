@@ -278,7 +278,7 @@ class Tests(unittest.TestCase):
         h.join()
         self.assertEqual(h.calls, ['film-a'])
 
-    def test_provider_admob_priority_unsupported_vast_and_existing_health_selection(self):
+    def test_validation_stage_vast_even_on_admob_compatible_phone(self):
         source = (ORIGINAL / 'smart_ads.py') if ORIGINAL else stabilize.FOLDER/'smart_ads.py'
         node = stabilize.nodes(source.read_text())['motor_anuncio']
         logs = []
@@ -288,7 +288,7 @@ class Tests(unittest.TestCase):
             return types.SimpleNamespace(compatibilidade_admob=lambda: {'compativel': compatible},
                 selecionar_motor_anuncio=lambda **kw: (selected, 'native-selection', {}))
         exec(compile(ast.Module(body=[node], type_ignores=[]), '<provider>', 'exec'), env)
-        for supported, choice, expected in ((True, 'admob', 'admob'), (False, 'admob', 'vast'),
+        for supported, choice, expected in ((True, 'admob', 'vast'), (False, 'admob', 'vast'),
                                               (True, 'vast', 'vast')):
             env['_variante'] = variant(supported, choice)
             self.assertEqual(env['motor_anuncio']()[0], expected)

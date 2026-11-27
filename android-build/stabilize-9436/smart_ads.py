@@ -1,28 +1,12 @@
 # Applied to reconstructed 9436b5e + tracking; native providers/player retained.
 def motor_anuncio(agora=None):
-    """Use existing native compatibility/health; do not force VAST on AdMob devices."""
+    """User-authorized VAST validation on phones too; AdMob activation deferred."""
     from ads_openings import emit
-    motor, reason = MOTOR_VAST, 'admob-compatibility-unavailable'
-    variant = globals().get('_variante')
-    if variant is not None:
-        try:
-            info = variant.compatibilidade_admob()
-            if bool(info.get('compativel')):
-                motor, reason = MOTOR_ADMOB, info.get('motivo') or 'admob-supported'
-                if hasattr(variant, 'selecionar_motor_anuncio'):
-                    selected, why, details = variant.selecionar_motor_anuncio(
-                        saude_admob=globals().get('_SAUDE_ADMOB', {}), agora=agora)
-                    if selected in (MOTOR_ADMOB, MOTOR_VAST):
-                        motor, reason = selected, why
-            else:
-                motor, reason = MOTOR_VAST, info.get('motivo') or 'admob-unsupported'
-        except Exception as exc:
-            reason = 'admob-compatibility-error:' + type(exc).__name__
-    signature = (motor, reason)
-    if globals().get('_smarted_provider_signature') != signature:
-        globals()['_smarted_provider_signature'] = signature
-        emit(xbmc, 'provider-selected', provider=motor, reason=reason)
-    return motor, reason
+    reason = 'validacao-vast-celular-admob-adiado'
+    if globals().get('_smarted_provider_signature') != (MOTOR_VAST, reason):
+        globals()['_smarted_provider_signature'] = (MOTOR_VAST, reason)
+        emit(xbmc, 'provider-selected', provider=MOTOR_VAST, reason=reason)
+    return MOTOR_VAST, reason
 
 
 def abrir_anuncio(atividade, log=None, uri=''):
