@@ -2,7 +2,7 @@
 
 ## Escopo
 
-A base continua sendo exatamente `smartedtv.full` 1.0.161 do Dropbox fornecido. Nenhuma skin, XML de layout, manifesto, biblioteca, serviço de inicialização ou tela welcome alternativa é inserida. Além dos quatro arquivos de anúncios já revisados, apenas ações de link do APK e constantes `APK`/`DROPBOX_URL` de `service.smarted.bootstrap/vip.py` podem mudar. O patcher compara a AST restante; validação de licença, cloud e pagamento permanecem intactos.
+A base continua sendo exatamente `smartedtv.full` 1.0.161 do Dropbox fornecido. Nenhuma skin, XML de layout, manifesto, biblioteca, serviço de inicialização ou tela welcome alternativa é inserida. Além dos quatro arquivos de anúncios já revisados, apenas ações de link do APK e constantes `APK`/`DROPBOX_URL` de `service.smarted.bootstrap/vip.py`, além do helper de URL e duas constantes na welcome original, podem mudar. O patcher compara a AST restante; validação de licença, cloud e pagamento permanecem intactos.
 
 ## Inspeção e problemas tratados
 
@@ -38,6 +38,7 @@ VAST frequentemente omite codec/profile de áudio/vídeo. Metadados desconhecido
 As rotas originais foram identificadas: welcome 121 → `vip.abrir_dropbox`; download → `vip.open_apk_download`; atualização → `vip.procurar_atualizacao`; compartilhamento longo → `vip.compartilhar`. O addon de ajustes usa os mesmos handlers.
 
 - Compartilhar: envia/exibe o link oficial, sem redirecionar para pastas por variante.
+- A verificação de pasta configurada da welcome usa agora o arquivo universal público, não uma pasta por variante; seu helper/fallback de URL também é fixado ao mesmo arquivo.
 - Baixar/Atualizar: abrem o mesmo URL direto `SMARTEDTV.apk` com `dl=1`, em Mobile, TV Box e projetor; não consultam outro manifesto nem redirecionam para uma release diferente.
 - O navegador/gerenciador de downloads e o instalador Android continuam responsáveis por download, permissões e confirmação do usuário. Abrir o intent não é prova de instalação.
 - Web, QR do APK e preview standalone usam o mesmo link. A referência Kodi separada também delega aos handlers, mas **não substitui a welcome do APK original**.

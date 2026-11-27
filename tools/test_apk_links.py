@@ -40,6 +40,8 @@ class Links(unittest.TestCase):
         env = self.env()
         for device in ('mobile', 'tvbox', 'projetor'):
             env['eh_tv'] = lambda: device != 'mobile'
+            self.assertTrue(env['dropbox_configurado']())
+            self.assertEqual(env['url_do_apk_por_nome'](), OFFICIAL)
             self.assertEqual(env['resolver_apk_publicado'](), (OFFICIAL, 'dropbox-oficial'))
             self.assertTrue(env['open_apk_download']())
             self.assertTrue(env['procurar_atualizacao']())
@@ -59,6 +61,55 @@ class Links(unittest.TestCase):
         self.assertTrue(env['abrir_dropbox']())
         self.assertEqual(len(self.calls), 1)
         self.assertIn(OFFICIAL, self.calls[0][1])
+
+    @unittest.skipUnless(ORIGINAL, 'original welcome contract runs against actual patched APK in CI')
+    def test_actual_original_welcome_controls_and_browser_fallbacks_use_official_file(self):
+        import copy
+        env = self.env()
+        source = ORIGINAL / 'default.py'
+        tree = ast.parse(source.read_text())
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in ('APK_DOWNLOAD', 'DROPBOX_URL'):
+                        self.assertEqual(ast.literal_eval(node.value), OFFICIAL)
+        helpers = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == '_link_do_dropbox_desta_versao']
+        methods = [copy.deepcopy(n) for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and
+                   n.name in ('_abrir_dropbox', '_baixar_apk', '_atualizar', '_compartilhar', 'onClick')]
+        cls = ast.parse('class ActualWelcome: pass').body[0]
+        cls.body = methods
+        vip = types.SimpleNamespace(**env)
+        namespace = {'_vip': lambda: vip, '_log': lambda *args: None,
+                     'DROPBOX_URL': OFFICIAL, 'APK_DOWNLOAD': OFFICIAL, 'PROP_DIALOGO': 'dialog',
+                     # Old folder data must not override the explicit APK URL.
+                     '_link_do_dropbox_desta_versao': lambda *args: 'https://wrong.invalid/folder',
+                     'xbmc': types.SimpleNamespace(LOGWARNING=2, LOGERROR=3,
+                               executebuiltin=lambda command: self.calls.append((command,)))}
+        exec(compile(ast.fix_missing_locations(ast.Module(body=helpers + [cls], type_ignores=[])), str(source), 'exec'), namespace)
+        self.assertEqual(namespace['_link_do_dropbox_desta_versao'](vip), OFFICIAL)
+        dialog = namespace['ActualWelcome']()
+        dialog.getProperty = lambda key: ''
+        dialog._dialogo = lambda *args: self.fail('Configured universal APK must not show folder-unconfigured error')
+        fallback_urls = []
+        dialog._intent_navegador = lambda url: fallback_urls.append(url) or True
+        for variant in ('mobile', 'tvbox', 'projetor'):
+            vip.eh_tv = lambda: variant != 'mobile'
+            for button in (121, 122, 123):
+                dialog.onClick(button)
+        self.assertEqual(len(self.calls), 6)
+        self.assertTrue(all(call[0] == OFFICIAL for call in self.calls))
+        self.assertEqual(len(self.texts), 3)
+        # If the VIP helper cannot dispatch a browser, even original fallback
+        # methods/constants must stay on the official URL, not an old folder.
+        vip.open_apk_download = lambda: False
+        vip.procurar_atualizacao = lambda: False
+        vip.abrir_url = lambda *args: False
+        dialog.onClick(122)
+        dialog.onClick(123)
+        self.assertEqual(fallback_urls, [OFFICIAL, OFFICIAL])
+        vip.abrir_dropbox = lambda: False
+        dialog.onClick(121)
+        self.assertEqual(fallback_urls[-1], OFFICIAL)
 
     def test_reference_native_controls_delegate_to_shared_apk_actions(self):
         import sys
@@ -80,7 +131,7 @@ class Links(unittest.TestCase):
     def test_only_apk_actions_are_replaced_not_vip_validation_or_payment(self):
         nodes = ast.parse((ROOT / 'android-build/ads-patches/vip.py').read_text()).body
         self.assertEqual({n.name for n in nodes if isinstance(n, ast.FunctionDef)},
-            {'resolver_apk_publicado', 'open_apk_download', 'procurar_atualizacao', 'compartilhar', 'abrir_dropbox'})
+            {'resolver_apk_publicado', 'open_apk_download', 'procurar_atualizacao', 'compartilhar', 'abrir_dropbox', 'dropbox_configurado', 'url_do_apk_por_nome'})
 
 
 if __name__ == '__main__':

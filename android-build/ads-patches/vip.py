@@ -36,3 +36,13 @@ def compartilhar(texto=None):
 def abrir_dropbox():
     """Welcome button 121: share/display the official APK, not a folder page."""
     return compartilhar()
+
+
+def dropbox_configurado():
+    """The pinned public universal APK does not require a per-device folder."""
+    return bool(APK and APK.startswith('https://www.dropbox.com/scl/fi/') and 'dl=1' in APK)
+
+
+def url_do_apk_por_nome():
+    """Keep the original welcome download fallback on the same official file."""
+    return APK

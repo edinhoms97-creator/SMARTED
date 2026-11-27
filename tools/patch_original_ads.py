@@ -105,7 +105,8 @@ def build(base, output, work, report):
                 original = archive.read(path).decode('utf-8')
                 constants = ({'TIMEOUT_HTTP': 8, 'VAST_TAG_PADRAO': 'https://vast.yomeno.xyz/vast?spot_id=1508180'}
                              if name == 'ads_vast.py' else {'INTERVALO': 0} if name == 'ads_regra.py' else
-                             {'APK': official_apk, 'DROPBOX_URL': official_apk} if name == 'vip.py' else {})
+                             {'APK': official_apk, 'DROPBOX_URL': official_apk} if name == 'vip.py' else
+                             {'APK_DOWNLOAD': official_apk, 'DROPBOX_URL': official_apk} if name == 'default.py' else {})
                 updated = replace_functions(original, code, constants)
             compile(updated, name, 'exec')
             replacements[path] = updated.encode('utf-8')

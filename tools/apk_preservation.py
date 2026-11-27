@@ -20,9 +20,11 @@ PROTECTED = {"AndroidManifest.xml", "resources.arsc", "assets/system/addon-manif
              "assets/addons/service.smarted.bootstrap/default.py"}
 
 
+WELCOME_LINK_CONSTANTS = 'assets/addons/script.smartedtv.welcome/default.py'
+
 def check_ad_path(path):
     parts = PurePosixPath(path).parts
-    if (path in PROTECTED or not path.startswith("assets/addons/service.smarted.bootstrap/")
+    if (path in PROTECTED or not (path.startswith("assets/addons/service.smarted.bootstrap/") or path == WELCOME_LINK_CONSTANTS)
             or ".." in parts or "\\" in path
             or any(part.startswith("skin.") or part.lower() in {"skins", "media", "resources"} for part in parts)
             or PurePosixPath(path).suffix not in {".py", ".json"}):

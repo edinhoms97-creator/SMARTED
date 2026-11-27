@@ -122,6 +122,13 @@ class Tests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaisesRegex(ValueError, "outside ad allowlist"):
                 preserve.compare(base, result, {AD})
 
+    def test_only_original_welcome_link_source_is_allowed_not_layout_or_new_services(self):
+        preserve.check_ad_path('assets/addons/script.smartedtv.welcome/default.py')
+        for path in ('assets/addons/script.smartedtv.welcome/other.py',
+                     'assets/addons/script.smartedtv.welcome/resources/skins/Default/1080i/DialogWelcome.xml'):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, 'Protected'):
+                preserve.check_ad_path(path)
+
     def test_no_new_welcome_or_service(self):
         base = self.archive()
         result = self.archive("wrong.apk", {"assets/addons/service.smartedtv.startup/service.py": b"injected"})

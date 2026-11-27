@@ -37,15 +37,16 @@ fi
 "$TOOLS/zipalign" -P 16 -c -v 4 "$OUT/SMARTEDTV-universal.apk" > "$OUT/zipalign.txt"
 "$TOOLS/aapt2" dump badging "$OUT/SMARTEDTV-universal.apk" > "$OUT/badging.txt"
 # This comparison is stronger than comparing selected manifest attributes:
-# EVERY entry other than the 5 reviewed ad/link files/signatures must be identical.
+# EVERY entry other than the 6 reviewed ad/link files/signatures must be identical.
 python3 tools/apk_preservation.py "$BASE" "$OUT/SMARTEDTV-universal.apk" --report "$OUT/preservation.json"
 (cd "$OUT" && sha256sum SMARTEDTV-universal.apk > SMARTEDTV-universal.apk.sha256)
 cat > "$OUT/INSTALLATION.txt" <<EOF
 SMARTED ORIGINAL — WATCHDOG VAST + LINKS DO APK / BUILD DE TESTE
 Fonte: $(git rev-parse HEAD)
 Base original: smartedtv.full 1.0.161 (APK do link Dropbox fornecido).
-Skin, bootstrap, tela inicial, AndroidManifest.xml, resources.arsc e bibliotecas preservados byte a byte.
-Somente anuncios (ads_vast, smart_ads, ads_regra, ads_admob inerte) e acoes de link APK em vip.py mudaram.
+Skin, layout, XMLs, service.py, AndroidManifest.xml, resources.arsc e bibliotecas preservados byte a byte.
+Somente anuncios (ads_vast, smart_ads, ads_regra, ads_admob inerte) e links oficiais em vip.py/welcome default.py mudaram.
+Classes/metodos de interface originais preservados; somente helper de URL e constantes da welcome corrigidos.
 Validacao VIP, pagamento, skin e inicializacao preservados.
 Watchdog: progresso a cada 500ms; 3s sem avanco aborta; limite absoluto min(duracao+5s,35s), incluindo inicio do decoder.
 MP4 progressivo conservador (ate 1080p/5000kbps), preferencia 720p AVC baseline/main quando declarado.
