@@ -8,10 +8,14 @@ on:
         description: 'Preparar emulador real e testar compatibilidade de instalacao, sem gerar APK'
         type: boolean
         default: false
+      android_cycles:
+        description: 'Tentar 3 aberturas Android reais com amostras publicas, sem simular anuncios/pixels'
+        type: boolean
+        default: false
       android_release:
         description: 'Prerelease exata para validar no Android'
         type: string
-        default: smarted-original-ads-46028834505-1
+        default: smarted-original-ads-46035861727-1
       stabilize_openings:
         description: '9436b5e + tracking preservado + estabilizacao restrita de aberturas/transicao'
         type: boolean
@@ -214,6 +218,7 @@ jobs:
       - name: Tentar criar AVD, boot e instalar APK sem mudar ABI
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_CONTENT_CYCLES: ${{ inputs.android_cycles }}
         run: |
           python3 tools/android_validation_environment.py --prepare \
             --apk .cache/android-validation/SMARTEDTV-universal.apk \

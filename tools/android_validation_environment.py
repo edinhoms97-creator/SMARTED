@@ -144,6 +144,9 @@ def prepare(report, sdk, apk):
             time.sleep(120)  # cold native ARM translation + original profile extraction
             evidence = Path('.cache/android-validation')
             evidence.mkdir(parents=True, exist_ok=True)
+            if os.environ.get('ANDROID_CONTENT_CYCLES') == 'true':
+                from android_content_cycles import run_cycles
+                report.update(run_cycles(tools['adb'], evidence))
             for name, args in (
                 ('ui.xml', ['shell', 'uiautomator', 'dump', '/sdcard/smarted-ui.xml']),
                 ('activities.txt', ['shell', 'dumpsys', 'activity', 'activities']),
@@ -181,8 +184,11 @@ def prepare(report, sdk, apk):
             report['ui_hierarchy'] = (evidence / 'hierarchy.xml').read_text(errors='replace')[:12000] if (evidence / 'hierarchy.xml').exists() else 'unavailable'
             report['ui_labels'] = [node.get('text') or node.get('content-desc') for node in ET.fromstring(report['ui_hierarchy']).iter('node') if node.get('text') or node.get('content-desc')] if report['ui_hierarchy'] != 'unavailable' else []
             report['activity_tail'] = (evidence / 'activities.txt').read_text(errors='replace')[-2500:]
-            report['status'] = 'apk-launch-attempted-content-cycles-not-executed'
-            for row in report['cycles']: row['reason'] = 'requires-real-content-selection-and-visual-validation'
+            if os.environ.get('ANDROID_CONTENT_CYCLES') == 'true':
+                report['status'] = 'real-content-cycle-attempts-recorded'
+            else:
+                report['status'] = 'apk-launch-attempted-content-cycles-not-executed'
+                for row in report['cycles']: row['reason'] = 'requires-real-content-selection-and-visual-validation'
     finally:
         if process:
             execute([tools['adb'], '-s', 'emulator-5554', 'emu', 'kill'], timeout=10)
