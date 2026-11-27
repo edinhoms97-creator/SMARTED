@@ -1,6 +1,8 @@
 # Retomada resolvida e auditoria de pixels VAST
 
-## Base 3 s / 5 s restaurada
+> **Atualização:** a janela antiga de 8 s e o hash de controle descritos no histórico abaixo foram substituídos, por solicitação explícita, por startup com progresso em 3,5 s e fallback MP4. Estado atual e log no aparelho: [VAST_STARTUP_DIAGNOSTICS.md](VAST_STARTUP_DIAGNOSTICS.md).
+
+## Histórico: base 3 s / 5 s restaurada
 
 A revisão de referência é `b86570a`, cujo `reproduzir` é idêntico ao de `91a21e6`: primeira implementação no histórico com 3 s sem avanço e margem de duração + 5 s. A escolha é verificável no histórico; estabilidade/ausência de tela preta em todos os aparelhos não pode ser certificada pelo sandbox.
 

@@ -11,33 +11,6 @@ ORIGINAL = None
 PATCHES = Path(__file__).resolve().parent.parent / 'android-build/ads-patches'
 
 
-def stable_player_control_hash(source):
-    """Pin b86570a/91a21e6 player control flow; only tracking may differ.
-
-    Ignore exactly error-pixel construction and the natural-end tracking
-    block. Dedicated tracking tests cover those; all waits, controls, stop,
-    focus, callbacks, sampling, ownership and watchdog branches stay pinned.
-    Ignore empty Python 3.12+ type_params for cross-version AST stability.
-    """
-    import copy
-    import hashlib
-    import json
-    node = copy.deepcopy(next(n for n in ast.parse(source).body
-                              if isinstance(n, ast.FunctionDef) and n.name == 'reproduzir'))
-    for child in ast.walk(node):
-        if isinstance(child, ast.FunctionDef) and child.name == 'error':
-            child.body = [ast.Pass()]
-        if isinstance(child, ast.If) and ast.unparse(child.test) == "reason == 'concluido' and started":
-            child.body = [ast.Pass()]
-    def encode(value):
-        if isinstance(value, ast.AST):
-            return [type(value).__name__, {name: encode(item) for name, item in ast.iter_fields(value)
-                                          if name != 'type_params'}]
-        if isinstance(value, list):
-            return [encode(item) for item in value]
-        return value
-    return hashlib.sha256(json.dumps(encode(node), sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-
 
 class Runtime:
     def __init__(self, mode='ended'):
@@ -45,6 +18,7 @@ class Runtime:
         self.now = 1000.0
         self.duration = 21
         self.start = self.now
+        self.ad_path = 'ad'
         self.file = 'https://media.invalid/movie.mp4'
         self.playing = True
         self.position = 42.125
@@ -89,7 +63,7 @@ class Runtime:
 
     def sleep(self, seconds):
         self.now += seconds
-        if self.file != 'ad':
+        if self.file != self.ad_path:
             if self.playing:
                 self.position += seconds
             return
@@ -124,7 +98,8 @@ class Runtime:
             return False
         if self.mode == 'old-error':
             self.observer.onPlayBackError()  # teardown of old content, before ad ownership
-        self.file, self.playing, self.position, self.start = 'ad', True, 0, self.now
+        self.ad_path = url
+        self.file, self.playing, self.position, self.start = url, True, 0, self.now
         return True
 
     def restore_route(self, route, **kwargs):
@@ -189,10 +164,28 @@ class Regressions(unittest.TestCase):
                   estado={'caminho': 'https://media.invalid/movie.mp4', 'posicao': 42.125})
         return result
 
-    def test_player_control_flow_matches_reviewed_three_and_five_second_base(self):
-        source = ((ORIGINAL or PATCHES) / 'ads_vast.py').read_text()
-        self.assertEqual(stable_player_control_hash(source),
-                         'b688706cb050448812c10e5694f372d47f4d76964d7ee31e75e28b222435e8e6')
+    def test_startup_requires_clock_above_point_one_and_progress_before_3_5s(self):
+        runtime = Runtime('stall')
+        env = runtime.env()
+        env['_posicao_e_duracao'] = lambda: (.05, 25)
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25, 'impressao': ['impression'],
+                                    'errors': ['error:[ERRORCODE]']}, tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(receipt['motivo'], 'startup-timeout')
+        self.assertFalse(receipt['iniciado'])
+        self.assertAlmostEqual(runtime.stop_times[0] - runtime.start, 3.5)
+        self.assertNotIn('impression', runtime.events)
+        self.assertEqual(runtime.events.count('error:405'), 1)
+
+    def test_stale_old_vod_clock_on_new_path_is_not_real_start(self):
+        runtime = Runtime('stall')
+        env = runtime.env()
+        env['_posicao_e_duracao'] = lambda: (42.125, 120)
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25, 'impressao': ['impression']},
+                                   tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertFalse(receipt['iniciado'])
+        self.assertEqual(receipt['motivo'], 'startup-timeout')
+        self.assertNotIn('impression', runtime.events)
+        self.assertAlmostEqual(runtime.stop_times[0] - runtime.start, 3.5)
 
     def test_healthy_25s_ad_is_not_cut_at_one_three_or_five_seconds(self):
         runtime = Runtime('healthy-25')
@@ -213,14 +206,14 @@ class Regressions(unittest.TestCase):
         self.assertEqual(runtime.events.count('start'), 1)
         self.assertEqual(runtime.events.count('complete'), 1)
 
-    def test_original_startup_window_does_not_cut_a_delayed_decoder_at_three_seconds(self):
+    def test_unstarted_decoder_is_stopped_at_3_5s_then_content_is_released(self):
         runtime = Runtime()
         env = runtime.env()
         env['_player_tocando_video'] = lambda: runtime.playing and runtime.now - runtime.start >= 4.0
         receipt = env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=runtime.play_ad, dormir=runtime.sleep)
-        self.assertEqual(receipt['motivo'], 'concluido')
-        self.assertTrue(receipt['iniciado'])
-        self.assertGreaterEqual(runtime.stop_times[0] - runtime.start, 15.0)
+        self.assertEqual(receipt['motivo'], 'startup-timeout')
+        self.assertFalse(receipt['iniciado'])
+        self.assertAlmostEqual(runtime.stop_times[0] - runtime.start, 3.5)
 
     def test_original_ad_player_entrypoint_is_not_replaced(self):
         replacements = ast.parse((PATCHES / 'ads_vast.py').read_text())
@@ -382,7 +375,7 @@ class Regressions(unittest.TestCase):
         env = runtime.env()
         def delayed_play(url, log):
             runtime.play_ad(url, log)
-            runtime.sleep(7)
+            runtime.sleep(.3)
             return True
         result = env['reproduzir']({'url': 'ad', 'duracao': 21}, tocar=delayed_play, dormir=runtime.sleep)
         self.assertEqual(result['motivo'], 'timeout-anuncio')

@@ -39,6 +39,7 @@ def definitions(path, env, names=None, classes=False):
 
 class Harness:
     def __init__(self, receipts):
+        sys.path.insert(0, str(ORIGINAL or PATCHES))
         self.now = 1000.0
         self.file = ''
         self.playing = False

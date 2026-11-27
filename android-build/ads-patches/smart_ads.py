@@ -1,11 +1,20 @@
 # Function/method replacements in the original ad module only; no UI changes.
+def iniciar_monitor(log=None, intervalo=None):
+    from ads_diagnostics import record
+    monitor = _smarted_iniciar_monitor_original(log, intervalo)
+    record('boot', {'active': monitor is not None})
+    return monitor
+
+
 def motor_anuncio(agora=None):
     return (MOTOR_VAST, 'validacao-clickadilla-1508180-admob-desativado')
 
 
 def tocar_anuncio_de_video(log=None):
     """A dispatch/start failure is NOT an impression or a consumed interval."""
+    from ads_diagnostics import record
     if globals().get('_smarted_vast_running'):
+        record('gate', {'motivo': 'busy'})
         if log:
             log('[SmartAdsDiag] requisicao-duplicada-ignorada')
         return False
@@ -13,6 +22,7 @@ def tocar_anuncio_de_video(log=None):
     try:
         module = _ads_vast()
         if module is None:
+            record('gate', {'motivo': 'module-unavailable'})
             if log:
                 log('[SmartAdsDiag] modulo-vast-indisponivel')
             return False
@@ -23,6 +33,7 @@ def tocar_anuncio_de_video(log=None):
             height = 0
         if log:
             log('[SmartAdsDiag] solicitacao-vast-iniciada')
+        record('request')
         receipt = module.exibir_e_devolver(log=log, tag=tag, altura_tela=height)
         globals()['_smarted_vast_restored_path'] = receipt.get('caminho_devolvido', '') if receipt.get('retomada_confirmada') else ''
         success = bool(receipt.get('exibido')) and receipt.get('retomada_confirmada') is not False
@@ -34,6 +45,7 @@ def tocar_anuncio_de_video(log=None):
             log('[SmartAdsDiag] ' + _json.dumps(safe, ensure_ascii=True))
         return success
     except Exception as exc:
+        record('result', {'motivo': 'exception'})
         if log:
             log('[SmartAdsDiag] excecao-vast:%s (conteudo liberado)' % type(exc).__name__)
         return False
@@ -44,8 +56,10 @@ def tocar_anuncio_de_video(log=None):
 def mostrar_preroll(log=None, intervalo=None, agora=None, caminho=None, chave=None,
                     sessao=None, disparar=None, forcar=False):
     """One attempted pre-roll per content opening, never per pause/seek/resume."""
+    from ads_diagnostics import record
     with _LOCK_OPORTUNIDADE:
         if vip_ativo():
+            record('gate', {'motivo': 'vip'})
             return False  # retain the original VIP exemption
         key = chave or _chave_conteudo(caminho)
         if not globals().get('_smarted_regra_iniciada'):
@@ -60,11 +74,13 @@ def mostrar_preroll(log=None, intervalo=None, agora=None, caminho=None, chave=No
             globals()['_ultimo_caminho_preroll'] = None
         if (not forcar and sessao is not None and sessao == globals().get('_ultima_sessao')
                 and (chave or _chave_conteudo(caminho)) == globals().get('_ultimo_caminho_preroll')):
+            record('gate', {'motivo': 'same-session'})
             return False
         if not forcar:
             ads_regra.abrir_troca(key)
             allowed, reason = ads_regra.pode_anunciar(key, agora)
             if not allowed:
+                record('gate', {'motivo': 'same-opening'})
                 globals()['_ultima_sessao'] = sessao
                 if log:
                     log('[SmartAdsDiag] sem-nova-tentativa: ' + reason)
@@ -92,15 +108,19 @@ class MonitorPreRoll:
     # Only the listed ad dispatch/stop methods are replaced. All other methods/attributes in
     # the ORIGINAL MonitorPreRoll class are preserved by AST scope checks.
     def _talvez_mostrar(self):
+        from ads_diagnostics import record
         if not usar_vast():
             return self._smarted_talvez_mostrar_original()
         if self._em_vast:
+            record('gate', {'motivo': 'busy'})
             return
         try:
             if not _e_video(self):
+                record('gate', {'motivo': 'no-video'})
                 return  # onAVStarted retries when the resolved video is ready
             path = self._caminho()
             if not path:
+                record('gate', {'motivo': 'no-path'})
                 return
             key = _normalizar_caminho_chave(path)
             # Only a known return from THIS process/session is suppressible.
@@ -108,6 +128,7 @@ class MonitorPreRoll:
             # must not swallow the first two VODs before the VAST query.
             if (self._ate_ignorar_volta_vast > time.monotonic()
                     and self._volta_vast_chave and key == self._volta_vast_chave):
+                record('gate', {'motivo': 'return'})
                 return
             if key != self._volta_vast_chave:
                 self._ate_ignorar_volta_vast, self._volta_vast_chave = 0.0, ''

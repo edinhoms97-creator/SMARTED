@@ -7,6 +7,10 @@ Este repositório foi montado em 2026-11-27 a partir dos arquivos do Dropbox
 (`SMARTEDTV UNIVERSAL/SMARTEDTV.apk` e os ZIPs de código-fonte). Relatório
 completo da inspeção: [`docs/INSPECTION.md`](docs/INSPECTION.md).
 
+## Verificação rápida
+
+`npm ci --ignore-scripts --no-audit --no-fund && npm run verify` executa os mesmos gates rápidos do workflow manual, sem emulador. Diagnóstico VAST no aparelho e startup 3,5 s: [docs/VAST_STARTUP_DIAGNOSTICS.md](docs/VAST_STARTUP_DIAGNOSTICS.md).
+
 ## Estrutura
 
 ```

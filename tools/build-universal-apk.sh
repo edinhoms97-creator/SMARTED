@@ -22,6 +22,7 @@ python3 tools/test_ad_openings.py --original "$WORK/patched-modules"
 python3 tools/test_ads_regressions.py --original "$WORK/patched-modules"
 python3 tools/test_resolved_resume.py --original "$WORK/patched-modules"
 python3 tools/test_vast_tracking.py --original "$WORK/patched-modules"
+python3 tools/test_vast_startup_diagnostics.py --original "$WORK/patched-modules"
 python3 tools/test_apk_links.py --original "$WORK/patched-modules"
 "$TOOLS/zipalign" -P 16 -f 4 "$WORK/unsigned.apk" "$WORK/aligned.apk"
 KEYSTORE="$PWD/.cache/smartedtv-signing/debug.keystore"
@@ -39,22 +40,23 @@ fi
 "$TOOLS/zipalign" -P 16 -c -v 4 "$OUT/SMARTEDTV-universal.apk" > "$OUT/zipalign.txt"
 "$TOOLS/aapt2" dump badging "$OUT/SMARTEDTV-universal.apk" > "$OUT/badging.txt"
 # This comparison is stronger than comparing selected manifest attributes:
-# EVERY entry other than the 8 reviewed ad/link files/signatures must be identical.
+# EVERY entry other than the 9 reviewed ad/link files/signatures must be identical.
 python3 tools/apk_preservation.py "$BASE" "$OUT/SMARTEDTV-universal.apk" --report "$OUT/preservation.json"
 (cd "$OUT" && sha256sum SMARTEDTV-universal.apk > SMARTEDTV-universal.apk.sha256)
 cat > "$OUT/INSTALLATION.txt" <<EOF
-SMARTED ORIGINAL — BASE VAST 3s/5s + TRACKING / BUILD DE TESTE
+SMARTED ORIGINAL — STARTUP 3.5s + MP4 FALLBACK + DIAGNOSTICO / BUILD DE TESTE
 Fonte: $(git rev-parse HEAD)
 Base original: smartedtv.full 1.0.161 (APK do link Dropbox fornecido).
 Skin, layout, XMLs, service.py, AndroidManifest.xml, resources.arsc e bibliotecas preservados byte a byte.
-Somente anuncios (ads_vast, smart_ads, ads_regra, ads_admob inerte, ads_resume, ads_tracking) e links oficiais em vip.py/welcome default.py mudaram.
+Somente anuncios (ads_vast, smart_ads, ads_regra, ads_admob inerte, ads_resume, ads_tracking, ads_diagnostics) e links oficiais em vip.py/welcome default.py mudaram.
 Classes/metodos de interface originais preservados; somente helper de URL e constantes da welcome corrigidos.
 Validacao VIP, pagamento, skin e inicializacao preservados.
 Watchdog: progresso a cada 500ms; 3s sem avanco aborta; limite absoluto min(duracao+5s,35s), incluindo inicio do decoder.
-Player original preservado (_tocar intacto); ciclo-base b86570a/91a21e6 restaurado e protegido por teste de AST.
-Startup original ate 8s, sem corte em 3s; 3s e watchdog sem avanco, 5s e margem sobre duracao. Sem auto-PlayPause ou novos hooks de clique.
+Player original preservado (_tocar intacto). Startup exige progresso >0.1s em ate 3.5s; apos inicio, stall 3s e margem duracao+5s.
+MP4 ate 720p/3000kbps; ate 3 arquivos do mesmo criativo, fallback somente antes de inicio real e dentro do teto global de 35s.
+Log JSONL local em special://temp/smarted_vast.log (128KiB + 1 rotacao), sem URLs/tokens/dados pessoais.
 Primeiro e segundo VOD consultam a tag sem gate de retorno legado; callbacks duplicados nao repetem a oportunidade.
-MP4 progressivo conservador (ate 1080p/5000kbps), preferencia 720p AVC baseline/main quando declarado.
+MP4 progressivo conservador (ate 720p/3000kbps), preferencia 720p AVC baseline/main quando declarado.
 Baixar/Atualizar abrem SMARTEDTV.apk oficial no Dropbox (dl=1); compartilhar envia/exibe esse mesmo link.
 Download/instalacao dependem das permissoes e confirmacoes do Android.
 Regra: uma tentativa por abertura de canal/filme/episodio, sem intervalo de 2 minutos.

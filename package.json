@@ -4,7 +4,8 @@
   "description": "Test tooling only; the web app remains dependency-free at runtime.",
   "scripts": {
     "test": "node tools/test-vast.js && node tools/test-vast-player.js && python3 tools/test_vast_py.py && python3 tools/test_vast_kodi.py",
-    "build:standalone": "python3 tools/build-standalone.py"
+    "build:standalone": "python3 tools/build-standalone.py",
+    "verify": "bash tools/verify.sh"
   },
   "devDependencies": {
     "@xmldom/xmldom": "0.9.12"

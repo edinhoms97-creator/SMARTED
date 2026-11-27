@@ -30,7 +30,7 @@ def replace_functions(original, replacements, constants=None):
         node = original_functions[name]
         fragment = ''.join(lines[node.lineno - 1:node.end_lineno])
         text = ast.get_source_segment(replacements, replacement) + '\n'
-        if name in ('restaurar', 'estado_do_conteudo'):
+        if name in ('restaurar', 'estado_do_conteudo', 'iniciar_monitor'):
             alias = '_smarted_' + name + '_original'
             if alias in original_functions:
                 raise ValueError('Unexpected already-patched original')
@@ -64,7 +64,7 @@ def replace_functions(original, replacements, constants=None):
         lines[start:end] = [text]
     updated = ''.join(lines)
     compiled = ast.parse(updated)
-    ignored_functions = set(functions) | {'_smarted_restaurar_original', '_smarted_estado_do_conteudo_original'}
+    ignored_functions = set(functions) | {'_smarted_restaurar_original', '_smarted_estado_do_conteudo_original', '_smarted_iniciar_monitor_original'}
 
     def unaffected(module):
         nodes = []
