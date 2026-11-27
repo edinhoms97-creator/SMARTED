@@ -107,6 +107,7 @@ class MonitorPreRoll:
         context(generation)
         success = False
         changed = False
+        receipt = {}
         with self._vast_lock:
             self._em_vast = True
             try:
@@ -130,6 +131,15 @@ class MonitorPreRoll:
                 emit(xbmc, 'cycle-failed-open', error=type(exc).__name__)
             finally:
                 returned = self._caminho() or caminho_inicial
+                returned_key = _normalizar_caminho_chave(returned)
+                # No creative/restore ran: a different VOD is a selection, not
+                # an alias of the failed request's movie. Keep same-channel
+                # token refresh and actual native restoration aliases intact.
+                no_media_attempt = not receipt.get('url_anuncio') and not receipt.get('precisa_restaurar') and 'retomada_confirmada' not in receipt
+                same_channel = bool(ledger.channel and xbmc.getInfoLabel('VideoPlayer.ChannelName') == ledger.channel)
+                if not success and no_media_attempt and returned_key and returned_key not in ledger.aliases and not same_channel:
+                    changed = True
+                    emit(xbmc, 'content-changed-during-attempt')
                 # Alternate resolved URLs from the native resume belong to this
                 # opening too; no eighteen-second wall-clock suppression needed.
                 ledger.finish(generation, '' if changed else _normalizar_caminho_chave(returned))

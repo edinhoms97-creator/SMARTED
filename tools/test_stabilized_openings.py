@@ -326,6 +326,13 @@ class Tests(unittest.TestCase):
         self.assertNotIn('secret', ''.join(lines))
         self.assertNotIn('private.invalid', ''.join(lines))
 
+    def test_new_content_selected_during_nofill_gets_its_own_attempt(self):
+        h = Harness([{'exibido': False, 'motivo': 'no-fill', 'returned': 'film-b'}, {'exibido': False, 'motivo': 'no-fill'}])
+        h.callback(); h.join()
+        self.assertEqual(h.calls, ['film-a', 'film-b'])
+        h.callback(); h.join()
+        self.assertEqual(h.calls, ['film-a', 'film-b'])
+
     def test_vip_exemption(self):
         h = Harness(); h.vip = True; h.callback(); h.join()
         self.assertEqual(h.calls, []); self.assertEqual(h.bookings, [])
