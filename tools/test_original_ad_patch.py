@@ -20,16 +20,18 @@ class Player:
     current = 42.125
     seek_works = True
     observer = None
+    playing = True
+    file = 'original-vod'
 
     def __init__(self):
         if type(self) is not Player:
             Player.observer = self
 
     def isPlayingVideo(self):
-        return True
+        return Player.playing
 
     def getPlayingFile(self):
-        return 'original-vod'
+        return Player.file
 
     def seekTime(self, value):
         if self.seek_works:
@@ -40,6 +42,10 @@ class Player:
 
     def pause(self):
         pass
+
+    def stop(self):
+        Player.playing = False
+        Player.file = ''
 
 
 def load_functions(path):
@@ -70,11 +76,18 @@ class Tests(unittest.TestCase):
         self.env = load_functions(self.folder / 'ads_vast.py')
         Player.seek_works = True
         Player.current = 42.125
+        Player.playing = True
+        Player.file = 'original-vod'
         self.env['_smarted_restaurar_original'] = lambda *args, **kw: True
         self.env['_garantir_tela_cheia'] = lambda: None
         self.env['_audio_sem_quadro_video'] = lambda: False
-        self.env['_arquivo_atual'] = lambda: 'original-vod'
-        self.env['_player_tocando_video'] = lambda: True
+        self.env['_arquivo_atual'] = lambda: Player.file
+        self.env['_player_tocando_video'] = lambda: Player.playing
+        self.env['_candidatos_restauracao'] = lambda state: [state['caminho']]
+        def restore_route(route, **kw):
+            Player.file, Player.playing, Player.current = route, True, 0
+            return True
+        self.env['_iniciar_em_tela_cheia'] = restore_route
         self.env['_aguardar_anuncio_tocar'] = lambda *a, **k: True
         self.env['_posicao_e_duracao'] = lambda: (0, 30)
         self.events = []
@@ -147,6 +160,7 @@ class Tests(unittest.TestCase):
         def sleep(seconds):
             clock[0] += seconds
             if clock[0] >= 1:
+                Player.playing = False
                 observer = Player.observer
                 if outcome == 'ended':
                     observer.onPlayBackEnded()
@@ -157,7 +171,10 @@ class Tests(unittest.TestCase):
         ad = {'url': 'ad', 'duracao': 30, 'impressao': ['impression'],
               'errors': ['error:[ERRORCODE]'],
               'eventos': {name: [name] for name in ('start', 'firstQuartile', 'midpoint', 'thirdQuartile', 'complete', 'skip')}}
-        return self.env['reproduzir'](ad, tocar=lambda *args: True, dormir=sleep)
+        def start_ad(*args):
+            Player.file, Player.playing = 'ad', True
+            return True
+        return self.env['reproduzir'](ad, tocar=start_ad, dormir=sleep)
 
     def test_completed_tracking_once(self):
         receipt = self.playback('ended')

@@ -18,6 +18,7 @@ python3 tools/patch_original_ads.py "$BASE" "$WORK/unsigned.apk" \
 # Tests against the ORIGINAL parser/functions just patched, not the separate
 # welcome/demo implementation. Test doubles only; no UI or emulator launched.
 python3 tools/test_original_ad_patch.py "$WORK/patched-modules"
+python3 tools/test_ad_openings.py --original "$WORK/patched-modules"
 "$TOOLS/zipalign" -P 16 -f 4 "$WORK/unsigned.apk" "$WORK/aligned.apk"
 KEYSTORE="$PWD/.cache/smartedtv-signing/debug.keystore"
 mkdir -p "$(dirname "$KEYSTORE")"
@@ -34,7 +35,7 @@ fi
 "$TOOLS/zipalign" -P 16 -c -v 4 "$OUT/SMARTEDTV-universal.apk" > "$OUT/zipalign.txt"
 "$TOOLS/aapt2" dump badging "$OUT/SMARTEDTV-universal.apk" > "$OUT/badging.txt"
 # This comparison is stronger than comparing selected manifest attributes:
-# EVERY entry other than the 3 reviewed ad files/signatures must be identical.
+# EVERY entry other than the 4 reviewed ad files/signatures must be identical.
 python3 tools/apk_preservation.py "$BASE" "$OUT/SMARTEDTV-universal.apk" --report "$OUT/preservation.json"
 (cd "$OUT" && sha256sum SMARTEDTV-universal.apk > SMARTEDTV-universal.apk.sha256)
 cat > "$OUT/INSTALLATION.txt" <<EOF
@@ -42,7 +43,9 @@ SMARTED ORIGINAL — SOMENTE ANUNCIOS / BUILD DE TESTE
 Fonte: $(git rev-parse HEAD)
 Base original: smartedtv.full 1.0.161 (APK do link Dropbox fornecido).
 Skin, bootstrap, tela inicial, AndroidManifest.xml, resources.arsc e bibliotecas preservados byte a byte.
-Apenas ads_vast.py, a selecao de provedor em smart_ads.py e ads_admob.py inerte mudaram.
+Apenas ads_vast.py, smart_ads.py, ads_regra.py e ads_admob.py inerte mudaram.
+Regra: uma tentativa por abertura de canal/filme/episodio, sem intervalo de 2 minutos.
+Pause, seek, reconexao e retorno do anuncio nao repetem a tentativa. No-fill libera o conteudo.
 Nenhuma skin, welcome ou servico de inicializacao novo foi instalado.
 VAST Clickadilla #1508180 em todos os dispositivos; AdMob desativado.
 Assinatura de debug: NAO atualiza app assinado com a chave original.

@@ -2,6 +2,8 @@
 """Patch ONLY audited ad functions in the exact SMARTEDTV original APK."""
 import argparse
 import ast
+import copy
+import textwrap
 import json
 from pathlib import Path
 import zipfile
@@ -18,6 +20,9 @@ def replace_functions(original, replacements, constants=None):
     original_functions = {node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)}
     if not set(functions).issubset(original_functions):
         raise ValueError('Original ad function contract changed')
+    methods = {node.name: {method.name: method for method in node.body if isinstance(method, ast.FunctionDef)}
+               for node in replacement_tree.body if isinstance(node, ast.ClassDef)}
+    original_classes = {node.name: node for node in tree.body if isinstance(node, ast.ClassDef)}
     constants = constants or {}
     lines = original.splitlines(keepends=True)
     edits = []
@@ -30,6 +35,21 @@ def replace_functions(original, replacements, constants=None):
                 raise ValueError('Unexpected already-patched original')
             text = fragment.replace('def restaurar(', 'def _smarted_restaurar_original(', 1).rstrip() + '\n\n' + text
         edits.append((node.lineno - 1, node.end_lineno, text))
+    for class_name, replacements_by_name in methods.items():
+        if class_name != 'MonitorPreRoll' or class_name not in original_classes:
+            raise ValueError('Only the original ad MonitorPreRoll methods may be patched')
+        original_methods = {node.name: node for node in original_classes[class_name].body if isinstance(node, ast.FunctionDef)}
+        if not set(replacements_by_name).issubset(original_methods):
+            raise ValueError('Original ad monitor method contract changed')
+        for name, replacement in replacements_by_name.items():
+            if name not in ('_disparar', '_ciclo_vast', 'onPlayBackStopped'):
+                raise ValueError('Unreviewed ad monitor method')
+            node = original_methods[name]
+            text = textwrap.indent(ast.unparse(replacement), ' ' * node.col_offset) + '\n'
+            if name == '_disparar':
+                fragment = ''.join(lines[node.lineno - 1:node.end_lineno])
+                text = fragment.replace('def _disparar(', 'def _smarted_disparar_original(', 1).rstrip() + '\n\n' + text
+            edits.append((node.lineno - 1, node.end_lineno, text))
     found_constants = set()
     for node in tree.body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
@@ -52,6 +72,10 @@ def replace_functions(original, replacements, constants=None):
                 continue
             if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id in constants for target in node.targets):
                 continue
+            if isinstance(node, ast.ClassDef) and node.name in methods:
+                node = copy.deepcopy(node)
+                ignored = set(methods[node.name]) | {'_smarted_disparar_original'}
+                node.body = [child for child in node.body if not (isinstance(child, ast.FunctionDef) and child.name in ignored)]
             nodes.append(ast.dump(node, include_attributes=False))
         return nodes
 
@@ -78,7 +102,8 @@ def build(base, output, work, report):
                 updated = code
             else:
                 original = archive.read(path).decode('utf-8')
-                constants = {'TIMEOUT_HTTP': 8, 'VAST_TAG_PADRAO': 'https://vast.yomeno.xyz/vast?spot_id=1508180'} if name == 'ads_vast.py' else {}
+                constants = ({'TIMEOUT_HTTP': 8, 'VAST_TAG_PADRAO': 'https://vast.yomeno.xyz/vast?spot_id=1508180'}
+                             if name == 'ads_vast.py' else {'INTERVALO': 0} if name == 'ads_regra.py' else {})
                 updated = replace_functions(original, code, constants)
             compile(updated, name, 'exec')
             replacements[path] = updated.encode('utf-8')

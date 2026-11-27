@@ -174,6 +174,23 @@ class Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Only the inert'):
             preserve.validate_plan(plan)
 
+    def test_method_patch_preserves_other_monitor_methods(self):
+        from patch_original_ads import replace_functions
+        original = "class MonitorPreRoll:\n    def _disparar(self, activity, log):\n        return True\n    def untouched(self):\n        return 'original'\n"
+        patch_code = "class MonitorPreRoll:\n    def _disparar(self, activity, log):\n        return False\n"
+        result = replace_functions(original, patch_code)
+        self.assertIn("def untouched(self):\n        return 'original'", result)
+        self.assertIn('def _smarted_disparar_original', result)
+        compile(result, 'patched-method-test', 'exec')
+
+    def test_unreviewed_class_or_method_rejected(self):
+        from patch_original_ads import replace_functions
+        with self.assertRaisesRegex(ValueError, 'Only the original'):
+            replace_functions('class Other: pass', 'class Other:\n    def change(self): pass')
+        with self.assertRaisesRegex(ValueError, 'Unreviewed'):
+            replace_functions('class MonitorPreRoll:\n    def ui(self): pass',
+                              'class MonitorPreRoll:\n    def ui(self): return 1')
+
 
 if __name__ == "__main__":
     unittest.main()
