@@ -22,7 +22,7 @@ SCOPES = {
                      'MonitorPreRoll._talvez_mostrar', 'MonitorPreRoll._disparar',
                      'MonitorPreRoll._ciclo_vast', 'MonitorPreRoll.onPlayBackStopped',
                      'MonitorPreRoll.onPlayBackEnded'},
-    'ads_vast.py': {'exibir', 'reproduzir', 'restaurar', 'exibir_e_devolver',
+    'ads_vast.py': {'baixar', 'exibir', 'reproduzir', 'restaurar', 'exibir_e_devolver',
                     'disparar', '_disparar_eventos'},
 }
 ALIASES = {'iniciar_monitor': '_smarted_iniciar_monitor_original',
@@ -119,6 +119,15 @@ def transform_smart(source):
 
 def transform_vast(source):
     changes = {}
+    transport = function(source, 'baixar')
+    transport = once(transport, '        import ssl', '        from ads_openings import transport_failure\n        import ssl')
+    transport = once(transport, '                if _clock.monotonic() >= deadline:\n                    return None',
+                     "                if _clock.monotonic() >= deadline:\n                    transport_failure(xbmc, reason='deadline')\n                    return None")
+    transport = once(transport, '                if size > 2 * 1024 * 1024:\n                    return None',
+                     "                if size > 2 * 1024 * 1024:\n                    transport_failure(xbmc, reason='response-too-large')\n                    return None")
+    transport = once(transport, '    except Exception:\n        return None',
+                     '    except Exception as exc:\n        from ads_openings import transport_failure\n        transport_failure(xbmc, exception=exc)\n        return None')
+    changes['baixar'] = transport
     exibir = function(source, 'exibir')
     exibir = once(exibir, '    import xml.etree.ElementTree as _ET', '    from ads_openings import emit\n    import xml.etree.ElementTree as _ET')
     exibir = once(exibir, '    def failure(reason, code):', "    def failure(reason, code):\n        emit(xbmc, 'vast-result', reason=reason)")
@@ -151,9 +160,17 @@ def transform_vast(source):
     changes['restaurar'] = restore
 
     flow = function(source, 'exibir_e_devolver')
+    flow = once(flow, '    if estado is None:', '    from ads_openings import emit\n    if estado is None:')
     flow = once(flow, '    def start_ad(url, logger):', "    changed = [False]\n    def start_ad(url, logger):")
     flow = once(flow, '            return False  # user changed', '            changed[0] = True\n            return False  # user changed')
     flow = once(flow, '    # A user selecting another film', "    if changed[0]:\n        receipt['motivo'] = 'conteudo-alterado'\n    # A user selecting another film")
+    flow = once(flow, "    return receipt", """    if restore:
+        emit(xbmc, 'content-release-result', confirmed=bool(receipt.get('retomada_confirmada')))
+    elif estado and _player_tocando_video() and _arquivo_atual() == estado['caminho']:
+        emit(xbmc, 'content-uninterrupted', reason=receipt.get('motivo'))
+    else:
+        emit(xbmc, 'content-state-unconfirmed', changed=changed[0])
+    return receipt""")
     changes['exibir_e_devolver'] = flow
 
     pixels = function(source, 'disparar')

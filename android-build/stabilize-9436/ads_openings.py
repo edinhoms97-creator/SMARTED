@@ -31,6 +31,15 @@ def reset_boundary(monitor, kodi, reason):
     emit(kodi, 'blocking-state-reset', reason=reason)
 
 
+def transport_failure(kodi, exception=None, reason=''):
+    cause = getattr(exception, 'reason', exception)
+    timed_out = isinstance(cause, TimeoutError) or reason == 'deadline'
+    status = getattr(exception, 'code', None)
+    emit(kodi, 'vast-transport-timeout' if timed_out else 'vast-transport-error',
+         error=type(cause).__name__ if cause is not None else None,
+         status=status if isinstance(status, int) else None, reason=reason or 'request-failed')
+
+
 def context(opening):
     _LOCAL.opening = opening
 
@@ -160,7 +169,8 @@ def observe(monitor, kodi, previous=(False, '', '')):
             return (True, path, channel)
         pending = getattr(monitor, '_smarted_pending_metadata', False)
         if home_return or edge or pending:
-            emit(kodi, 'native-playback-observed', home_return=home_return, metadata_retry=pending)
+            if home_return or edge:
+                emit(kodi, 'native-playback-observed', home_return=home_return, metadata_retry=pending)
             # Retry only a local eligibility read that was not ready. Once a
             # claim/duplicate/VIP decision exists, never retry network on a poll.
             monitor._smarted_pending_metadata = monitor._talvez_mostrar() == 'pending'

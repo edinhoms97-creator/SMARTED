@@ -314,6 +314,18 @@ class Tests(unittest.TestCase):
         for _ in range(20): previous = ads_openings.observe(h.monitor, kodi, previous)
         h.join(); self.assertEqual(len(h.calls), 1)
 
+    def test_http_error_timeout_and_network_logs_do_not_leak_urls(self):
+        from urllib.error import HTTPError, URLError
+        lines = []
+        kodi = types.SimpleNamespace(log=lambda line, *a: lines.append(line))
+        for error in (HTTPError('https://private.invalid/?token=secret', 503, 'error', {}, None),
+                      URLError(TimeoutError('private URL hidden')), OSError('secret')):
+            ads_openings.transport_failure(kodi, error)
+        self.assertIn('503', lines[0])
+        self.assertIn('vast-transport-timeout', lines[1])
+        self.assertNotIn('secret', ''.join(lines))
+        self.assertNotIn('private.invalid', ''.join(lines))
+
     def test_vip_exemption(self):
         h = Harness(); h.vip = True; h.callback(); h.join()
         self.assertEqual(h.calls, []); self.assertEqual(h.bookings, [])
@@ -419,8 +431,22 @@ class Tests(unittest.TestCase):
         # 9436b5e+tracking. Recheck tag transport/selection/constants explicitly.
         vast = (ORIGINAL/'ads_vast.py').read_text()
         old = reference.update_tracking(reference.historical('android-build/ads-patches/ads_vast.py'))
-        for name in ('tag_configurada', 'baixar'):
-            self.assertEqual(ast.dump(stabilize.nodes(vast)[name]), ast.dump(stabilize.nodes(old)[name]))
+        self.assertEqual(ast.dump(stabilize.nodes(vast)['tag_configurada']), ast.dump(stabilize.nodes(old)['tag_configurada']))
+        def without_transport_diagnostics(node):
+            node = copy.deepcopy(node)
+            for parent in ast.walk(node):
+                if isinstance(parent, ast.ExceptHandler):
+                    parent.name = None
+                for field in ('body', 'orelse', 'finalbody'):
+                    body = getattr(parent, field, None)
+                    if isinstance(body, list):
+                        setattr(parent, field, [item for item in body if not (
+                            isinstance(item, ast.ImportFrom) and item.module == 'ads_openings'
+                            or isinstance(item, ast.Expr) and isinstance(item.value, ast.Call)
+                            and isinstance(item.value.func, ast.Name) and item.value.func.id == 'transport_failure')])
+            return ast.dump(node)
+        self.assertEqual(without_transport_diagnostics(stabilize.nodes(vast)['baixar']),
+                         without_transport_diagnostics(stabilize.nodes(old)['baixar']))
         self.assertEqual((ORIGINAL/'ads_tracking.py').read_bytes(), reference.HELPER_SOURCE.read_bytes())
 
 
