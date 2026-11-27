@@ -91,6 +91,16 @@ Doubles de ordenação passaram nas quatro combinações ativado/reentrada; test
 
 A primeira tentativa de publicação (46083811436) foi cancelada ao chegar essa evidência nativa, antes de anexar APK. A seguinte (46084011903) falhou no gate de correspondência textual do código e também não publicou APK. A entrega válida é **somente 46084100325**, que passou após tornar o reconhecimento AST estrito, sem depender de espaços em branco.
 
+### Resultado Android posterior — execução real, não aprovação de ciclos
+
+[Run Android 46084408518](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46084408518), job 140790495321. APK instalado com sucesso no Android 11 em AVD x86_64 com tradução ARM; ABI do APK não foi alterada. SHA-256 do APK instalado igual ao publicado; hashes dos cinco módulos de anúncios em runtime conferem com o APK.
+
+Às `23:51:22.469 UTC`, o log registra **tela de entrada carregada (antes da Home)**. Não aparece a antecipação da Home pelo vigia nessa sequência. A captura real abaixo mostra a tela original, não um mock ou browser:
+
+![Tela inicial original no Android posterior](evidence/history-recovery/android-after.jpg)
+
+**Limitação importante:** o harness não conseguiu prosseguir pela escolha gratuita (`original-welcome-not-ready-for-free-choice`; `welcome_ready_observed=false`). Os três ciclos de conteúdo constam como **not-run**, não zero-fill, e não houve download de amostra nem reprodução nativa validada. A captura e o log comprovam a exibição da entrada nesse boot, não a sequência completa entrada→inicialização→Home nem reabertura em warm task. O run verde significa execução/registro do teste, não aprovação desses critérios funcionais. JSON integral em `evidence/history-recovery/android-after.json`.
+
 ## Auditoria e testes
 
 O APK assinado final tem somente estas entradas de produção diferentes do APK-base:
