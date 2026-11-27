@@ -184,7 +184,10 @@ Ledger em memoria deduplica callbacks/retorno nativo; flags persistidas antigas 
 Stop fecha a geracao mesmo se isPlayingVideo ainda apresentar estado antigo. Reconexao live por Ended nao a fecha.
 Observador passivo de bordas de video/Home usa waitForAbort; cobre callback AV ausente/cedo no cold-start.
 Sem comandos play/seek/pause/menu nesse observador; Player.HasMedia preserva pausa/buffering e a excecao de reconexao live.
-Flag de Stop impede nova tentativa para o ultimo frame stale antes do proximo inicio real.
+Flag de Stop cerca somente o ultimo caminho; troca direta A->B sem amostra sem midia libera a nova abertura.
+Metadados ainda indisponiveis sao relidos localmente, sem repetir request da tag apos um claim.
+Selecao nativa de compatibilidade/saude restaurada: AdMob compativel prioritario, VAST se incompativel.
+provider-selected, attempt-blocked e blocking-state-reset explicam os gates antes da tag.
 Sem lock de elegibilidade durante rede/anuncio/retomada; trabalho de VAST e pixels permanece fora do callback.
 VAST nativo nao espera recuperar foco Android como um anuncio externo. Retomada evita seek redundante, sobretudo em zero.
 Confirmacao de seek considera o avanco monotonicamente transcorrido; o relogio do filme nao precisa ficar congelado no alvo.

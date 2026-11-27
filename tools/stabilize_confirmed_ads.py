@@ -18,7 +18,7 @@ import restore_confirmed_tracking as reference
 FOLDER = ROOT / 'android-build/stabilize-9436'
 PREFIX = 'assets/addons/service.smarted.bootstrap/'
 SCOPES = {
-    'smart_ads.py': {'abrir_anuncio', 'iniciar_monitor', 'tocar_anuncio_de_video',
+    'smart_ads.py': {'motor_anuncio', 'abrir_anuncio', 'iniciar_monitor', 'tocar_anuncio_de_video',
                      'MonitorPreRoll._talvez_mostrar', 'MonitorPreRoll._disparar',
                      'MonitorPreRoll._ciclo_vast', 'MonitorPreRoll.onPlayBackStopped',
                      'MonitorPreRoll.onPlayBackEnded'},

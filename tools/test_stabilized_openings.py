@@ -22,7 +22,7 @@ ORIGINAL = None
 
 def defs(path, env, classes=True):
     tree = ast.parse(Path(path).read_text())
-    names = {'mostrar_preroll', 'abrir_anuncio', 'tocar_anuncio_de_video', 'iniciar_monitor', '_smarted_iniciar_monitor_original'}
+    names = {'motor_anuncio', 'mostrar_preroll', 'abrir_anuncio', 'tocar_anuncio_de_video', 'iniciar_monitor', '_smarted_iniciar_monitor_original'}
     selected = [n for n in tree.body if (isinstance(n, ast.FunctionDef) and n.name in names) or classes and isinstance(n, ast.ClassDef)]
     exec(compile(ast.Module(body=selected, type_ignores=[]), str(path), 'exec'), env)
 
@@ -71,6 +71,7 @@ class Harness:
         tree = ast.parse(source)
         exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n, ast.FunctionDef)], type_ignores=[]), '<9436 functions>', 'exec'), self.env)
         defs((ORIGINAL / 'smart_ads.py') if ORIGINAL else stabilize.FOLDER / 'smart_ads.py', self.env)
+        self.env['usar_vast'] = lambda: True
         def forget():
             self.state.clear()
             self.env['_ultima_sessao'] = None
@@ -254,6 +255,64 @@ class Tests(unittest.TestCase):
         self.assertIn('stream?token=two', ledger.aliases)
         ledger.close()
         self.assertIsNotNone(ledger.claim('stream?token=three', 'Channel A'))
+
+    def test_stop_then_switch_without_no_media_poll_is_not_permanently_fenced(self):
+        h = Harness(); kodi = self.observer(h)
+        previous = ads_openings.observe(h.monitor, kodi); h.join()
+        h.monitor.onPlayBackStopped()
+        # Kodi changed directly A -> B between two polls; HasMedia never sampled false.
+        h.file = 'film-b'
+        for _ in range(4):
+            previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.join()
+        self.assertEqual(h.calls, ['film-a', 'film-b'])
+
+    def test_first_video_edge_with_temporarily_missing_metadata_is_retried_locally(self):
+        h = Harness(); kodi = self.observer(h)
+        h.env['_e_video'] = lambda player: False
+        previous = ads_openings.observe(h.monitor, kodi); h.join()
+        # Only the gate getter was briefly not ready; native edge/path are stable.
+        h.env['_e_video'] = lambda player: True
+        for _ in range(4):
+            previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.join()
+        self.assertEqual(h.calls, ['film-a'])
+
+    def test_provider_admob_priority_unsupported_vast_and_existing_health_selection(self):
+        source = (ORIGINAL / 'smart_ads.py') if ORIGINAL else stabilize.FOLDER/'smart_ads.py'
+        node = stabilize.nodes(source.read_text())['motor_anuncio']
+        logs = []
+        env = dict(MOTOR_VAST='vast', MOTOR_ADMOB='admob', _SAUDE_ADMOB={},
+                   xbmc=types.SimpleNamespace(log=lambda *a: logs.append(a)))
+        def variant(compatible, selected):
+            return types.SimpleNamespace(compatibilidade_admob=lambda: {'compativel': compatible},
+                selecionar_motor_anuncio=lambda **kw: (selected, 'native-selection', {}))
+        exec(compile(ast.Module(body=[node], type_ignores=[]), '<provider>', 'exec'), env)
+        for supported, choice, expected in ((True, 'admob', 'admob'), (False, 'admob', 'vast'),
+                                              (True, 'vast', 'vast')):
+            env['_variante'] = variant(supported, choice)
+            self.assertEqual(env['motor_anuncio']()[0], expected)
+        self.assertTrue(any('provider-selected' in str(line) for line in logs))
+
+    def test_blocked_reason_distinguishes_vip_duplicate_pending_and_running(self):
+        h = Harness(); h.vip = True
+        self.assertEqual(h.monitor._talvez_mostrar(), 'blocked')
+        self.assertTrue(any('vip-exempt' in line for line in h.logs))
+        h.vip = False; h.playing = False
+        self.assertEqual(h.monitor._talvez_mostrar(), 'pending')
+        h.playing = True; h.callback(); h.join()
+        self.assertEqual(h.monitor._talvez_mostrar(), 'blocked')
+        self.assertTrue(any('opening-already-attempted' in line for line in h.logs))
+
+    def test_transient_native_read_does_not_create_extra_network_attempts(self):
+        h = Harness(); kodi = self.observer(h)
+        previous = ads_openings.observe(h.monitor, kodi); h.join()
+        h.env['_e_video'] = lambda p: False
+        h.monitor._smarted_pending_metadata = True
+        previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.env['_e_video'] = lambda p: True
+        for _ in range(20): previous = ads_openings.observe(h.monitor, kodi, previous)
+        h.join(); self.assertEqual(len(h.calls), 1)
 
     def test_vip_exemption(self):
         h = Harness(); h.vip = True; h.callback(); h.join()

@@ -17,6 +17,20 @@ def emit(kodi, stage, **fields):
         pass
 
 
+def blocked(monitor, kodi, reason, **fields):
+    """Log state changes, not every 250 ms poll. Never log paths/tokens."""
+    signature = (reason, tuple(sorted(fields.items())))
+    if getattr(monitor, '_smarted_last_block', None) != signature:
+        monitor._smarted_last_block = signature
+        emit(kodi, 'attempt-blocked', reason=reason, **fields)
+
+
+def reset_boundary(monitor, kodi, reason):
+    monitor._smarted_wait_for_video_boundary = False
+    monitor._smarted_stopped_path = ''
+    emit(kodi, 'blocking-state-reset', reason=reason)
+
+
 def context(opening):
     _LOCAL.opening = opening
 
@@ -137,9 +151,19 @@ def observe(monitor, kodi, previous=(False, '', '')):
     if playing:
         edge = not was_video or path != old_path or channel != old_channel
         waiting = getattr(monitor, '_smarted_wait_for_video_boundary', False)
-        if home_return or (edge and not waiting):
-            emit(kodi, 'native-playback-observed', home_return=home_return)
-            monitor._talvez_mostrar()
+        stopped = getattr(monitor, '_smarted_stopped_path', '')
+        if waiting and path and stopped and path != stopped:
+            reset_boundary(monitor, kodi, 'different-content-after-stop')
+            waiting = False
+        if waiting and not home_return:
+            blocked(monitor, kodi, 'stale-stopped-video')
+            return (True, path, channel)
+        pending = getattr(monitor, '_smarted_pending_metadata', False)
+        if home_return or edge or pending:
+            emit(kodi, 'native-playback-observed', home_return=home_return, metadata_retry=pending)
+            # Retry only a local eligibility read that was not ready. Once a
+            # claim/duplicate/VIP decision exists, never retry network on a poll.
+            monitor._smarted_pending_metadata = monitor._talvez_mostrar() == 'pending'
         return (True, path, channel)
     if media:
         return previous  # paused/buffering is not a new opening
@@ -152,7 +176,9 @@ def observe(monitor, kodi, previous=(False, '', '')):
             except Exception as exc:
                 emit(kodi, 'close-cleanup-failed', error=type(exc).__name__)
             emit(kodi, 'opening-closed', boundary='observed-no-media')
-    monitor._smarted_wait_for_video_boundary = False
+    if getattr(monitor, '_smarted_wait_for_video_boundary', False):
+        reset_boundary(monitor, kodi, 'observed-no-media')
+    monitor._smarted_pending_metadata = False
     if suppress_auto_home:
         return previous  # retain live identity across every reconnect poll
     return (False, '', '')
@@ -170,7 +196,10 @@ def watch_home(monitor, kodi):
             abort = kodi.Monitor()
             previous = (False, '', '')
             while not abort.abortRequested():
-                previous = observe(monitor, kodi, previous)
+                try:
+                    previous = observe(monitor, kodi, previous)
+                except Exception as exc:
+                    blocked(monitor, kodi, 'native-state-read-failed', error=type(exc).__name__)
                 if abort.waitForAbort(.25):
                     break
         except Exception as exc:
