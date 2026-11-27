@@ -37,8 +37,15 @@ def welcome(source):
     audit(source,result,'abrir_tela_entrada')
     old = "    _log('vigia: a tela nao apareceu em %d s; abrindo a Home' % ESPERA_VIGIA, xbmc.LOGWARNING)\n    _ir_para_home('vigia (tela nao chegou a desenhar)')\n    return True"
     new = "    # Slow native startup may still be constructing the existing dialog.\n    # Its dispatcher owns error fallback; the observer must not overtake it.\n    _log('vigia: aguardando a tela inicial; sem antecipar a Home')\n    return False"
-    if old not in result:raise ValueError('Unexpected native startup observer')
-    updated=result.replace(old,new,1)
+    observer=function(result,'vigiar_inicializacao')
+    tail=observer.body[-3:]
+    if not (len(tail)==3 and isinstance(tail[1],ast.Expr) and isinstance(tail[1].value,ast.Call)
+            and isinstance(tail[1].value.func,ast.Name) and tail[1].value.func.id=='_ir_para_home'
+            and ast.literal_eval(tail[1].value.args[0])=='vigia (tela nao chegou a desenhar)'
+            and isinstance(tail[2],ast.Return) and ast.literal_eval(tail[2].value) is True):
+        raise ValueError('Unexpected native startup observer AST')
+    lines=result.splitlines(keepends=True)
+    updated=''.join(lines[:tail[0].lineno-1])+new+'\n'+''.join(lines[tail[-1].end_lineno:])
     audit(result,updated,'vigiar_inicializacao')
     return updated
 
