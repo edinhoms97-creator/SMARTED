@@ -100,6 +100,9 @@ def prepare(report, sdk, apk):
                 report['status'] = 'android-booted-no-apk'
                 return
             execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'wm', 'size', '540x960'])
+            execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'svc', 'power', 'stayon', 'true'])
+            execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'settings', 'put', 'system', 'screen_off_timeout', '1800000'])
+            execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'input', 'keyevent', 'KEYCODE_WAKEUP'])
             report['install'] = execute([tools['adb'], '-s', 'emulator-5554', 'install', '-r', '-g', str(apk)], timeout=100)
             if report['install']['code'] != 0:
                 report['status'] = 'apk-install-failed'
@@ -138,7 +141,7 @@ def prepare(report, sdk, apk):
                 report['permission_actions'].append(selected.get('text'))
                 execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'input', 'tap', str(x), str(y)])
                 time.sleep(8)
-            time.sleep(35)
+            time.sleep(120)  # cold native ARM translation + original profile extraction
             evidence = Path('.cache/android-validation')
             evidence.mkdir(parents=True, exist_ok=True)
             for name, args in (
@@ -173,6 +176,8 @@ def prepare(report, sdk, apk):
                 report['kodi_tail'] = content.decode(errors='replace')[-2500:]
                 report['opening_stages'] = [line.split('[SmartAdsOpening] ', 1)[-1] for line in content.decode(errors='replace').splitlines() if '[SmartAdsOpening]' in line]
 
+            report['power'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'dumpsys', 'power'])['output']
+            report['app_pid'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'pidof', 'smartedtv.full'])
             report['ui_hierarchy'] = (evidence / 'hierarchy.xml').read_text(errors='replace')[:12000] if (evidence / 'hierarchy.xml').exists() else 'unavailable'
             report['ui_labels'] = [node.get('text') or node.get('content-desc') for node in ET.fromstring(report['ui_hierarchy']).iter('node') if node.get('text') or node.get('content-desc')] if report['ui_hierarchy'] != 'unavailable' else []
             report['activity_tail'] = (evidence / 'activities.txt').read_text(errors='replace')[-2500:]
