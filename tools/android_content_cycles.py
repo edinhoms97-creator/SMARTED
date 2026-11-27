@@ -196,10 +196,24 @@ def run_cycles(adb, evidence, apk=None):
             result['sample_downloads'].append(dict(name=name, bytes=len(data), adb_push=code))
             if code != 0:
                 raise RuntimeError('sample-push-failed')
+        def native_movie(name):
+            active = rpc('Player.GetActivePlayers') or []
+            video = next((item for item in active if item.get('type') == 'video'), None) if isinstance(active, list) else None
+            if not video:
+                return {}
+            player_id = video['playerid']
+            properties = rpc('Player.GetProperties', {'playerid': player_id, 'properties': ['speed', 'time', 'totaltime']}) or {}
+            item = rpc('Player.GetItem', {'playerid': player_id, 'properties': ['file']}) or {}
+            video_file = (item.get('item') or {}).get('file', '')
+            clock = properties.get('time') or {}
+            seconds = clock.get('hours', 0)*3600 + clock.get('minutes', 0)*60 + clock.get('seconds', 0) + clock.get('milliseconds', 0)/1000
+            return {'native_movie_properties': properties, 'native_movie_file': video_file,
+                    'native_movie_confirmed_playing': video_file.endswith('/SmartedValidation/'+name) and properties.get('speed', 0) > 0 and seconds > 0}
         files = (SAMPLES[0], SAMPLES[0], SAMPLES[1])
         for row, name in zip(rows, files):
             command('shell', 'input', 'keyevent', 'KEYCODE_MEDIA_STOP')
             time.sleep(1)
+            baseline_stages = len(stages())
             previous = {entry.get('opening') for entry in stages() if entry.get('stage') == 'opening-claimed'}
             code, output = command('shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW',
                                    '-d', 'file:///sdcard/Movies/SmartedValidation/' + name,
@@ -211,14 +225,28 @@ def run_cycles(adb, evidence, apk=None):
                 break
             deadline = time.monotonic() + 85
             selected = []
+            admob_native = None
             while time.monotonic() < deadline:
                 all_stages = stages()
                 new = {entry.get('opening') for entry in all_stages
                        if entry.get('stage') == 'opening-claimed'} - previous
                 selected = [entry for entry in all_stages if entry.get('opening') in new]
+                providers = [entry.get('provider') for entry in all_stages if entry.get('stage') == 'provider-selected']
+                delegated = any(entry.get('stage') == 'native-admob-eligibility-delegated' for entry in all_stages[baseline_stages:])
+                if providers and providers[-1] == 'admob' and delegated:
+                    current_movie = native_movie(name)
+                    if current_movie.get('native_movie_confirmed_playing'):
+                        admob_native = current_movie
+                        break
                 if any(entry.get('stage') == 'cycle-finished' for entry in selected):
                     break
                 time.sleep(1)
+            if admob_native is not None:
+                row.update(status='native-content-and-admob-route-observed', provider='admob',
+                           reason='AdMob-priority-observed-not-proof-of-SDK-request-fill-or-completion',
+                           vast_requests=sum(entry.get('stage') == 'vast-request' and entry.get('hop') == 1 for entry in all_stages[baseline_stages:]),
+                           ads_played=None, no_fill=None, **admob_native)
+                continue
             if not selected:
                 row.update(status='blocked', reason='no-native-opening-observed-after-VIEW')
                 row['native_diagnostic_stages'] = [entry.get('stage') for entry in stages()]
