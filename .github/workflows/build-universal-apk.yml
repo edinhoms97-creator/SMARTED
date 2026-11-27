@@ -76,6 +76,12 @@ jobs:
                   print('::notice title=SMARTED original identity::' + safe)
           PY
           python3 tools/audit_original_apk.py .cache/smartedtv-base/base.apk dist/original-inventory.json
+      - name: Contrato original de transporte VAST (somente leitura)
+        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk transport
+      - name: Contrato original de retomada (somente leitura)
+        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk resume
+      - name: Contrato original de roteamento (somente leitura)
+        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk routing
       - name: Relatorio apenas (nenhum APK)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
