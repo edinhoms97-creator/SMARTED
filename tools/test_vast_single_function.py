@@ -2,6 +2,8 @@
 """Offline regression of the single-function patch; optional exact APK input."""
 import argparse
 import ast
+import json
+import re
 from pathlib import Path
 import sys
 import types
@@ -80,5 +82,64 @@ class EntryTests(unittest.TestCase):
         self.assertIn('https://pixels.invalid/imp',ad['impressao'])
         self.assertIn('https://pixels.invalid/error',ad['errors'])
         self.assertIn('https://pixels.invalid/complete',ad['eventos']['complete'])
+
+class NativeSelectionTests(EntryTests):
+    def setUp(self):
+        super().setUp()
+        if args.apk:
+            native={}
+            tree=ast.parse(ORIGINAL)
+            for n in tree.body:
+                if isinstance(n,ast.Assign):
+                    try:value=ast.literal_eval(n.value)
+                    except (ValueError,TypeError):continue
+                    for t in n.targets:
+                        if isinstance(t,ast.Name):native[t.id]=value
+            native.update(re=re)
+            funcs=[n for n in tree.body if isinstance(n,ast.FunctionDef)]
+            exec(compile(ast.Module(body=funcs,type_ignores=[]),'<exact-apk-native-functions>','exec'),native)
+        else:
+            native=dict(re=re,QUARTIS=[('start',0),('firstQuartile',.25),('midpoint',.5),('thirdQuartile',.75),('complete',1)],
+                _duracao_texto=lambda text:sum(float(v)*60**i for i,v in enumerate(reversed(str(text or '0').split(':')))))
+            snapshots=json.loads(Path('tools/fixtures/vast-native-selection-46074593488.json').read_text())
+            exec('\n\n'.join(snapshots.values()),native)
+        self.env['escolher_anuncio']=native['escolher_anuncio']
+    def test_selection_matrix_with_native_media_policy(self):
+        from vast_selection_cases import CASES
+        for case in CASES:
+            with self.subTest(case=case['name']):
+                self.played.clear();self.requests.clear();self.events.clear()
+                def fetch(url):
+                    self.requests.append(url)
+                    return case['pages'].get(url)
+                result=self.env['exibir'](baixar_tag=fetch)
+                self.assertEqual(bool(self.played),case['selected'])
+                self.assertEqual(self.requests.count(TAG),1,'root retried inside the same opening')
+                if not case['selected']:continue
+                ad=self.played[0]
+                if case.get('duration') is not None:self.assertEqual(ad['duracao'],case['duration'])
+                if case.get('impressions'):self.assertEqual(ad['impressao'],case['impressions'])
+                if case.get('forbidden_impression'):self.assertNotIn(case['forbidden_impression'],ad['impressao'])
+                self.assertTrue(ad['url'].startswith('https://fixture.invalid/'))
+    def test_depth_limit_then_fresh_call(self):
+        from vast_selection_cases import wrapper,VALID
+        calls=[]
+        def fetch(url):
+            calls.append(url)
+            return wrapper('https://fixture.invalid/'+str(len(calls)))
+        self.assertEqual(self.env['exibir'](baixar_tag=fetch)['motivo'],'limite-wrappers')
+        self.assertEqual(len(calls),6)
+        self.assertTrue(self.call(VALID)['exibido'])
+    def test_deadline_is_not_reset_on_sibling(self):
+        from vast_selection_cases import ads,wrapper,VALID,NEXT
+        clock=[0];self.env['_agora']=lambda:clock[0]
+        def fetch(url):
+            self.requests.append(url)
+            if url==TAG:return ads(wrapper(NEXT),wrapper(NEXT+'2'))
+            clock[0]=9
+            return '<VAST/>'
+        result=self.env['exibir'](baixar_tag=fetch)
+        self.assertFalse(result['exibido']);self.assertEqual(len(self.requests),2)
+
 
 if __name__=='__main__':unittest.main(argv=[sys.argv[0]]+rest)

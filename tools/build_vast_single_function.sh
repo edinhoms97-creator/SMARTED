@@ -33,7 +33,9 @@ Base exata: release 46074593488; SHA256 2b64c443f42902cb07031db1106137a59d852ae3
 Somente ads_vast.exibir mudou; todos os bytes fora da funcao e todas as demais entradas (exceto assinaturas) preservados.
 Tag efetiva fixa: https://vast.yomeno.xyz/vast?spot_id=1508249. Sem fallback antigo.
 Cada chamada recebe vast_attempt_id nos logs SmartAdsOpening/recibo.
-Distingue XML vazio de Ad sem midia compativel no diagnostico, preservando seletor, player e pixels.
+Percorre alternativas declaradas Wrapper/VMAP e isola cada Linear antes de chamar o seletor nativo.
+Mantem midia, duracao, ID e tracking do mesmo criativo; herda apenas o ramo selecionado.
+Seletor compartilhado, player e funcoes de pixels nao alterados; sem filtros novos de codec/resolucao.
 Nao foi encontrado cache no-fill/limite de sessao dentro de exibir. Nao se declara corrigido gate externo.
 Nenhuma alteracao em ads_tracking, AdMob, VIP, player, monitor, Home, retomada ou navegacao.
 ARM32+ARM64 preservados e certificado conferido contra o APK-base.

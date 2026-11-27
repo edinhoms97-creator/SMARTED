@@ -445,25 +445,30 @@ jobs:
         if: inputs.vast_function_lab == 'release'
         run: |
           set -o pipefail
-          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/release/SMARTEDTV-universal.apk --out .cache/vast-lab/after/evidence --live 2>&1 | tee .cache/vast-lab/after.log
-      - name: Preview real limitado e resumo de verificacao
+          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/release/SMARTEDTV-universal.apk --out .cache/vast-lab/after/evidence --live --selection --expect-selection 2>&1 | tee .cache/vast-lab/after.log
+      - name: Regressoes do modulo completo extraido do APK novo
+        if: inputs.vast_function_lab == 'release'
         run: |
-          python3 - <<'PYPREVIEW'
-          import base64,json,io
-          from pathlib import Path
-          from PIL import Image
-          root=Path('.cache/vast-lab')
-          evidence=root/('after' if (root/'after').exists() else 'baseline')/'evidence'
-          for attempt in ('001','004'):
-              image=Image.open(evidence/attempt/'04-playback-result.jpg')
-              image.thumbnail((660,492));b=io.BytesIO();image.save(b,format='JPEG',quality=25,optimize=True)
-              data=base64.b64encode(b.getvalue()).decode()
-              for i in range(0,len(data),3500):
-                  print('::notice title=VAST lab screenshot chunks::'+json.dumps({'attempt':attempt,'part':i//3500,'total':(len(data)+3499)//3500,'data':data[i:i+3500]}))
-          r=json.loads((evidence/'summary.json').read_text())
-          for a in r['attempts']:
-              print('::notice title=VAST final attempt::'+json.dumps({k:a.get(k) for k in ('id','mode','requests','classification','browser_playback','receipt')}))
-          PYPREVIEW
+          set -o pipefail
+          python3 tools/test_stabilized_openings.py --original .cache/vast-lab/after/native-modules -v 2>&1 | tee .cache/vast-lab/full-module-tests.log
+      - name: Preview real da chamada live (nao prova anuncio)
+        run: |
+          python3 tools/vast_evidence_preview.py .cache/vast-lab 001
+      - name: Preview real da fixture de video
+        run: |
+          python3 tools/vast_evidence_preview.py .cache/vast-lab 004
+      - name: Preview real do ramo irmao apos VAST vazio
+        run: |
+          python3 tools/vast_evidence_preview.py .cache/vast-lab 020
+      - name: Arquivo duravel dos prints, XMLs e logs (sem APK)
+        if: inputs.vast_function_lab == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/vast-lab/previous-live .cache/vast-lab/selection-before
+          gh run download 46078100066 --name vast-visual-lab-evidence --dir .cache/vast-lab/previous-live
+          gh run download 46079223776 --name vast-visual-lab-evidence --dir .cache/vast-lab/selection-before
+          python3 tools/archive_vast_evidence.py .cache/vast-lab
       - name: Diagnostico do laboratorio se falhar
         if: failure()
         run: |
@@ -498,6 +503,6 @@ jobs:
           test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
           cd .cache/vast-lab/release
           sha256sum -c SMARTEDTV-universal.apk.sha256
-          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt INSTALLATION.txt
+          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt INSTALLATION.txt exibir.diff VAST-1508249-evidence.zip VAST-1508249-evidence.zip.sha256
           gh release edit "$tag" --notes-file INSTALLATION.txt
           gh release view "$tag" --json url --jq .url

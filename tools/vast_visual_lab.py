@@ -118,6 +118,7 @@ class Lab:
         return playback
 
     def selected(self, ad, **kwargs):
+        self.selected_ad=ad
         self.raw_media=ad.get('url')
         self.current['media']={k:sanitize(v) if isinstance(v,str) else v for k,v in ad.items() if k in ('url','tipo','duracao','id')}
         self.event('production-selector-accepted-media',media=self.current['media'])
@@ -247,8 +248,16 @@ class Lab:
                     actual=bool(result.get('media'))
                     result['selection_expected']=case['selected']
                     result['selection_matches_expectation']=actual==case['selected']
-                    if actual and case.get('duration') is not None:
-                        result['selection_matches_expectation'] &= result['media']['duracao']==case['duration']
+                    if actual:
+                        ad=self.selected_ad
+                        checks={
+                            'browser_test_pattern_advanced':result.get('browser_playback',{}).get('current_time',0)>0,
+                            'correct_duration':case.get('duration') is None or ad.get('duracao')==case['duration'],
+                            'selected_branch_impressions':not case.get('impressions') or ad.get('impressao')==case['impressions'],
+                            'no_discarded_branch_impression':not case.get('forbidden_impression') or case['forbidden_impression'] not in ad.get('impressao',[])}
+                        result['selection_checks']=checks
+                        result['selection_matches_expectation'] &= all(checks.values())
+
                     self.save()
                 mismatches=[r['label'] for r in self.results if r.get('selection_matches_expectation') is False]
                 self.event('selection-matrix-complete',mismatches=mismatches)
@@ -261,7 +270,7 @@ class Lab:
             (self.out/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
             links=''.join(f'<li><a href="{r["id"]}/result.json">{r["id"]} {html.escape(r["label"])}</a> — {html.escape(r["classification"])} · <a href="{r["id"]}/04-playback-result.png">screenshot</a></li>' for r in self.results)
             (self.out/'index.html').write_text('<html><meta charset="utf-8"><h1>SMARTEDTV VAST evidence</h1><p>Open files without rerunning tests. Live and controlled fixtures are labeled. Sensitive query parameters are redacted; raw XML SHA-256 retained. No tracking sent. Browser is not Kodi.</p><ul>'+links+'</ul></html>')
-            (self.out/'README.md').write_text('# VAST evidence\n\nOpen index.html and each numbered folder. Four real browser screenshots, result.json, timestamped events.jsonl and sanitized full HTTP XML are saved per attempt. \n\nOnly 001–003 are real Clickadilla root requests when real_root_calls=3. 004–009 are CONTROLLED FIXTURES, not provider availability proof. Fixture media is a locally generated test pattern, NOT a real ad. Player is Chromium in an isolated lab, NOT Kodi. No tracking pixels are requested. URLs are sanitized and response raw SHA-256 is kept. No old-tag fallback.\n')
+            (self.out/'README.md').write_text('# VAST evidence\n\nOpen index.html and each numbered folder. Four real browser screenshots, result.json, timestamped events.jsonl and sanitized full HTTP XML are saved per attempt. \n\nOnly 001–003 are real Clickadilla root requests when real_root_calls=3. 004 and higher are CONTROLLED FIXTURES, not provider availability proof. Fixture media is a locally generated test pattern, NOT a real ad. Player is Chromium in an isolated lab, NOT Kodi. No tracking pixels are requested. URLs are sanitized and response raw SHA-256 is kept. No old-tag fallback.\n')
             # Transfer compact text evidence and a true screenshot to workspace.
             payload={'summary':summary,'responses':{str(p.relative_to(self.out)):p.read_text() for p in self.out.glob('*/*.xml')}}
             encoded=base64.b64encode(gzip.compress(json.dumps(payload).encode())).decode()

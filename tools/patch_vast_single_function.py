@@ -19,29 +19,8 @@ def node(source):
 
 def transform(source):
     fn=node(source);old=ast.get_source_segment(source,fn)
-    if old.count('    from ads_openings import emit\n')!=1:
-        raise ValueError('Unexpected VAST entry contract')
-    new=old.replace('    from ads_openings import emit\n', '''    # Single-function validation scope: no old-tag fallback, no caller changes.
-    tag = '''+repr(TAG)+'''
-    from uuid import uuid4 as _uuid4
-    _attempt_id = _uuid4().hex
-    from ads_openings import emit as _base_emit
-    def emit(kodi, stage, **fields):
-        _base_emit(kodi, stage, vast_attempt_id=_attempt_id, **fields)
-    emit(xbmc, 'vast-entry-called', root_url=tag)
-''',1)
-    old_no_media="        if not target:\n            return failure('no-fill-ou-sem-midia', 303)"
-    new_no_media="""        if not target:
-            # An Ad with no supported media is not proof of zero inventory.
-            # Preserve native selector and Error pixel code/dispatch unchanged.
-            has_ad = any(True for _node in root.iter('Ad'))
-            emit(xbmc, 'vast-selection-diagnostic', ad_present=has_ad,
-                 reason='ad-without-supported-media' if has_ad else 'empty-vast')
-            return failure('no-fill-ou-sem-midia', 303)"""
-    if new.count(old_no_media)!=1:raise ValueError('Unexpected no-media contract')
-    new=new.replace(old_no_media,new_no_media,1)
-    new=new.replace("        return {'exibido': False, 'motivo': reason}","        return {'exibido': False, 'motivo': reason, 'vast_attempt_id': _attempt_id}",1)
-    new=new.replace("            receipt['tipo_midia'] = ad.get('tipo')", "            receipt['vast_attempt_id'] = _attempt_id\n            receipt['tipo_midia'] = ad.get('tipo')",1)
+    overlay=Path(__file__).resolve().parent.parent/'android-build/vast-function-only/ads_vast.py'
+    new=ast.get_source_segment(overlay.read_text(),node(overlay.read_text()))
     lines=source.splitlines(keepends=True)
     result=''.join(lines[:fn.lineno-1])+new+'\n'+''.join(lines[fn.end_lineno:])
     audit(source,result)
