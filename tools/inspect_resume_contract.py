@@ -38,6 +38,8 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
         layers += 1
     decoded = tree
     functions = [n for n in ast.walk(decoded) if isinstance(n, ast.FunctionDef)]
-    emit('playback', {'sha256': hashlib.sha256(raw).hexdigest(),
-                      'selected': {n.name: ast.unparse(Redact().visit(n)) for n in functions if n.name in ('player_normal', 'check_player')},
-                      'selector_owners': [n.name for n in functions if any(isinstance(c, ast.Constant) and isinstance(c.value, str) and 'ESCOLHA O SERVIDOR' in c.value.upper() for c in ast.walk(n))]})
+    codec_path = 'assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/codec.py'
+    codec_tree = ast.parse(archive.read(codec_path).decode('utf-8-sig'))
+    emit('proxy', {'encoding': {n.name: ast.unparse(Redact().visit(n)) for n in functions if n.name == 'string_encoder'},
+                   'codec_functions': [n.name for n in ast.walk(codec_tree) if isinstance(n, ast.FunctionDef)],
+                   'decoder': {n.name: ast.unparse(Redact().visit(n)) for n in ast.walk(codec_tree) if isinstance(n, ast.FunctionDef) and any(word in n.name.lower() for word in ('decode', 'get_url'))}})
