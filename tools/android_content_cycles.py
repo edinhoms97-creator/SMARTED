@@ -26,7 +26,8 @@ def run_cycles(adb, evidence, apk=None):
         except subprocess.TimeoutExpired:
             return None, 'timeout'
     def stages():
-        _, logs = command('logcat', '-d', '-v', 'brief')
+        # Kodi Python diagnostics are written to kodi.log, not reliably logcat.
+        _, logs = command('exec-out', 'cat', '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/temp/kodi.log')
         parsed = []
         for line in logs.splitlines():
             if '[SmartAdsOpening] ' not in line:
@@ -44,6 +45,10 @@ def run_cycles(adb, evidence, apk=None):
               'sample_repository': 'https://github.com/mediaelement/mediaelement-files',
               'sample_downloads': [], 'cycle_blocker': None}
     try:
+        # Debug emulator only: root the ADB daemon for read-only native logs.
+        # This does not change app code, guisettings, profile, license or VIP.
+        result['adb_debug_log_access'] = command('root', timeout=15)
+        command('wait-for-device', timeout=20)
         if apk:
             import zipfile
             import xml.etree.ElementTree as ET
@@ -138,6 +143,13 @@ def run_cycles(adb, evidence, apk=None):
                     navigation.append(label)
                     if normalize(label) == normalize(expected) and expected:
                         rpc('Input.Select')
+                        time.sleep(2)
+                        after = ((gui() or {}).get('currentcontrol') or {}).get('label') or ''
+                        if normalize(after) == normalize(label):
+                            # Focus was observed, but RPC dispatch alone is not
+                            # proof of activation. Send the real remote OK key.
+                            command('shell', 'input', 'keyevent', 'KEYCODE_DPAD_CENTER')
+                            time.sleep(2)
                         return True
                     rpc('Input.Right')
                     if index > 1 and navigation[-1] == navigation[-2]:
@@ -209,6 +221,7 @@ def run_cycles(adb, evidence, apk=None):
                 time.sleep(1)
             if not selected:
                 row.update(status='blocked', reason='no-native-opening-observed-after-VIEW')
+                row['native_diagnostic_stages'] = [entry.get('stage') for entry in stages()]
                 result['cycle_blocker'] = row['reason']
                 break
             if any(entry.get('stage') == 'cycle-finished' for entry in selected):
