@@ -82,6 +82,16 @@ Mantida captura stream resolvido/ListItem/metadados/alternativas da mesma sessã
 
 ## 12. APK e identidade
 
-Geração manual por `build-universal-apk.yml`, nesta mesma branch, com `publish_release=true`. A prerelease e `INSTALLATION.txt` identificam o SHA exato compilado; `preservation.json` confere todas as entradas, `signature.txt`/`badging.txt` e SHA-256 acompanham o APK universal ARM32+ARM64. O pipeline não altera o Dropbox oficial nem faz merge de PR.
+Geração manual por `build-universal-apk.yml`, nesta mesma branch, com `publish_release=true`. **Build e publicação concluídos com sucesso** no [run 46020859891](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46020859891).
+
+- Fonte compilada: `9c1cb994d71135778fdddf9ecf7723696eebe6c5` (o registro deste resultado é alteração documental posterior, não outro APK).
+- [Baixar SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46020859891-1/SMARTEDTV-universal.apk).
+- [Prerelease e relatórios](https://github.com/edinhoms97-creator/SMARTED/releases/tag/smarted-original-ads-46020859891-1), universal ARM32+ARM64.
+- Tamanho: 263.230.973 bytes. SHA-256 informado pelo digest do asset GitHub: `09047f0cfe466d6e69385e3d98ad39d919e31fc3365de33250e39d077ea9ce77`.
+- Não é o APK anterior renomeado: digest anterior `e555d5bb8f1c6a0fa193a5e5cebc3ba9cb467b6f2e1f1ac0d6f96709320768a4` (run 46017664753). O tamanho coincidir não significa conteúdo idêntico.
+- Gate de preservação aprovado: oito entradas autorizadas alteradas, **8.046 preservadas**; skin/manifesto/recursos/inicialização inalterados.
+- Suites locais e gates de empacotamento contra módulos originais patchados aprovados. Assinatura/alinhamento/identidade verificados pelo pipeline, não por instalação Android.
+
+A prerelease e suas notas identificam a fonte exata; `preservation.json`, `signature.txt`, `badging.txt` e `.sha256` acompanham o APK. A rede desta sessão bloqueou o download direto dos assets/logs hospedados nos domínios auxiliares GitHub; o estado dos dois jobs, as anotações de preservação, notas da release e digest dos assets foram conferidos pela API GitHub. O pipeline conferiu o SHA-256 antes da publicação. O Dropbox oficial não foi alterado e nenhum PR foi mesclado.
 
 Base: pacote `smartedtv.full`, versão `1.0.161`, código `2103147`, target 34. Assinatura de teste/debug conforme pipeline existente, não a chave original. Pode não atualizar uma instalação assinada com outra chave; fazer backup antes de qualquer remoção. **Build para validação em aparelho; não rotular como final fisicamente validado.**
