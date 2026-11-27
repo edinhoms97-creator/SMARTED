@@ -69,6 +69,8 @@ jobs:
           python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk frequency
       - name: Inspecao somente leitura do monitor original
         run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk monitor
+      - name: Inspecao somente leitura dos eventos de reproducao
+        run: python3 tools/inspect_ad_contract.py .cache/smartedtv-base/base.apk monitor_events
       - name: Empacotar somente anuncios; verificar todos os outros arquivos
         run: bash tools/build-universal-apk.sh
       - name: APK de teste e relatorio de preservacao

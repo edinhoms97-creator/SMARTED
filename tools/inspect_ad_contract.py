@@ -18,7 +18,8 @@ GROUPS = {
     "routing": ("smart_ads.py", ("motor_anuncio", "usar_vast", "tocar_anuncio_de_video", "mostrar_preroll", "mostrar_abertura", "abrir_anuncio")),
     "fetchflow": ("ads_vast.py", ("exibir",)),
     "playback": ("ads_vast.py", ("reproduzir",)),
-    "frequency": ("ads_regra.py", ("abrir_troca", "pode_anunciar", "registrar_anuncio", "cancelar_anuncio", "marcar_conteudo")),
+    "frequency": ("ads_regra.py", ("abrir_troca", "pode_anunciar", "registrar_anuncio", "cancelar_anuncio", "marcar_conteudo", "ultimo_anuncio", "concluir_anuncio", "_ler", "_gravar")),
+    "monitor_events": ("smart_ads.py", ("MonitorPreRoll",)),
     "monitor": ("smart_ads.py", ("tocar_anuncio", "tocar_anuncio_com_aviso", "monitor", "iniciar_monitor")),
 }
 
@@ -36,7 +37,7 @@ def contract(path, group):
     filename, names = GROUPS[group]
     with zipfile.ZipFile(path) as archive:
         tree = ast.parse(archive.read(BASE + filename).decode("utf-8-sig"))
-    functions = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    functions = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))]
     result = {"path": BASE + filename, "functions": [node.name for node in functions], "selected": {}}
     for node in functions:
         if node.name in names:
