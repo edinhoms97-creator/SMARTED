@@ -80,4 +80,14 @@ Não foi excedido o limite de três consultas/tentativas descritas acima. O empa
 
 ## Identidade da entrega
 
-A fonte compilada e os relatórios serão identificados nas notas da prerelease e nos arquivos `source-preservation.json`/`preservation.json`. O Dropbox oficial não é sobrescrito; nenhum PR é mesclado. Assinatura de teste/debug, com a mesma cautela de backup antes de qualquer remoção. **Entrega para validação em aparelho, sem promessa de fill nem de três reproduções completas que não ocorreram.**
+Build e publicação **aprovados**: [run 46026169942](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46026169942), fonte compilada `1e171aa326155282e26c2050ac8c4979189aec4c`.
+
+- [Baixar SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46026169942-1/SMARTEDTV-universal.apk), universal ARM32+ARM64, 263.222.584 bytes.
+- [Prerelease e relatórios](https://github.com/edinhoms97-creator/SMARTED/releases/tag/smarted-original-ads-46026169942-1).
+- SHA-256 do asset conferido pela API GitHub: `9d6e9440e423748ae989c14a336ff57bd3d2979f451c0030692ae1a4aa209a93`.
+- Auditoria da fonte ativa: `original`, host `bid.onclckstr.com`, fingerprint da tag `e46fccf1d5e81e0d250d097afd10e03b904da7c991d34b647d09df93be3ebcd0`, igual ao original.
+- Preservação final: três entradas autorizadas alteradas/adicionadas, **8.049 entradas preservadas**, skin/manifesto/recursos/inicialização inalterados.
+- As 11 regressões do perfil passaram contra os módulos efetivamente gerados a partir do APK, incluindo tag original, diagnóstico de no-fill, fim integral sem corte de 1,5 s e distinção agendamento/entrega. Também passaram o verify canônico e as cinco regressões do diagnóstico interceptado. Não são testes físicos.
+- O passo de comparação de entrega ficou explicitamente desativado neste build: não fez uma quarta consulta a anúncios.
+
+A fonte exata e os relatórios estão nas notas e em `source-preservation.json`/`preservation.json`. Este registro de resultado é alteração documental posterior ao SHA compilado, não outro APK. O Dropbox oficial não foi sobrescrito; nenhum PR foi mesclado. Assinatura de teste/debug, com a mesma cautela de backup antes de qualquer remoção. **Entrega para validação em aparelho, sem promessa de fill nem de três reproduções completas que não ocorreram.**
