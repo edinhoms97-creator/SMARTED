@@ -359,6 +359,36 @@ class Tests(unittest.TestCase):
         case.setUp()
         return case, original_test.Player
 
+    def test_actual_full_module_retries_readiness_with_unmodified_native_path_getter(self):
+        if not ORIGINAL:
+            self.skipTest('full native module import runs against generated APK modules in runner')
+        h = Harness()
+        class NativePlayer:
+            reads = 0
+            def isPlayingVideo(self):
+                NativePlayer.reads += 1
+                return NativePlayer.reads != 2  # gate read lags the first observer edge
+            def getPlayingFile(self): return 'file:///sdcard/Movies/movie.mp4'
+        kodi = types.SimpleNamespace(Player=NativePlayer, LOGINFO=1, LOGWARNING=2,
+            getCondVisibility=lambda key: key in ('System.Platform.Android', 'Window.IsActive(fullscreenvideo)', 'Player.HasMedia'),
+            getInfoLabel=lambda key: '', log=lambda line, *a: h.logs.append(line), executebuiltin=lambda *a: None)
+        modules = {'xbmc': kodi, 'xbmcvfs': types.SimpleNamespace(),
+                   'ads_regra': h.env['ads_regra'], 'variante': types.SimpleNamespace()}
+        with patch.dict(sys.modules, modules):
+            env = {'__name__': 'full_native_test', '__file__': str(ORIGINAL/'smart_ads.py')}
+            exec(compile((ORIGINAL/'smart_ads.py').read_text(), env['__file__'], 'exec'), env)
+            env['threading'] = h.env['threading']
+            env['vip_ativo'] = lambda: False
+            env['abrir_anuncio'] = lambda *a: h.calls.append('dispatch') or False
+            monitor = env['MonitorPreRoll']()
+            previous = ads_openings.observe(monitor, kodi)
+            self.assertTrue(monitor._smarted_pending_metadata)
+            for _ in range(4): previous = ads_openings.observe(monitor, kodi, previous)
+            h.join()
+            self.assertEqual(h.calls, ['dispatch'])
+            self.assertTrue(any('video-not-ready' in line for line in h.logs))
+            self.assertTrue(any('opening-claimed' in line for line in h.logs))
+
     def test_actual_completion_processed_once_and_tracking_kept(self):
         case, player = self.actual_vast()
         env, clock = case.env, [0.0]
