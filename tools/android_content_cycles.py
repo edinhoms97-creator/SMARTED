@@ -129,9 +129,14 @@ def run_cycles(adb, evidence, apk=None):
             def select_existing(target):
                 for index in range(18):
                     properties = gui() or {}
-                    control = (properties.get('currentcontrol') or {}).get('id')
-                    navigation.append(control)
-                    if control == target:
+                    # Kodi 21's audited GUI.Property.Value schema exposes only
+                    # currentcontrol.label (not its XML id). Match the label
+                    # read from that exact APK instead of assuming an id field.
+                    label = (properties.get('currentcontrol') or {}).get('label') or ''
+                    expected = next(item['values'].get('label', '') for item in controls if item['id'] == str(target))
+                    normalize = lambda text: ' '.join(re.sub(r'\[[^]]+\]', '', text).casefold().split())
+                    navigation.append(label)
+                    if normalize(label) == normalize(expected) and expected:
                         rpc('Input.Select')
                         return True
                     rpc('Input.Right')
