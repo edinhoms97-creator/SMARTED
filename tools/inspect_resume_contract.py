@@ -18,14 +18,15 @@ def emit(group, data):
 
 with zipfile.ZipFile(sys.argv[1]) as archive:
     selected = {}
-    for path in archive.namelist():
-        if path == 'assets/addons/plugin.video.smarted/navigation.py':
-            import hashlib
-            tree = ast.parse(archive.read(path).decode('utf-8-sig'))
-            selected[path] = {'sha256': hashlib.sha256(archive.read(path)).hexdigest(),
-                              'functions': [n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)],
-                              'selected': {n.name: ast.unparse(Redact().visit(n)) for n in tree.body
-                                           if isinstance(n, ast.FunctionDef) and n.name == 'resolve'},
-                              'imports': [ast.unparse(n) for n in tree.body if isinstance(n, (ast.Import, ast.ImportFrom))]}
-    selected['resolver_paths'] = [name for name in archive.namelist() if any(word in name.lower() for word in ('brazuca', 'resolveurl', 'urlresolver', 'streamtape', 'mixdrop', 'doodstream'))][:60]
-    emit('resolver', selected)
+    for path in ('assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/default.py',
+                 'assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/database.py'):
+        import hashlib
+        data = archive.read(path)
+        tree = ast.parse(data.decode('utf-8-sig'))
+        functions = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
+        selected[path] = {'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data),
+                          'functions': [n.name for n in functions],
+                          'selected': {n.name: ast.unparse(Redact().visit(n)) for n in functions
+                                       if any(word in n.name.lower() for word in ('servid', 'server', 'playvideo', 'play_video', 'resolver')) and n.end_lineno - n.lineno < 180},
+                          'dynamic_execution': any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == 'exec' for n in ast.walk(tree))}
+    emit('brazuca', selected)
