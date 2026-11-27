@@ -1,0 +1,57 @@
+{
+  "changed": [
+    "assets/addons/service.smarted.bootstrap/ads_admob.py",
+    "assets/addons/service.smarted.bootstrap/ads_openings.py",
+    "assets/addons/service.smarted.bootstrap/ads_regra.py",
+    "assets/addons/service.smarted.bootstrap/ads_tracking.py",
+    "assets/addons/service.smarted.bootstrap/ads_vast.py",
+    "assets/addons/service.smarted.bootstrap/smart_ads.py"
+  ],
+  "preserved_entries": 8048,
+  "skin_manifest_resources_startup_unchanged": true,
+  "reference_commit": "9436b5ef63fe1e4d569328990c92ab1514ce9b0b",
+  "reference_build": 45996397116,
+  "comparison_with_confirmed_reference_and_tracking": {
+    "changed": [
+      "assets/addons/service.smarted.bootstrap/ads_openings.py",
+      "assets/addons/service.smarted.bootstrap/ads_vast.py",
+      "assets/addons/service.smarted.bootstrap/smart_ads.py"
+    ],
+    "preserved_entries": 8051,
+    "skin_manifest_resources_startup_unchanged": true
+  },
+  "audited_scopes": {
+    "smart_ads.py": [
+      "MonitorPreRoll._ciclo_vast",
+      "MonitorPreRoll._disparar",
+      "MonitorPreRoll._talvez_mostrar",
+      "MonitorPreRoll.onPlayBackEnded",
+      "MonitorPreRoll.onPlayBackStopped",
+      "abrir_anuncio",
+      "iniciar_monitor",
+      "tocar_anuncio_de_video"
+    ],
+    "ads_vast.py": [
+      "_disparar_eventos",
+      "disparar",
+      "exibir",
+      "exibir_e_devolver",
+      "reproduzir",
+      "restaurar"
+    ]
+  },
+  "tag": "https://vast.yomeno.xyz/vast?spot_id=1508180",
+  "no_new_request_parameters": true,
+  "source_sha256": {
+    "assets/addons/service.smarted.bootstrap/ads_vast.py": "f84ec692a37f3b09a0640b61d021ca6ee56da7e8e9586bd53cfba7641fd7c60d",
+    "assets/addons/service.smarted.bootstrap/smart_ads.py": "ce5c737fe54a76b6393969cb5b055e371b112905beed708467f6017c37a4ce57",
+    "assets/addons/service.smarted.bootstrap/ads_admob.py": "6a5281b10d12487f81f18045836506e6fe1851565d4cedf1baed5019f989a05a",
+    "assets/addons/service.smarted.bootstrap/ads_regra.py": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b",
+    "assets/addons/service.smarted.bootstrap/ads_tracking.py": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f",
+    "assets/addons/service.smarted.bootstrap/ads_openings.py": "a767c70f70d21e9d64993b2cd140d0223234a3f605482eeef657e471825f1157"
+  },
+  "build_run": 46044121903,
+  "apk_source_commit": "8e630dd205fe03f95958efad484f4245c84dcbcd",
+  "apk_sha256": "5187f34599911310dbf60dd2181b3ceac6d306b7d0ccc61a58fc1c4c051875c9",
+  "apk_bytes": 263230975
+}
