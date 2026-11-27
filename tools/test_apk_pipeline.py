@@ -178,6 +178,13 @@ class Tests(unittest.TestCase):
         self.assertIn('def validar(code): return cloud(code)', result)
         self.assertIn('def abrir_checkout(): return payment_url', result)
 
+    def test_snapshot_wrapper_keeps_original_function_as_auditable_alias(self):
+        from patch_original_ads import replace_functions
+        original = "def estado_do_conteudo(player=None, log=None): return {'ao_vivo': True}\ndef untouched_ui(): return 'skin'\n"
+        updated = replace_functions(original, "def estado_do_conteudo(player=None, log=None): return _smarted_estado_do_conteudo_original(player, log)\n")
+        self.assertIn('def _smarted_estado_do_conteudo_original(', updated)
+        self.assertIn("def untouched_ui(): return 'skin'", updated)
+
     def test_patch_fails_on_unexpected_function_contract(self):
         from patch_original_ads import replace_functions
         with self.assertRaisesRegex(ValueError, 'contract changed'):
@@ -185,7 +192,7 @@ class Tests(unittest.TestCase):
 
     def test_new_startup_cannot_masquerade_as_ad_config(self):
         plan = {'reviewed': True, 'changes': {AD: {'new_file': True, 'original_sha256': None}}}
-        with self.assertRaisesRegex(ValueError, 'Only the inert'):
+        with self.assertRaisesRegex(ValueError, 'Only reviewed'):
             preserve.validate_plan(plan)
 
     def test_method_patch_preserves_other_monitor_methods(self):

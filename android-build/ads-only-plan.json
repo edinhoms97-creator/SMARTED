@@ -23,6 +23,14 @@
     },
     "assets/addons/script.smartedtv.welcome/default.py": {
       "original_sha256": "22d6b4412102f017a1ad36a3c732a9a89444f547b03909f3004831fc7b67e229"
+    },
+    "assets/addons/service.smarted.bootstrap/ads_resume.py": {
+      "new_file": true,
+      "original_sha256": null
+    },
+    "assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+      "new_file": true,
+      "original_sha256": null
     }
   }
 }

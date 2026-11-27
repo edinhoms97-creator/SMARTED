@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic media-fault regressions; no network/emulator or skin changes."""
 import ast
+import sys
 from pathlib import Path
 import types
 import unittest
@@ -16,12 +17,13 @@ class Runtime:
         self.now = 1000.0
         self.duration = 21
         self.start = self.now
-        self.file = 'movie'
+        self.file = 'https://media.invalid/movie.mp4'
         self.playing = True
         self.position = 42.125
         self.observer = None
         self.events = []
         self.stops = []
+        self.stop_times = []
         self.seek_calls = []
         self.restores = []
         self.callback_sent = False
@@ -37,6 +39,10 @@ class Runtime:
                 return runtime.file
             def getTime(self):
                 return runtime.position
+            def play(self, url, listitem=None, windowed=False):
+                runtime.restore_route(url)
+                if runtime.observer and hasattr(runtime.observer, 'onAVStarted'):
+                    runtime.observer.onAVStarted()
             def seekTime(self, value):
                 runtime.seek_calls.append((runtime.file, value))
                 runtime.position = value
@@ -44,6 +50,7 @@ class Runtime:
                 pass
             def stop(self):
                 runtime.stops.append(runtime.file)
+                runtime.stop_times.append(runtime.now)
                 runtime.playing = False
                 runtime.file = ''
         self.Player = Player
@@ -51,6 +58,8 @@ class Runtime:
     def sleep(self, seconds):
         self.now += seconds
         if self.file != 'ad':
+            if self.playing:
+                self.position += seconds
             return
         elapsed = self.now - self.start
         self.position = (0 if self.mode == 'stall' else
@@ -85,12 +94,14 @@ class Runtime:
         return True
 
     def env(self):
+        sys.path.insert(0, str(ORIGINAL or PATCHES))
         env = {
             '__name__': 'ad_regression', 'TIMEOUT_HTTP': 8, 'TEMPO_MAXIMO_ANUNCIO': 60,
             'TEMPO_TELA_PRETA_AUDIO': 3, 'TEMPO_TRAVAMENTO_ANUNCIO': 2,
             'VAST_TAG_PADRAO': 'https://vast.yomeno.xyz/vast?spot_id=1508180',
             'time': types.SimpleNamespace(time=lambda: self.now, sleep=self.sleep),
             'xbmc': types.SimpleNamespace(Player=self.Player, LOGWARNING=2, getCondVisibility=lambda _: False),
+            '_smarted_estado_do_conteudo_original': lambda **kw: {'caminho': self.file, 'posicao': self.position, 'ao_vivo': False},
             '_agora': lambda: self.now, '_arquivo_atual': lambda: self.file,
             '_player_tocando_video': lambda: self.playing,
             '_aguardar_anuncio_tocar': lambda *a, **k: True,
@@ -124,27 +135,37 @@ class Regressions(unittest.TestCase):
               'impressao': ['impression'], 'eventos': {'complete': ['complete']}}
         env['exibir'] = lambda **kw: env['reproduzir'](ad, tocar=kw['tocar'], dormir=runtime.sleep)
         result = env['exibir_e_devolver'](tocar=runtime.play_ad, dormir=runtime.sleep,
-                  estado={'caminho': 'movie', 'posicao': 42.125})
+                  estado={'caminho': 'https://media.invalid/movie.mp4', 'posicao': 42.125})
         return result
+
+    def test_completion_skip_and_abort_restore_same_vod_without_plugin_helpers(self):
+        for mode in ('ended', 'stopped', 'mid-stall', 'error'):
+            with self.subTest(mode=mode):
+                runtime = Runtime(mode)
+                result = self.session(runtime)
+                self.assertTrue(result['retomada_confirmada'])
+                self.assertEqual(runtime.restores, ['https://media.invalid/movie.mp4'])
+                self.assertIn(('https://media.invalid/movie.mp4', 42.125), runtime.seek_calls)
+                self.assertNotIn('plugin://', str(runtime.restores))
 
     def test_cold_start_21s_ad_freezes_at_5s_aborts_in_3s_and_restores_movie(self):
         runtime = Runtime('mid-stall')
         result = self.session(runtime)
         self.assertEqual(result['motivo'], 'travamento')
-        self.assertGreaterEqual(runtime.now - runtime.start, 8.0)
-        self.assertLessEqual(runtime.now - runtime.start, 8.5)
+        self.assertGreaterEqual(runtime.stop_times[0] - runtime.start, 8.0)
+        self.assertLessEqual(runtime.stop_times[0] - runtime.start, 8.5)
         self.assertEqual(runtime.stops, ['ad'])
         self.assertEqual(runtime.events.count('error:405'), 1)
         self.assertNotIn('complete', runtime.events)
         self.assertTrue(result['retomada_confirmada'])
-        self.assertEqual(runtime.file, 'movie')
-        self.assertEqual(runtime.position, 42.125)
+        self.assertEqual(runtime.file, 'https://media.invalid/movie.mp4')
+        self.assertIn(('https://media.invalid/movie.mp4', 42.125), runtime.seek_calls)
 
     def test_decoder_error_while_kodi_still_claims_playing_aborts_immediately(self):
         runtime = Runtime('error-playing')
         result = self.session(runtime)
         self.assertEqual(result['motivo'], 'erro-player')
-        self.assertLessEqual(runtime.now - runtime.start, 5.5)
+        self.assertLessEqual(runtime.stop_times[0] - runtime.start, 5.5)
         self.assertEqual(runtime.stops, ['ad'])
         self.assertTrue(result['retomada_confirmada'])
 
@@ -154,7 +175,7 @@ class Regressions(unittest.TestCase):
         env['_audio_sem_quadro_video'] = lambda: runtime.now - runtime.start >= 5
         result = env['reproduzir']({'url': 'ad', 'duracao': 21}, tocar=runtime.play_ad, dormir=runtime.sleep)
         self.assertEqual(result['motivo'], 'tela-preta-sem-quadro')
-        self.assertLessEqual(runtime.now - runtime.start, 8.5)
+        self.assertLessEqual(runtime.stop_times[0] - runtime.start, 8.5)
         self.assertEqual(runtime.stops, ['ad'])
 
     def test_absolute_duration_plus_5_and_35s_cap_even_when_clock_advances(self):
@@ -163,8 +184,8 @@ class Regressions(unittest.TestCase):
                 runtime = Runtime('slow-clock')
                 result = self.session(runtime, duration)
                 self.assertEqual(result['motivo'], 'timeout-anuncio')
-                self.assertLessEqual(runtime.now - runtime.start, limit + .5)
-                self.assertGreaterEqual(runtime.now - runtime.start, limit)
+                self.assertLessEqual(runtime.stop_times[0] - runtime.start, limit + .5)
+                self.assertGreaterEqual(runtime.stop_times[0] - runtime.start, limit)
                 self.assertTrue(result['retomada_confirmada'])
                 self.assertEqual(runtime.stops, ['ad'])
                 self.assertNotIn('complete', runtime.events)
@@ -247,7 +268,7 @@ class Regressions(unittest.TestCase):
         receipt, _ = runtime.play()
         self.assertFalse(receipt['exibido'])
         self.assertFalse(receipt.get('precisa_restaurar', False))
-        self.assertEqual(runtime.file, 'movie')
+        self.assertEqual(runtime.file, 'https://media.invalid/movie.mp4')
         self.assertEqual(runtime.stops, [])
 
     def test_15s_ad_completes_once(self):
@@ -265,12 +286,12 @@ class Regressions(unittest.TestCase):
         receipt = env['reproduzir']({'url': 'ad'}, tocar=broken)
         self.assertFalse(receipt['exibido'])
         self.assertFalse(receipt.get('precisa_restaurar', False))
-        self.assertEqual(runtime.file, 'movie')
+        self.assertEqual(runtime.file, 'https://media.invalid/movie.mp4')
 
     def test_exception_after_player_replacement_restores_vod(self):
         runtime = Runtime()
         env = runtime.env()
-        env['estado_do_conteudo'] = lambda **kw: {'caminho': 'movie', 'posicao': 42.125}
+        env['estado_do_conteudo'] = lambda **kw: {'caminho': 'https://media.invalid/movie.mp4', 'posicao': 42.125}
         def broken(**kw):
             runtime.file, runtime.playing = 'ad', False
             raise RuntimeError('media callback failure')
@@ -278,15 +299,15 @@ class Regressions(unittest.TestCase):
         receipt = env['exibir_e_devolver']()
         self.assertFalse(receipt['exibido'])
         self.assertTrue(receipt['retomada_confirmada'])
-        self.assertEqual(runtime.file, 'movie')
-        self.assertEqual(runtime.position, 42.125)
+        self.assertEqual(runtime.file, 'https://media.invalid/movie.mp4')
+        self.assertIn(('https://media.invalid/movie.mp4', 42.125), runtime.seek_calls)
 
     def test_restore_never_seeks_the_ad(self):
         runtime = Runtime()
         env = runtime.env()
         runtime.file, runtime.playing = 'ad', True
-        env['_iniciar_em_tela_cheia'] = lambda *a, **k: True  # asynchronous command not accepted yet
-        result = env['restaurar']({'caminho': 'movie', 'posicao': 42.125}, dormir=runtime.sleep,
+        runtime.Player.play = lambda *a, **k: None  # asynchronous command not accepted yet
+        result = env['restaurar']({'caminho': 'https://media.invalid/movie.mp4', 'posicao': 42.125}, dormir=runtime.sleep,
                                  agora=lambda: runtime.now, espera=1, url_anuncio='ad')
         self.assertFalse(result)
         self.assertEqual(runtime.seek_calls, [])

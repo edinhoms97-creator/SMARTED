@@ -24,6 +24,7 @@ def tocar_anuncio_de_video(log=None):
         if log:
             log('[SmartAdsDiag] solicitacao-vast-iniciada')
         receipt = module.exibir_e_devolver(log=log, tag=tag, altura_tela=height)
+        globals()['_smarted_vast_restored_path'] = receipt.get('caminho_devolvido', '') if receipt.get('retomada_confirmada') else ''
         success = bool(receipt.get('exibido')) and receipt.get('retomada_confirmada') is not False
         if log:
             # No film URLs, tracking tokens, account IDs or personal settings.
@@ -112,6 +113,7 @@ class MonitorPreRoll:
             with self._vast_lock:
                 self._em_vast = True
                 key = caminho_inicial
+                globals()['_smarted_vast_restored_path'] = ''
                 try:
                     key = _chave_conteudo(caminho_inicial)
                     success = bool(abrir_anuncio(atividade, log))
@@ -129,7 +131,17 @@ class MonitorPreRoll:
                     # Suppress late resume callbacks even after failure;
                     # never request another ad for the returned same VOD.
                     try:
-                        self._volta_vast_chave = _normalizar_caminho_chave(caminho_inicial)
+                        restored = globals().pop('_smarted_vast_restored_path', '')
+                        returned = restored if restored and self._caminho() == restored else caminho_inicial
+                        self._volta_vast_chave = _normalizar_caminho_chave(returned)
+                        if restored and returned == restored:
+                            # A proxy->direct URL or server fallback is still
+                            # the SAME opening, not another ad opportunity.
+                            data = ads_regra._ler()
+                            data['conteudo'] = _chave_conteudo(restored)
+                            data['tentativa'] = data['conteudo']
+                            ads_regra._gravar(data)
+                            self.ultimo_caminho = restored
                         self._ate_ignorar_volta_vast = time.monotonic() + 18.0
                     finally:
                         self._em_vast = False

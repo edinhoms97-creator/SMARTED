@@ -8,7 +8,7 @@ def tag_configurada(padrao=''):
 
 
 def baixar(url, timeout=TIMEOUT_HTTP):
-    """Verified TLS 1.2+, Chrome Android headers, bounded response/time."""
+    """Verified TLS 1.2+, real runtime User-Agent, bounded response/time."""
     if not url:
         return None
     try:
@@ -19,8 +19,9 @@ def baixar(url, timeout=TIMEOUT_HTTP):
         context.minimum_version = ssl.TLSVersion.TLSv1_2
         budget = min(max(float(timeout), 0.1), 8.0)
         deadline = _clock.monotonic() + budget
+        from ads_tracking import device_user_agent
         request = Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+            'User-Agent': device_user_agent(xbmc),
             'Accept': 'application/xml,text/xml,*/*;q=0.8',
             'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
             'Accept-Encoding': 'identity',
@@ -44,14 +45,11 @@ def baixar(url, timeout=TIMEOUT_HTTP):
 
 def disparar(urls):
     """Tracking transport; original async scheduling is retained."""
-    import datetime
-    import random
-    from urllib.parse import quote
+    from ads_tracking import expand, device_user_agent
     enviados = 0
+    ua = device_user_agent(xbmc)
     for url in urls or []:
-        url = str(url).replace('[CACHEBUSTER]', str(random.randint(10000000, 99999999)))
-        url = url.replace('[TIMESTAMP]', quote(datetime.datetime.now(datetime.timezone.utc).isoformat()))
-        if baixar(url, timeout=6) is not None:
+        if baixar(expand(url, user_agent=ua), timeout=6) is not None:
             enviados += 1
     return enviados
 
@@ -62,6 +60,13 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
     import xml.etree.ElementTree as _ET
     if not tag:
         return {'exibido': False, 'motivo': 'sem-tag'}
+    from ads_tracking import expand, device_user_agent
+    ua = device_user_agent(xbmc)
+    inherited_impressions, inherited_errors, inherited_events = [], [], {}
+    def failure(reason, code):
+        if inherited_errors:
+            _disparar_eventos([expand(url, error_code=code, user_agent=ua) for url in inherited_errors])
+        return {'exibido': False, 'motivo': reason}
     session_deadline = _agora() + min(35.0, max(.5, float(tempo_maximo)))
     deadline = min(session_deadline, _agora() + 8.0)
     current = tag
@@ -69,36 +74,51 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
     for _ in range(PROFUNDIDADE_WRAPPER + 1):
         remaining = deadline - _agora()
         if remaining <= 0:
-            return {'exibido': False, 'motivo': 'timeout-vast'}
+            return failure('timeout-vast', 301)
         if current in visited:
-            return {'exibido': False, 'motivo': 'wrapper-ciclico'}
+            return failure('wrapper-ciclico', 302)
         visited.add(current)
         try:
-            data = baixar_tag(current) if baixar_tag else baixar(current, timeout=remaining)
+            request_url = expand(current, user_agent=ua)
+            data = baixar_tag(request_url) if baixar_tag else baixar(request_url, timeout=remaining)
         except Exception:
             data = None
         if data is None:
-            return {'exibido': False, 'motivo': 'falha-rede-vast'}
+            return failure('falha-rede-vast', 301)
         if not data or not data.strip():
-            return {'exibido': False, 'motivo': 'no-fill'}
+            return failure('no-fill', 303)
         try:
-            _ET.fromstring(sem_namespace(data).strip())
+            root = _ET.fromstring(sem_namespace(data).strip())
         except Exception:
-            return {'exibido': False, 'motivo': 'xml-invalido'}
+            return failure('xml-invalido', 100)
         ad = escolher_anuncio(data, altura_tela)
         if ad:
+            ad = dict(ad)
+            ad['impressao'] = inherited_impressions + list(ad.get('impressao') or [])
+            ad['errors'] = inherited_errors + list(ad.get('errors') or [])
+            events = {name: list(urls) for name, urls in inherited_events.items()}
+            for name, urls in (ad.get('eventos') or {}).items():
+                events.setdefault(name, []).extend(urls)
+            ad['eventos'] = events
             remaining_session = session_deadline - _agora()
             if remaining_session <= 0:
-                return {'exibido': False, 'motivo': 'timeout-vast'}
+                return failure('timeout-vast', 301)
             receipt = reproduzir(ad, log=log, tempo_maximo=remaining_session, tocar=tocar, dormir=dormir)
             receipt['tipo_midia'] = ad.get('tipo')
             receipt['duracao_anuncio'] = ad.get('duracao')
             return receipt
+        wrapper = next(iter(root.iter('Wrapper')), None)
+        if wrapper is not None:
+            inherited_impressions.extend((n.text or '').strip() for n in wrapper.iter('Impression') if (n.text or '').strip())
+            inherited_errors.extend((n.text or '').strip() for n in wrapper.iter('Error') if (n.text or '').strip())
+            for node in wrapper.iter('Tracking'):
+                if node.get('event') and (node.text or '').strip():
+                    inherited_events.setdefault(node.get('event'), []).append(node.text.strip())
         target = tag_do_wrapper(data) or tag_do_vmap(data)
         if not target:
-            return {'exibido': False, 'motivo': 'no-fill-ou-sem-midia'}
+            return failure('no-fill-ou-sem-midia', 303)
         current = target
-    return {'exibido': False, 'motivo': 'limite-wrappers'}
+    return failure('limite-wrappers', 302)
 
 
 def _media_escolhido(inline, altura_tela=0):
@@ -203,7 +223,8 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
 
     def error():
         urls = list(anuncio.get('errors') or []) + list(events.get('error') or [])
-        _disparar_eventos([url.replace('[ERRORCODE]', '405') for url in urls])
+        from ads_tracking import expand, device_user_agent
+        _disparar_eventos([expand(url, error_code=405, user_agent=device_user_agent(xbmc)) for url in urls])
 
     try:
         if tocar(anuncio['url'], log):
@@ -311,66 +332,20 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
             'precisa_restaurar': needs_restore, 'url_anuncio': anuncio['url']}
 
 
+def estado_do_conteudo(player=None, log=None):
+    """Capture the original live/VOD state plus a session-owned resolved item."""
+    from ads_resume import capture
+    player = player or xbmc.Player()
+    state = _smarted_estado_do_conteudo_original(player=player, log=log)
+    return capture(state, player, xbmc)
+
+
 def restaurar(estado, log=None, espera=20, dormir=None, agora=None, url_anuncio=''):
-    """Reuse original reconnect candidates; never mistake the ad for the VOD."""
-    if not estado or not estado.get('caminho'):
-        return False
-    dormir = dormir or time.sleep
-    agora = agora or _agora
-    target = float(estado.get('posicao') or 0)
-    live = bool(estado.get('ao_vivo'))
-    deadline = agora() + min(float(espera), 12.0)
-    candidates = _candidatos_restauracao(estado)
-    for route in candidates:
-        try:
-            opened = False
-            if live:
-                try:
-                    import ao_vivo
-                    opened = bool(ao_vivo._tocar_de_novo(route))
-                except Exception:
-                    pass
-            if not opened:
-                opened = _iniciar_em_tela_cheia(route, log=log)
-            if not opened:
-                continue
-            route_deadline = min(deadline, agora() + 6.0)
-            ready = False
-            for _ in range(120):
-                current = _arquivo_atual()
-                if _player_tocando_video() and current and current != url_anuncio:
-                    ready = True
-                    break
-                if agora() >= route_deadline:
-                    break
-                dormir(.05)
-            if not ready:
-                continue
-            player = xbmc.Player()
-            if not live:
-                player.seekTime(target)
-                seek_deadline = min(deadline, agora() + 3.0)
-                confirmed = False
-                for _ in range(60):
-                    if not player.isPlayingVideo() or (url_anuncio and player.getPlayingFile() == url_anuncio):
-                        break
-                    if abs(float(player.getTime()) - target) <= .25:
-                        confirmed = True
-                        break
-                    if agora() >= seek_deadline:
-                        break
-                    dormir(.05)
-                if not confirmed:
-                    continue
-            _garantir_tela_cheia()
-            if estado.get('smarted_estava_pausado') and not xbmc.getCondVisibility('Player.Paused'):
-                player.pause()
-            return True
-        except Exception:
-            continue
-    if log:
-        log('[SmartAdsDiag] retomada-nao-confirmada (sem declarar sucesso)')
-    return False
+    """Direct resolved playback only: never reopen plugin/server selectors."""
+    from ads_resume import capture, restore
+    state = estado if estado and estado.get('_resolved_snapshot') else capture(estado, xbmc.Player(), xbmc)
+    return restore(state, xbmc, wait=espera, sleep=dormir or time.sleep, clock=agora or _agora,
+                   ad_url=url_anuncio, fullscreen=_garantir_tela_cheia, log=log)
 
 
 def exibir_e_devolver(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
@@ -379,14 +354,22 @@ def exibir_e_devolver(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO
     if estado is None:
         estado = estado_do_conteudo(log=log)
     if estado:
-        estado = dict(estado)
+        from ads_resume import capture
+        estado = capture(dict(estado), xbmc.Player(), xbmc)
         try:
             estado.setdefault('smarted_estava_pausado', bool(xbmc.getCondVisibility('Player.Paused')))
         except Exception:
             estado.setdefault('smarted_estava_pausado', False)
+    if not estado or not estado.get('resolved_streams'):
+        # Do not replace an unresolved plugin or lose its resolver context.
+        return {'exibido': False, 'motivo': 'sem-stream-resolvido', 'precisa_restaurar': False}
     def start_ad(url, logger):
         if estado and _player_tocando_video() and _arquivo_atual() != estado['caminho']:
             return False  # user changed the film while the tag was loading
+        try:
+            estado['posicao'] = float(xbmc.Player().getTime()) or 0.0
+        except Exception:
+            pass
         return (tocar or _tocar)(url, logger)
     try:
         receipt = exibir(log=log, tag=tag, altura_tela=altura_tela, tempo_maximo=tempo_maximo,
@@ -404,6 +387,8 @@ def exibir_e_devolver(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO
             confirmed = False
         receipt['conteudo_devolvido'] = bool(confirmed)
         receipt['retomada_confirmada'] = bool(confirmed)
+        if confirmed:
+            receipt['caminho_devolvido'] = estado.get('_restored_path', '')
         if not confirmed:
             receipt['exibido'] = False  # failure must not consume the cooldown
     return receipt

@@ -21,7 +21,7 @@ class Player:
     seek_works = True
     observer = None
     playing = True
-    file = 'original-vod'
+    file = 'https://media.invalid/original-vod.mp4'
 
     def __init__(self):
         if type(self) is not Player:
@@ -32,6 +32,11 @@ class Player:
 
     def getPlayingFile(self):
         return Player.file
+
+    def play(self, url, listitem=None, windowed=False):
+        Player.file, Player.playing, Player.current = url, True, 0
+        if Player.observer and hasattr(Player.observer, 'onAVStarted'):
+            Player.observer.onAVStarted()
 
     def seekTime(self, value):
         if self.seek_works:
@@ -77,7 +82,7 @@ class Tests(unittest.TestCase):
         Player.seek_works = True
         Player.current = 42.125
         Player.playing = True
-        Player.file = 'original-vod'
+        Player.file = 'https://media.invalid/original-vod.mp4'
         self.env['_smarted_restaurar_original'] = lambda *args, **kw: True
         self.env['_garantir_tela_cheia'] = lambda: None
         self.env['_audio_sem_quadro_video'] = lambda: False
@@ -130,7 +135,9 @@ class Tests(unittest.TestCase):
         self.assertTrue(seen['context'].check_hostname)
         self.assertEqual(seen['context'].verify_mode, ssl.CERT_REQUIRED)
         self.assertGreaterEqual(seen['context'].minimum_version, ssl.TLSVersion.TLSv1_2)
-        self.assertIn('Mobile Safari', seen['ua'])
+        from ads_tracking import device_user_agent
+        self.assertEqual(seen['ua'], device_user_agent(self.env['xbmc']))
+        self.assertNotIn('Pixel 7', seen['ua'])
         self.assertLessEqual(seen['timeout'], 8)
 
     def test_network_failure_returns_none(self):
@@ -138,7 +145,7 @@ class Tests(unittest.TestCase):
             self.assertIsNone(self.env['baixar']('https://test.invalid'))
 
     def test_original_nofill_parser_and_flow_do_not_touch_content(self):
-        self.env['estado_do_conteudo'] = lambda **kw: {'caminho': 'original-vod', 'posicao': 42.125}
+        self.env['estado_do_conteudo'] = lambda **kw: {'caminho': 'https://media.invalid/original-vod.mp4', 'posicao': 42.125}
         self.env['restaurar'] = lambda *a, **k: self.fail('No-fill must not restart the VOD')
         for xml in (b'', b'<VAST/>', b'<VAST><Error>303</Error></VAST>', b'<VAST><broken'):
             receipt = self.env['exibir_e_devolver'](tag='https://test.invalid', baixar_tag=lambda url: xml)
@@ -155,12 +162,19 @@ class Tests(unittest.TestCase):
         self.assertEqual(ad['duracao'], 21)
 
     def test_resume_must_be_confirmed(self):
+        clock = [0.]
+        def sleep(seconds):
+            clock[0] += seconds
+            if Player.playing:
+                Player.current += seconds
+        self.env['_agora'] = lambda: clock[0]
         Player.current = 0
-        self.assertTrue(self.env['restaurar']({'caminho': 'vod', 'posicao': 42.125}, dormir=lambda t: None))
-        self.assertEqual(Player.current, 42.125)
+        self.assertTrue(self.env['restaurar']({'caminho': 'https://media.invalid/vod.mp4', 'posicao': 42.125}, dormir=sleep))
+        self.assertGreaterEqual(Player.current, 42.125)
+        self.assertLess(Player.current, 43.7)
         Player.current = 0
         Player.seek_works = False
-        self.assertFalse(self.env['restaurar']({'caminho': 'vod', 'posicao': 42.125}, dormir=lambda t: None))
+        self.assertFalse(self.env['restaurar']({'caminho': 'https://media.invalid/vod.mp4', 'posicao': 42.125}, dormir=sleep))
 
     def playback(self, outcome):
         clock = [0]
@@ -208,6 +222,7 @@ class Tests(unittest.TestCase):
 
 if __name__ == '__main__':
     Tests.folder = Path(sys.argv.pop(1))
+    sys.path.insert(0, str(Tests.folder))
     result = unittest.main(exit=False).result
     for test, detail in result.failures + result.errors:
         last = detail.strip().splitlines()[-1].replace('%', '%25')

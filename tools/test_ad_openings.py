@@ -129,6 +129,8 @@ class Harness:
         if isinstance(receipt, BaseException):
             raise receipt
         self.now += receipt.get('segundos', 0)
+        if receipt.get('caminho_devolvido'):
+            self.file = receipt['caminho_devolvido']
         return dict(receipt)
 
     def join(self):
@@ -211,6 +213,16 @@ class Tests(unittest.TestCase):
         h.state.update(conteudo='filme', tentativa='filme', anunciado=True, ultimo_anuncio=999.9)
         h.open('filme')
         self.assertEqual(h.calls, ['filme'])
+
+    def test_server_fallback_is_same_opening_and_does_not_request_second_ad(self):
+        receipt = dict(SUCCESS, caminho_devolvido='https://backup.invalid/film.mp4', retomada_confirmada=True)
+        h = Harness([receipt])
+        h.open('https://proxy.invalid/film')
+        self.assertEqual(h.monitor._volta_vast_chave, 'https://backup.invalid/film.mp4')
+        self.assertEqual(h.state.get('tentativa'), 'https://backup.invalid/film.mp4')
+        h.env['mostrar_preroll'](caminho=h.file, chave=h.file, sessao=999, disparar=h.monitor._disparar)
+        h.join()
+        self.assertEqual(len(h.calls), 1)
 
     def test_vip_exemption_is_preserved(self):
         h = Harness([])

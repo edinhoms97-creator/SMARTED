@@ -54,6 +54,9 @@ jobs:
           npm test
           python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v
           python3 tools/test_ads_regressions.py
+          python3 tools/test_resolved_resume.py
+          python3 tools/test_vast_tracking.py
+          node tools/test-vast-tracking.js
           python3 tools/test_ad_openings.py
           python3 tools/test_apk_links.py
           node tools/test-apk-links.js
@@ -129,7 +132,7 @@ jobs:
           (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
           tag="smarted-original-ads-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
-            --title 'SMARTED original — watchdog 3s e botoes Dropbox (teste)' \
+            --title 'SMARTED original — retomada direta e tracking Wrappers (teste)' \
             --notes-file dist/INSTALLATION.txt \
             dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
             dist/preservation.json dist/signature.txt dist/badging.txt

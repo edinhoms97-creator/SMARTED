@@ -8,9 +8,11 @@
 - AdMob separado: `smartedtv/js/admob.js`, **`admob.enabled: false`**; IDs fornecidos em `config.js`. Sem SDK/bridge Android neste repositório. Ver [ADMOB.md](ADMOB.md).
 - **Correção após teste em aparelho:** o primeiro APK foi reprovado por travamento na inicialização e retirado da publicação. A interface web/welcome descrita neste documento é uma implementação separada e não deve substituir a UI do SMARTED original. O pipeline corretivo atua apenas nos módulos de anúncios já existentes no APK; skins e startup ficam intactos. Ver [BUILD_APK.md](BUILD_APK.md).
 
+Detalhes atuais de retomada sem seletor, limitações dos servidores e auditoria de pixels: [VAST_RESUME_TRACKING.md](VAST_RESUME_TRACKING.md).
+
 ## Transporte por plataforma
 
-**Kodi/Python:** `ssl.create_default_context()` com verificação de certificado/hostname e mínimo TLS 1.2; User-Agent Chrome Android, Accept XML, Accept-Language pt-BR, timeout de socket de 8 segundos. Não há `verify=False` ou contexto TLS inseguro. Beacons usam o mesmo contexto e são enviados fora do caminho de reprodução.
+**Kodi/Python:** `ssl.create_default_context()` com verificação de certificado/hostname e mínimo TLS 1.2; User-Agent real do runtime (`xbmc.getUserAgent()`), sem modelo Pixel/Chrome fabricado; Accept XML, Accept-Language pt-BR, timeout de socket de 8 segundos. Não há `verify=False` ou contexto TLS inseguro. Beacons usam o mesmo contexto e são enviados fora do caminho de reprodução.
 
 **Browser/WebView:** `fetch()` usa a segurança TLS e o User-Agent reais da plataforma. JavaScript **não pode impor mínimo TLS 1.2 nem forçar o UA Chrome Android**. O shell Android/WebView precisa ser atualizado/configurado para cumprir isso em aparelhos antigos. A tag também precisa permitir CORS; CORS bloqueado é tratado como falha de rede e cai no fallback, não como anúncio exibido. O timeout web de 8 segundos cobre headers e corpo mesmo sem `AbortController`.
 
@@ -19,10 +21,10 @@
 1. Captura posição e estado de pausa do VOD antes da requisição; pausa o conteúdo enquanto resolve o anúncio.
 2. XML vazio, `<VAST/>`, ausência de `<Ad>`, XML inválido, rede ou timeout liberam o conteúdo sem overlay persistente. Erros não impedem a retomada.
 3. Uma URL `<Error>` dentro de um anúncio válido é tracking de falha, **não no-fill**.
-4. Reproduz o primeiro anúncio linear Inline disponível e prefere MP4. Não implementa ad pods nem resolução recursiva de Wrappers nesta versão; respostas sem mídia direta caem no fallback.
+4. Reproduz o primeiro anúncio linear Inline disponível e prefere MP4. Segue Wrappers com limite de profundidade/tempo e herda suas impressões/eventos; não implementa ad pods. Respostas sem mídia utilizável caem no fallback.
 5. Impression/start são emitidos após o começo efetivo da mídia (`playing` / `onAVStarted`), não na busca da tag. Quartis e complete são deduplicados. Interrupção não gera complete; falha de mídia gera error 405. URLs de tracking são beacons best-effort, sem garantia de recebimento pelo provedor.
 6. Web: skipoffset em segundos ou porcentagem; botão desabilitado até o limite, com checagem também no handler. D-PAD fica no overlay e o foco volta ao controle anterior.
-7. Watchdog de 12 segundos cobre falha de início e ausência de progresso no meio da mídia; remove o anúncio e restaura o conteúdo.
+7. O APK original corrigido usa watchdog de 3 segundos e teto absoluto de 35 segundos; a referência web/welcome separada mantém seu watchdog próprio. Ver [VAST_WATCHDOG.md](VAST_WATCHDOG.md).
 8. Retomada web: mantém o mesmo elemento de vídeo, restaura `currentTime`, aguarda `seeked` quando necessário e confere diferença ≤ 50 ms. Fallback de confirmação: 1,5 s. `resumeConfirmed: false` informa seek não confirmado; não é mascarado como sucesso. A posição é conferida antes de dar play. Um VOD originalmente pausado permanece pausado.
 9. Retomada Kodi: preserva URL + ListItem + posição, reabre a fonte e solicita seek, conferindo posição por até 3 s (tolerância 250 ms, devido à API/amostragem Kodi). Não declara precisão absoluta de frame. Streams ao vivo/não-seekable podem retornar `resumeConfirmed: false`.
 
