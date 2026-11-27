@@ -1,0 +1,11 @@
+{
+  "url": "https://www.dropbox.com/scl/fi/ixfw289m0sibcyfyrxf9g/SMARTEDTV.apk?rlkey=z59708sngkysw0c1ntmmur6lv&st=okcfec6i&dl=1",
+  "size": 263222483,
+  "dropbox_content_hash": "03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277",
+  "dropbox_revision": "016612000089f9e00000003401bbf21",
+  "metadata_verified_at": "2026-11-27",
+  "apktool_version": "2.12.1",
+  "apktool_sha256": "66cf4524a4a45a7f56567d08b2c9b6ec237bcdd78cee69fd4a59c8a0243aeafa",
+  "build_tools_version": "35.0.0",
+  "required_abis": ["armeabi-v7a", "arm64-v8a"]
+}

@@ -43,7 +43,16 @@ python3 -m http.server 8000
 Ou abra `smartedtv/standalone/smartedtv-preview.html` direto no navegador
 (funciona offline, tudo inline).
 
-## APK (Dropbox)
+## Build APK universal sob demanda
+
+Workflow manual: [`.github/workflows/build-universal-apk.yml`](.github/workflows/build-universal-apk.yml).
+Guia de execução, cache, assinatura de teste e limitações: [`docs/BUILD_APK.md`](docs/BUILD_APK.md).
+Reempacota o Kodi-base, preservando Dex/libs; não substitui o player por uma WebView.
+O build só publica `SMARTEDTV-universal.apk` se confirmar ARM32+ARM64 reais,
+manifesto, assinatura e conteúdo. O workflow precisa existir na branch padrão
+para o primeiro disparo manual; não há builds automáticos por push.
+
+## APK original (Dropbox)
 
 - **Arquivo:** `SMARTEDTV.apk` — 263.222.483 bytes, `/SMARTEDTV UNIVERSAL/` no Dropbox
 - **Link (compartilhar):** https://www.dropbox.com/scl/fi/ixfw289m0sibcyfyrxf9g/SMARTEDTV.apk?rlkey=z59708sngkysw0c1ntmmur6lv&st=okcfec6i&dl=0

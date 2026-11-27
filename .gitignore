@@ -16,3 +16,9 @@ node_modules/
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Local Android build/download/signing outputs (never version keys or APKs)
+.cache/
+dist/
+*.keystore
+*.jks
