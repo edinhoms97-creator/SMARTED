@@ -8,6 +8,7 @@ if the first content cannot be opened/observed, report the blocker, not success.
 import json
 from pathlib import Path
 import re
+import socket
 import subprocess
 import time
 from urllib.request import Request, urlopen
@@ -94,24 +95,76 @@ def run_cycles(adb, evidence, apk=None):
             values = entry['values']
             return (str(round((float(values['left']) + float(values['width'])/2)*w/1920)),
                     str(round((float(values['top']) + float(values['height'])/2)*h/1080)))
-        free_x, free_y = button_center(312)
-        result['welcome_free_button_center'] = [free_x, free_y]
-        result['welcome_free_tap'] = command('shell', 'input', 'tap', free_x, free_y)[0]
-        time.sleep(8)
-        _, welcome_log = command('logcat', '-d', '-v', 'brief')
-        if 'Botao 312 (Assistir com anuncios) acionado.' not in welcome_log and 'control_id=312' not in welcome_log:
-            result['cycle_blocker'] = 'original-free-welcome-button-not-confirmed'
-            return result
-        # Original onClick(312) opens the notice. Its existing control 906
-        # is Continue with ads; use its actual XML center through native input.
-        continue_x, continue_y = button_center(906)
-        command('shell', 'input', 'tap', continue_x, continue_y)
-        time.sleep(3)
-        _, welcome_log = command('logcat', '-d', '-v', 'brief')
-        result['welcome_continue_906_observed'] = 'control_id=906' in welcome_log
+        # Prefer Kodi's EXISTING local native control API when enabled. This
+        # does not enable a server, alter guisettings/license or replace a player.
+        # It lets us observe focus instead of treating a successful tap as proof.
+        command('forward', 'tcp:19090', 'tcp:9090')
+        def rpc(method, params=None):
+            try:
+                with socket.create_connection(('127.0.0.1', 19090), timeout=3) as connection:
+                    connection.settimeout(3)
+                    request = dict(jsonrpc='2.0', id=1, method=method)
+                    if params is not None:
+                        request['params'] = params
+                    connection.sendall((json.dumps(request)+'\n').encode())
+                    data = b''
+                    while len(data) < 1024*1024:
+                        part = connection.recv(65536)
+                        if not part:
+                            break
+                        data += part
+                        try:
+                            response = json.loads(data)
+                            return response.get('result')
+                        except ValueError:
+                            continue
+            except (OSError, ValueError):
+                pass
+            return None
+        def gui():
+            return rpc('GUI.GetProperties', {'properties': ['currentwindow', 'currentcontrol']})
+        result['existing_native_rpc_available'] = isinstance(gui(), dict)
+        if result['existing_native_rpc_available']:
+            navigation = []
+            def select_existing(target):
+                for index in range(18):
+                    properties = gui() or {}
+                    control = (properties.get('currentcontrol') or {}).get('id')
+                    navigation.append(control)
+                    if control == target:
+                        rpc('Input.Select')
+                        return True
+                    rpc('Input.Right')
+                    if index > 1 and navigation[-1] == navigation[-2]:
+                        rpc('Input.Down')
+                    time.sleep(.15)
+                return False
+            result['welcome_free_312_observed'] = select_existing(312)
+            if not result['welcome_free_312_observed']:
+                result['welcome_navigation'] = navigation
+                result['cycle_blocker'] = 'original-free-welcome-focus-not-reached'
+                return result
+            time.sleep(2)
+            result['welcome_continue_906_observed'] = select_existing(906)
+            result['welcome_navigation'] = navigation
+        else:
+            free_x, free_y = button_center(312)
+            result['welcome_free_button_center'] = [free_x, free_y]
+            result['welcome_free_tap'] = command('shell', 'input', 'tap', free_x, free_y)[0]
+            time.sleep(8)
+            _, welcome_log = command('logcat', '-d', '-v', 'brief')
+            if 'Botao 312 (Assistir com anuncios) acionado.' not in welcome_log and 'control_id=312' not in welcome_log:
+                result['cycle_blocker'] = 'original-free-welcome-button-not-confirmed'
+                return result
+            continue_x, continue_y = button_center(906)
+            command('shell', 'input', 'tap', continue_x, continue_y)
+            time.sleep(3)
+            _, welcome_log = command('logcat', '-d', '-v', 'brief')
+            result['welcome_continue_906_observed'] = 'control_id=906' in welcome_log
         if not result['welcome_continue_906_observed']:
             result['cycle_blocker'] = 'original-continue-with-ads-not-confirmed'
             return result
+        time.sleep(2)
         command('shell', 'mkdir', '-p', '/sdcard/Movies/SmartedValidation')
         for name in SAMPLES:
             url = 'https://api.github.com/repos/mediaelement/mediaelement-files/contents/' + name
