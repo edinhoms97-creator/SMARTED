@@ -4,6 +4,10 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      inspect_only:
+        description: 'Somente inspecao de contratos originais, sem gerar/publicar APK'
+        type: boolean
+        default: false
       base_url:
         description: 'Desativado: somente o APK original fixado e permitido'
         type: string
@@ -64,9 +68,16 @@ jobs:
         with:
           path: .cache/smartedtv-signing
           key: smartedtv-test-debug-key-v1
+      - name: Inspecao somente leitura dos botoes e helpers
+        if: inputs.inspect_only
+        run: |
+          python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk --report .cache/base-identity.json
+          python3 tools/inspect_original_controls.py .cache/smartedtv-base/base.apk
       - name: Empacotar somente anuncios; verificar todos os outros arquivos
+        if: ${{ !inputs.inspect_only }}
         run: bash tools/build-universal-apk.sh
       - name: APK de teste e relatorio de preservacao
+        if: ${{ !inputs.inspect_only }}
         id: artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -85,6 +96,7 @@ jobs:
             dist/*.txt
           if-no-files-found: ignore
       - name: Resumo sem alegar teste em aparelho
+        if: ${{ !inputs.inspect_only }}
         run: |
           {
             echo '## SMARTED original — anuncios apenas'
@@ -96,7 +108,7 @@ jobs:
   publish:
     name: Disponibilizar build corretivo de teste
     needs: build
-    if: inputs.publish_release
+    if: inputs.publish_release && !inputs.inspect_only
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
