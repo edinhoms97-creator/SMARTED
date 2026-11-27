@@ -32,9 +32,9 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
             functions = [n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
             selected = {}
             for n in ast.walk(tree):
-                if isinstance(n, ast.FunctionDef) and any(s in n.name.lower() for s in ('compart', 'baixar', 'atualiz', 'download', 'onclick')):
+                if isinstance(n, ast.FunctionDef) and any(s in n.name.lower() for s in ('compart', 'baixar', 'atualiz', 'download', 'onclick', 'resolver_apk', 'instalar_apk', 'install_update', 'abrir_dropbox', '_start_android', '_abrir_navegador')):
                     selected[n.name] = ast.unparse(Redact().visit(n))
             constants = [ast.unparse(Redact().visit(n)) for n in tree.body if isinstance(n, ast.Assign)
                          and any(isinstance(t, ast.Name) and any(s in t.id.lower() for s in ('apk', 'share', 'download')) for t in n.targets)]
-            matches.append({'path': path, 'sha256': hashlib.sha256(archive.read(path)).hexdigest(), 'functions': functions, 'selected': selected, 'constants': constants})
+            matches.append({'path': path, 'sha256': hashlib.sha256(archive.read(path)).hexdigest(), 'functions': functions, 'selected': selected, 'constants': constants, 'routes': [line.strip() for line in text.splitlines() if any(s in line for s in ('vip.open_apk_download', 'vip.share_download_link', 'vip.procurar_atualizacao', 'vip.install_update', 'vip.compartilhar', 'vip.abrir_dropbox', 'control_id ==', 'control_id in'))]})
     emit({'controls': matches})
