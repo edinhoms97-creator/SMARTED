@@ -13,7 +13,13 @@ git diff --exit-code HEAD -- tools android-build .github
 python3 tools/apk_pipeline.py download "$BASE" --report "$OUT/base-identity.json"
 "$TOOLS/apksigner" verify --verbose --print-certs "$BASE" > "$OUT/base-signature.txt"
 "$TOOLS/aapt2" dump badging "$BASE" > "$OUT/base-badging.txt"
-if [[ "${MINIMAL_CLICKADILLA:-false}" == "true" ]]; then
+if [[ "${CONFIRMED_REFERENCE:-false}" == "true" ]]; then
+  PLAN="$WORK/confirmed-modules/plan.json"
+  python3 tools/restore_confirmed_tracking.py "$BASE" "$WORK/unsigned.apk" \
+    --work "$WORK/confirmed-modules" --report "$OUT/source-preservation.json"
+  python3 "$WORK/confirmed-modules/reference_tests.py" "$WORK/confirmed-modules"
+  python3 tools/test_confirmed_tracking.py --original "$WORK/confirmed-modules" --base "$BASE"
+elif [[ "${MINIMAL_CLICKADILLA:-false}" == "true" ]]; then
   PLAN="android-build/clickadilla-minimal-plan.json"
   python3 tools/patch_minimal_clickadilla.py "$BASE" "$WORK/unsigned.apk" \
     --work "$WORK/minimal-modules" --report "$OUT/source-preservation.json" --source "${VAST_SOURCE:-clickadilla}"
@@ -109,5 +115,38 @@ Relatorios source-preservation.json e preservation.json conferem o escopo contra
 Testes automatizados sao doubles, nao execucao Android; imagem/audio/toque e impressao no painel ainda NAO validados em aparelho.
 Assinatura de teste/debug; pode nao atualizar instalacao assinada por outra chave. Fazer backup antes de remover qualquer instalacao.
 O APK oficial no Dropbox nao foi substituido. Esta e uma prerelease separada para teste.
+EOF
+fi
+
+if [[ "${CONFIRMED_REFERENCE:-false}" == "true" ]]; then
+  python3 - "$WORK/confirmed-modules/reference-9436b5e.apk" "$OUT/SMARTEDTV-universal.apk" "$OUT/reference-preservation.json" <<'PYREF'
+import json, sys
+from pathlib import Path
+sys.path.insert(0, 'tools')
+from apk_preservation import compare
+from restore_confirmed_tracking import AD, HELPER, REFERENCE
+report = compare(sys.argv[1], sys.argv[2], {AD, HELPER})
+report['reference_commit'] = REFERENCE
+Path(sys.argv[3]).write_text(json.dumps(report, indent=2) + '\n')
+print('::notice title=Final APK versus confirmed reference::' + json.dumps(report))
+PYREF
+  cat > "$OUT/INSTALLATION.txt" <<EOF
+SMARTED — BASE CONFIRMADA 9436b5e RESTAURADA / SOMENTE TRACKING
+Fonte deste APK: $(git rev-parse HEAD)
+Referencia confirmada pelo usuario: build 45996397116, commit 9436b5ef63fe1e4d569328990c92ab1514ce9b0b.
+Todos os modulos da referencia foram reconstruidos com o patcher exato daquela revisao.
+Tag mantida SEM ALTERACAO: https://vast.yomeno.xyz/vast?spot_id=1508180
+Diferencas permitidas em relacao a referencia: tracking em ads_vast.py e helper novo ads_tracking.py.
+Tracking: heranca selecionada Wrapper/InLine de Impression/Tracking/Error, macros e UA real nos pixels.
+Requisicoes da tag, headers, TLS, MediaFile, player, callbacks, tempos, retomada e frequencia iguais a referencia.
+Controle AST de reproduzir identico, exceto expansao de macros no emissor Error.
+Smart_ads.py, ads_regra.py e ads_admob.py identicos byte a byte a referencia.
+Sem bid.onclckstr.com/spot 6155985, watchdog 3s, retomada nova, menus ou diagnostico de entrega dos builds posteriores.
+Regra da referencia: uma tentativa por abertura de canal/filme/episodio, sem intervalo de dois minutos; VIP isento; AdMob inerte.
+Skin, welcome, links, pagamento, manifesto, recursos, bibliotecas e inicializacao iguais a referencia.
+reference-preservation.json compara TODAS as entradas com a referencia, alem da comparacao com o APK base original.
+Este build nao fez novas consultas reais de anuncios. Testes de tracking/player sao doubles, nao validacao fisica de imagem/audio ou painel.
+Universal ARM32+ARM64. Assinatura de teste/debug; fazer backup antes de remover qualquer instalacao.
+APK oficial do Dropbox nao foi substituido. Nenhum PR foi mesclado.
 EOF
 fi

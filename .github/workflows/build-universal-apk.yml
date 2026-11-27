@@ -4,6 +4,10 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      confirmed_reference:
+        description: 'Restaurar base confirmada 9436b5e e alterar SOMENTE tracking; tem prioridade sobre outros perfis'
+        type: boolean
+        default: true
       vast_source:
         description: 'Fonte VAST do perfil minimo; original restaura URL e spot exatos do APK'
         type: choice
@@ -43,6 +47,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  CONFIRMED_REFERENCE: ${{ inputs.confirmed_reference }}
   VAST_SOURCE: ${{ inputs.vast_source }}
   MINIMAL_CLICKADILLA: ${{ inputs.minimal_clickadilla }}
   ANDROID_HOME: /usr/local/lib/android/sdk
@@ -58,6 +63,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
@@ -145,9 +151,15 @@ jobs:
           set -euo pipefail
           (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
           tag="smarted-original-ads-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          title="SMARTED original — VAST ${VAST_SOURCE} e diagnostico de entrega (teste)"
+          extra=()
+          if [[ "${CONFIRMED_REFERENCE}" == "true" ]]; then
+            title="SMARTED — base confirmada 9436b5e, somente tracking (teste)"
+            extra+=(dist/reference-preservation.json)
+          fi
           gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
-            --title "SMARTED original — VAST ${VAST_SOURCE} e diagnostico de entrega (teste)" \
+            --title "$title" \
             --notes-file dist/INSTALLATION.txt \
             dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
-            dist/preservation.json dist/source-preservation.json dist/signature.txt dist/badging.txt
+            dist/preservation.json dist/source-preservation.json dist/signature.txt dist/badging.txt "${extra[@]}"
           gh release view "$tag" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
