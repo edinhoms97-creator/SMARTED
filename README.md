@@ -53,6 +53,12 @@ O pipeline atual permite alterações apenas nos módulos de anúncios originais
 **Skin, layout, texturas, tela inicial, bootstrap, manifesto e recursos devem
 permanecer idênticos byte a byte.** Nenhuma welcome/skin nova é empacotada.
 
+**[Baixar APK corretivo — SMARTED original, anúncios apenas (263 MB)](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45992589750-1/SMARTEDTV-universal.apk)**
+
+Comparação do APK assinado: **8.049 entradas idênticas ao original**;
+somente os três módulos permitidos de anúncios mudaram. Nenhuma skin/startup nova.
+**Ainda depende de teste de inicialização e reprodução no aparelho.** Assinatura de teste.
+
 Guia e evidências: [`docs/BUILD_APK.md`](docs/BUILD_APK.md).
 Publicação sob demanda e desligada por padrão. CI não comprova funcionamento em aparelho.
 

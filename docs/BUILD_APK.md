@@ -1,5 +1,16 @@
 # SMARTED original — somente anúncios, sem alterar a skin
 
+## Novo build corretivo disponível
+
+- **[Baixar SMARTEDTV-universal.apk — original, anúncios apenas](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45992589750-1/SMARTEDTV-universal.apk)**.
+- Tamanho: **263.222.581 bytes** (~263 MB).
+- [Execução 45992589750](https://github.com/edinhoms97-creator/SMARTED/actions/runs/45992589750): sucesso; 11:41:54–11:43:32 UTC, **1 min 38 s** de ponta a ponta.
+- Revisão do binário: `6b45630cf007191c22f8c74305c3321647527949`.
+- SHA256 publicado: `f6ecfb6059bd1afbfadb9bd81065f45887781c1223e2d85b3bf19f748c7f44c6`.
+- [Relatório preservation.json](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-45992589750-1/preservation.json): **8.049 entradas preservadas; somente os três módulos de anúncios listados abaixo mudaram**.
+- 67 verificações JS/Python existentes + 19 gates de preservação + 11 testes das funções do motor original corrigido passaram (**97 verificações**).
+- Assinatura/alinhamento válidos. **Inicialização, anúncios reais e reprodução em aparelho ainda não validados.**
+
 ## Correção de escopo
 
 O build `7e300f2` foi **reprovado pelo usuário: não passou da tela inicial**. Ele preservava os Dex/libs, mas isso não bastava: copiava uma skin separada, adicionava welcome/serviço de startup e modificava o manifesto. Foi retirado da publicação pública (release convertida em rascunho). Seus testes de empacotamento não comprovavam funcionamento no aparelho.
@@ -75,4 +86,4 @@ Alterações corretivas estão na branch da sessão e no PR #2; nenhuma integra�
 
 A assinatura é de debug, diferente da chave do APK original. Não substituir uma instalação assinada com outra chave esperando atualização direta. Fazer backup antes de qualquer remoção; remover app pode apagar dados. Uma instalação limpa pode ajudar a separar dados persistidos da versão anterior, mas não deve ser imposta sem backup.
 
-Aguardar resultado do build corretivo e conferir seu relatório de preservação antes de usar o novo link. O APK anterior foi retirado por falha relatada no dispositivo.
+O build corretivo acima concluiu e publicou seu relatório de preservação. O APK anterior foi retirado por falha relatada no dispositivo; não reutilizar o link antigo. O novo deve ser testado no aparelho antes de ser considerado aprovado.
