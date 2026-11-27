@@ -321,4 +321,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        # Surface actionable gates via Checks API too (log/artifact CDNs may
+        # be unreachable from restricted clients). Never replace failure
+        # with success or publish an unverified APK.
+        message = str(exc).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print("::error title=SMARTEDTV APK gate::" + message, flush=True)
+        raise
