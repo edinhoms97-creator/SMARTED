@@ -240,6 +240,24 @@ def run_cycles(adb, evidence, apk=None):
                        tracking_http_failures=counts('tracking-http-failure'),
                        media_session_package_seen='smartedtv.full' in media,
                        media_session_states=media_states[:4])
+            if result.get('existing_native_rpc_available'):
+                active = rpc('Player.GetActivePlayers') or []
+                video = next((item for item in active if item.get('type') == 'video'), None) if isinstance(active, list) else None
+                if video:
+                    player_id = video['playerid']
+                    properties = rpc('Player.GetProperties', {'playerid': player_id, 'properties': ['speed', 'time', 'totaltime', 'percentage']}) or {}
+                    item = rpc('Player.GetItem', {'playerid': player_id, 'properties': ['file']}) or {}
+                    video_file = (item.get('item') or {}).get('file', '')
+                    clock = properties.get('time') or {}
+                    seconds = clock.get('hours', 0)*3600 + clock.get('minutes', 0)*60 + clock.get('seconds', 0) + clock.get('milliseconds', 0)/1000
+                    row['native_movie_properties'] = properties
+                    row['native_movie_file'] = video_file
+                    row['native_movie_confirmed_playing'] = video_file.endswith('/SmartedValidation/'+name) and properties.get('speed', 0) > 0 and seconds > 0
+                else:
+                    row['native_movie_confirmed_playing'] = False
+            released = [entry['monotonic_ms'] for entry in selected if entry.get('stage') == 'ad-player-released']
+            resumed = [entry['monotonic_ms'] for entry in selected if entry.get('stage') == 'content-released']
+            row['code_resume_after_ad_ms'] = resumed[-1]-released[-1] if resumed and released else None
             (evidence / ('cycle-%s-stages.json' % row['cycle'])).write_text(json.dumps(selected, indent=2))
             frame = subprocess.run([adb, '-s', 'emulator-5554', 'exec-out', 'screencap', '-p'], capture_output=True, timeout=20)
             (evidence / ('cycle-%s.png' % row['cycle'])).write_bytes(frame.stdout)
