@@ -16,6 +16,86 @@ CONTEXT_PROPERTY = 'Smarted.VAST.ResolvedContext.v1'
 _RESOLVED_CACHE = OrderedDict()
 
 
+
+def close_transition_menu(kodi, gui, expected):
+    """Close only recognized playback/subtitle menus for this exact stream.
+
+    Kodi Omega: subtitlesearch=10153, osdsubtitlesettings=10159,
+    contextmenu=10106 (player core chooser), selectdialog=12000.
+    Never Close(all), change a setting, disable subtitles, or touch a newer
+    user selection / payment / PIN / arbitrary provider selection dialog.
+    """
+    try:
+        player = kodi.Player()
+        if not expected or not player.isPlayingVideo() or player.getPlayingFile() != expected:
+            return False
+        dialog = gui.getCurrentWindowDialogId()
+        close = dialog in (10153, 10159)
+        if dialog == 12000:
+            heading = gui.Window(dialog).getControl(1).getLabel().casefold()
+            close = any(word in heading for word in ('player', 'reprodutor', 'reproduzir usando',
+                        'caption', 'subtitle', 'legenda', 'escolha o servidor', 'escolher servidor'))
+            if not close:
+                # Some providers use a generic heading and native player
+                # names in the select list (control 6 in Kodi DialogSelect).
+                for index in range(8):
+                    try:
+                        label = gui.Window(dialog).getControl(6).getListItem(index).getLabel().casefold()
+                        if any(name in label for name in ('videoplayer', 'dvdplayer', 'mx player', 'mxplayer', 'vlc', 'exoplayer')):
+                            close = True
+                            break
+                    except Exception:
+                        pass
+        elif dialog == 10106:
+            # Kodi PlayerCoreFactory uses the context dialog with a list of
+            # player names, not DialogSelect. Recognize its actual buttons.
+            labels = []
+            for control in range(1001, 1009):
+                try:
+                    labels.append(gui.Window(dialog).getControl(control).getLabel().casefold())
+                except Exception:
+                    pass
+            close = any(word in label for label in labels
+                        for word in ('videoplayer', 'dvdplayer', 'mxplayer', 'mx player',
+                                     'vlc', 'exoplayer', 'external player', 'player externo'))
+        if close:
+            # Recheck ownership after reading GUI controls; no stale worker
+            # may close a menu belonging to a different film.
+            if player.isPlayingVideo() and player.getPlayingFile() == expected:
+                kodi.executebuiltin('Dialog.Close(%d,true)' % dialog)
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def guard_transition(kodi, expected):
+    """Menu-only daemon for five seconds AFTER confirmed ad start/resume.
+
+    No waits or player-control calls on the ad thread. No hook for clicks,
+    pause, seek or decode. Bound to one path; exits on a content change.
+    """
+    try:
+        import threading
+        import xbmcgui
+        # Test doubles/older bindings without window inspection: no worker.
+        if not callable(getattr(xbmcgui, 'getCurrentWindowDialogId', None)):
+            return False
+        def watch():
+            deadline = time.monotonic() + 5.0
+            while time.monotonic() < deadline:
+                try:
+                    if not kodi.Player().isPlayingVideo() or kodi.Player().getPlayingFile() != expected:
+                        return
+                    close_transition_menu(kodi, xbmcgui, expected)
+                    time.sleep(.1)
+                except Exception:
+                    return
+        threading.Thread(target=watch, name='smarted-transition-menu', daemon=True).start()
+        return True
+    except Exception:
+        return False
+
 def direct_stream(url):
     if not isinstance(url, str) or not url.strip() or '\n' in url or '\r' in url:
         return False
@@ -367,6 +447,7 @@ def restore(state, kodi, gui=None, wait=20, sleep=None, clock=None, ad_url='', f
                                         continue
                                 if not kodi.getCondVisibility('Player.Paused'):
                                     player.pause()
+                            guard_transition(kodi, current)
                             return True
                     sleep(.1)
             except Exception:

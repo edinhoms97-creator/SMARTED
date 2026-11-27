@@ -1,5 +1,7 @@
 # VAST: startup 3,5 s, fallback MP4 e diagnóstico no aparelho
 
+> **Histórico, não é a implementação atual:** startup 3,5 s, fallback MP4 e diagnóstico persistente foram retirados a pedido do usuário. Estado atual: [VAST_BASE_TRANSITION.md](VAST_BASE_TRANSITION.md).
+
 ## O que foi comprovado sobre 311450b
 
 Inspeção estática/redigida do original: [run 46012855736](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46012855736), sem executar código do APK/provider.

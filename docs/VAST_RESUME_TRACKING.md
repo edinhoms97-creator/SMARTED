@@ -1,6 +1,6 @@
 # Retomada resolvida e auditoria de pixels VAST
 
-> **Atualização:** a janela antiga de 8 s e o hash de controle descritos no histórico abaixo foram substituídos, por solicitação explícita, por startup com progresso em 3,5 s e fallback MP4. Estado atual e log no aparelho: [VAST_STARTUP_DIAGNOSTICS.md](VAST_STARTUP_DIAGNOSTICS.md).
+> **Estado atual:** base `b86570a` restaurada, com mapeamento de pixels e correção isolada de menus. Startup 3,5 s/fallback/diagnóstico foram revertidos. Ver [VAST_BASE_TRANSITION.md](VAST_BASE_TRANSITION.md). As seções seguintes registram etapas anteriores.
 
 ## Histórico: base 3 s / 5 s restaurada
 

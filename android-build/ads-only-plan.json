@@ -31,10 +31,6 @@
     "assets/addons/service.smarted.bootstrap/ads_tracking.py": {
       "new_file": true,
       "original_sha256": null
-    },
-    "assets/addons/service.smarted.bootstrap/ads_diagnostics.py": {
-      "new_file": true,
-      "original_sha256": null
     }
   }
 }

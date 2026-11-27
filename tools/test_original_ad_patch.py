@@ -135,9 +135,10 @@ class Tests(unittest.TestCase):
         self.assertTrue(seen['context'].check_hostname)
         self.assertEqual(seen['context'].verify_mode, ssl.CERT_REQUIRED)
         self.assertGreaterEqual(seen['context'].minimum_version, ssl.TLSVersion.TLSv1_2)
-        from ads_tracking import device_user_agent
-        self.assertEqual(seen['ua'], device_user_agent(self.env['xbmc']))
-        self.assertNotIn('Pixel 7', seen['ua'])
+        # Restore the tag request identity of b86570a exactly. Tracking
+        # pixels separately override this with the real runtime UA.
+        self.assertIn('Android 13; Pixel 7', seen['ua'])
+        self.assertIn('Chrome/120.0.0.0', seen['ua'])
         self.assertLessEqual(seen['timeout'], 8)
 
     def test_network_failure_returns_none(self):

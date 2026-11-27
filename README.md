@@ -9,7 +9,7 @@ completo da inspeção: [`docs/INSPECTION.md`](docs/INSPECTION.md).
 
 ## Verificação rápida
 
-`npm ci --ignore-scripts --no-audit --no-fund && npm run verify` executa os mesmos gates rápidos do workflow manual, sem emulador. Diagnóstico VAST no aparelho e startup 3,5 s: [docs/VAST_STARTUP_DIAGNOSTICS.md](docs/VAST_STARTUP_DIAGNOSTICS.md).
+`npm ci --ignore-scripts --no-audit --no-fund && npm run verify` executa os mesmos gates rápidos do workflow manual, sem emulador. Base VAST 3s/5s restaurada e escopo da correção de menus: [docs/VAST_BASE_TRANSITION.md](docs/VAST_BASE_TRANSITION.md).
 
 ## Estrutura
 
@@ -58,10 +58,10 @@ e nos handlers do link oficial de download/compartilhamento.
 **Skin, layout, texturas, tela inicial, bootstrap, manifesto e recursos devem
 permanecer idênticos byte a byte.** Nenhuma welcome/skin nova é empacotada.
 
-**[Baixar APK corretivo — SMARTED original, anúncios apenas (263 MB)](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46000575890-1/SMARTEDTV-universal.apk)**
+**[Builds corretivos de teste — SMARTED original](https://github.com/edinhoms97-creator/SMARTED/releases)** — confira a revisão Fonte da release; o escopo atual é base 3s/5s + menus de transição.
 
 Comparação do APK assinado: **8.046 entradas idênticas ao original**;
-somente os quatro arquivos de anúncios e ações/helper/constantes de link do APK
+somente os oito caminhos autorizados de anúncios e ações/helper/constantes de link do APK
 em `vip.py` e na welcome original mudaram. Classes e XMLs de interface preservados.
 Watchdog: 3 s sem progresso abortam a peça; teto absoluto de 35 s.
 Baixar/Atualizar/Compartilhar usam o APK oficial do Dropbox, sem troca de layout.

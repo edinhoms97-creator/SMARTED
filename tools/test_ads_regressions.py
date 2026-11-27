@@ -12,6 +12,38 @@ PATCHES = Path(__file__).resolve().parent.parent / 'android-build/ads-patches'
 
 
 
+def stable_player_control_hash(source, function_name='reproduzir'):
+    """Pin b86570a/91a21e6 control flow; allow only error pixels/menu cleanup.
+
+    Ignore exactly error-pixel construction and the menu-only hook.
+    Dedicated tests cover those; all waits, controls, stop,
+    focus, callbacks, sampling, ownership and watchdog branches stay pinned.
+    Ignore empty Python 3.12+ type_params for cross-version AST stability.
+    """
+    import copy
+    import hashlib
+    import json
+    node = copy.deepcopy(next(n for n in ast.parse(source).body
+                              if isinstance(n, ast.FunctionDef) and n.name == function_name))
+    for parent in ast.walk(node):
+        if hasattr(parent, 'body') and isinstance(parent.body, list):
+            parent.body = [stmt for stmt in parent.body if not (
+                isinstance(stmt, ast.ImportFrom) and stmt.module == 'ads_resume'
+                or isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call)
+                and isinstance(stmt.value.func, ast.Name) and stmt.value.func.id == 'guard_transition')]
+    for child in ast.walk(node):
+        if isinstance(child, ast.FunctionDef) and child.name == 'error':
+            child.body = [ast.Pass()]
+    def encode(value):
+        if isinstance(value, ast.AST):
+            return [type(value).__name__, {name: encode(item) for name, item in ast.iter_fields(value)
+                                          if name != 'type_params'}]
+        if isinstance(value, list):
+            return [encode(item) for item in value]
+        return value
+    return hashlib.sha256(json.dumps(encode(node), sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
 class Runtime:
     def __init__(self, mode='ended'):
         self.mode = mode
@@ -164,28 +196,15 @@ class Regressions(unittest.TestCase):
                   estado={'caminho': 'https://media.invalid/movie.mp4', 'posicao': 42.125})
         return result
 
-    def test_startup_requires_clock_above_point_one_and_progress_before_3_5s(self):
-        runtime = Runtime('stall')
-        env = runtime.env()
-        env['_posicao_e_duracao'] = lambda: (.05, 25)
-        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25, 'impressao': ['impression'],
-                                    'errors': ['error:[ERRORCODE]']}, tocar=runtime.play_ad, dormir=runtime.sleep)
-        self.assertEqual(receipt['motivo'], 'startup-timeout')
-        self.assertFalse(receipt['iniciado'])
-        self.assertAlmostEqual(runtime.stop_times[0] - runtime.start, 3.5)
-        self.assertNotIn('impression', runtime.events)
-        self.assertEqual(runtime.events.count('error:405'), 1)
+    def test_player_control_flow_matches_reviewed_three_and_five_second_base(self):
+        source = ((ORIGINAL or PATCHES) / 'ads_vast.py').read_text()
+        self.assertEqual(stable_player_control_hash(source),
+                         'a10b78c4e558ff3ad36a0609f60f9cbb1e2b854a46595a2e4b6d81a21497ccc5')
 
-    def test_stale_old_vod_clock_on_new_path_is_not_real_start(self):
-        runtime = Runtime('stall')
-        env = runtime.env()
-        env['_posicao_e_duracao'] = lambda: (42.125, 120)
-        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25, 'impressao': ['impression']},
-                                   tocar=runtime.play_ad, dormir=runtime.sleep)
-        self.assertFalse(receipt['iniciado'])
-        self.assertEqual(receipt['motivo'], 'startup-timeout')
-        self.assertNotIn('impression', runtime.events)
-        self.assertAlmostEqual(runtime.stop_times[0] - runtime.start, 3.5)
+    def test_media_selection_is_exactly_the_original_three_five_second_base(self):
+        source = ((ORIGINAL or PATCHES) / 'ads_vast.py').read_text()
+        self.assertEqual(stable_player_control_hash(source, '_media_escolhido'),
+                         'f16a53d8f5120e2abc9b7b301dd40cf894d75c351071bc42e8b537795a7591b5')
 
     def test_healthy_25s_ad_is_not_cut_at_one_three_or_five_seconds(self):
         runtime = Runtime('healthy-25')
@@ -206,20 +225,20 @@ class Regressions(unittest.TestCase):
         self.assertEqual(runtime.events.count('start'), 1)
         self.assertEqual(runtime.events.count('complete'), 1)
 
-    def test_unstarted_decoder_is_stopped_at_3_5s_then_content_is_released(self):
+    def test_original_startup_window_does_not_cut_a_delayed_decoder_at_three_seconds(self):
         runtime = Runtime()
         env = runtime.env()
         env['_player_tocando_video'] = lambda: runtime.playing and runtime.now - runtime.start >= 4.0
         receipt = env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=runtime.play_ad, dormir=runtime.sleep)
-        self.assertEqual(receipt['motivo'], 'startup-timeout')
-        self.assertFalse(receipt['iniciado'])
-        self.assertAlmostEqual(runtime.stop_times[0] - runtime.start, 3.5)
+        self.assertEqual(receipt['motivo'], 'concluido')
+        self.assertTrue(receipt['iniciado'])
+        self.assertGreaterEqual(runtime.stop_times[0] - runtime.start, 15.0)
 
     def test_original_ad_player_entrypoint_is_not_replaced(self):
         replacements = ast.parse((PATCHES / 'ads_vast.py').read_text())
         self.assertNotIn('_tocar', [node.name for node in replacements.body if isinstance(node, ast.FunctionDef)])
 
-    def test_real_end_does_not_invent_unobserved_quartiles(self):
+    def test_real_end_keeps_original_completion_event_mapping(self):
         runtime = Runtime()
         runtime.duration = 25
         env = runtime.env()
@@ -228,7 +247,7 @@ class Regressions(unittest.TestCase):
         receipt = env['reproduzir'](ad, tocar=runtime.play_ad, dormir=runtime.sleep)
         self.assertEqual(receipt['motivo'], 'concluido')
         self.assertEqual(runtime.events.count('complete'), 1)
-        self.assertNotIn('thirdQuartile', runtime.events)  # last observed clock was 14.5/25
+        self.assertEqual(runtime.events.count('thirdQuartile'), 1)  # base completion mapping
 
     def test_click_pause_and_manual_resume_use_only_original_player_controls(self):
         runtime = Runtime('pause-resume')
@@ -375,7 +394,7 @@ class Regressions(unittest.TestCase):
         env = runtime.env()
         def delayed_play(url, log):
             runtime.play_ad(url, log)
-            runtime.sleep(.3)
+            runtime.sleep(7)
             return True
         result = env['reproduzir']({'url': 'ad', 'duracao': 21}, tocar=delayed_play, dormir=runtime.sleep)
         self.assertEqual(result['motivo'], 'timeout-anuncio')

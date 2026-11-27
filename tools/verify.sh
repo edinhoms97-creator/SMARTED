@@ -7,7 +7,7 @@ python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v
 python3 tools/test_ads_regressions.py
 python3 tools/test_resolved_resume.py
 python3 tools/test_vast_tracking.py
-python3 tools/test_vast_startup_diagnostics.py
+python3 tools/test_vast_transition_menus.py
 node tools/test-vast-tracking.js
 python3 tools/test_ad_openings.py
 python3 tools/test_apk_links.py
