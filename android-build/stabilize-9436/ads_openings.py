@@ -153,6 +153,8 @@ def observe(monitor, kodi, previous=(False, '', '')):
                 emit(kodi, 'close-cleanup-failed', error=type(exc).__name__)
             emit(kodi, 'opening-closed', boundary='observed-no-media')
     monitor._smarted_wait_for_video_boundary = False
+    if suppress_auto_home:
+        return previous  # retain live identity across every reconnect poll
     return (False, '', '')
 
 

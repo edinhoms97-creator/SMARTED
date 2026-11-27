@@ -240,7 +240,8 @@ class Tests(unittest.TestCase):
         previous = ads_openings.observe(h.monitor, kodi); h.join()
         with patch.dict(sys.modules, {'ao_vivo': types.SimpleNamespace(eh_ao_vivo=lambda path: True)}):
             h.playing = h.media = False; h.home = True
-            previous = ads_openings.observe(h.monitor, kodi, previous)
+            for _ in range(5):
+                previous = ads_openings.observe(h.monitor, kodi, previous)
         h.playing = h.media = True; h.home = False
         ads_openings.observe(h.monitor, kodi, previous); h.join()
         self.assertEqual(h.calls, ['film-a'])
