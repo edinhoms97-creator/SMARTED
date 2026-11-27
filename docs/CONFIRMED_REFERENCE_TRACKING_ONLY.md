@@ -39,3 +39,14 @@ Não entram o watchdog de 3 s, a retomada `ads_resume.py`, a guarda de menus, as
 - `npm run verify` também passou localmente; o runner repete a verificação. Tudo isso é teste com doubles/comparação de fontes, não confirmação nova de reprodução física ou contabilização de pixels.
 
 Nenhuma nova consulta real a anúncios é necessária ou executada para esse build. O original do Dropbox não é sobrescrito; nenhum PR é mesclado. APK universal ARM32+ARM64, assinatura de teste/debug do pipeline existente. Fazer backup antes de remover qualquer instalação.
+
+## Entrega concluída
+
+- [Build 46028834505 aprovado](https://github.com/edinhoms97-creator/SMARTED/actions/runs/46028834505), fonte `a1e21c054f3d165a8adcc4b9f5ce819c484e2891`.
+- [Baixar SMARTEDTV-universal.apk](https://github.com/edinhoms97-creator/SMARTED/releases/download/smarted-original-ads-46028834505-1/SMARTEDTV-universal.apk), 263.226.778 bytes, ARM32+ARM64.
+- SHA-256 do asset conferido pela API GitHub: `f45cad169285cf511ac51d86660176972aa6d821d59791dab40d31235135b3a3`.
+- Comparação final **contra a referência confirmada**: apenas `ads_vast.py` e `ads_tracking.py` diferem; **8.051 entradas preservadas**. Contra o original bruto: cinco entradas autorizadas alteradas/adicionadas e 8.048 preservadas, porque a própria referência já tinha seus quatro módulos de anúncios corrigidos.
+- Os dois gates de preservação, 11 testes históricos e seis testes adicionais do tracking passaram. Nenhuma consulta real a anúncios foi executada nesta entrega.
+- [Release e relatórios](https://github.com/edinhoms97-creator/SMARTED/releases/tag/smarted-original-ads-46028834505-1), incluindo `reference-preservation.json`.
+
+Este registro é atualização documental posterior ao SHA compilado, não uma nova alteração de APK. A confirmação histórica do usuário não foi convertida em alegação de nova validação física do build com tracking atualizado.
