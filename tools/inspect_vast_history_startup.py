@@ -2,7 +2,7 @@
 """Read-only exact-APK forensics: historical 120s build versus current delivery."""
 import ast,base64,copy,difflib,gzip,hashlib,json
 from pathlib import Path
-import sys,zipfile
+import re,sys,zipfile
 from inspect_ad_contract import Redact
 from report_vast_apk_diff import inspect,scopes,PREFIX
 ROOT=Path('.cache/history-startup');ROOT.mkdir(parents=True,exist_ok=True)
@@ -47,7 +47,14 @@ def startup():
         for name in names:
             if name not in z.namelist():continue
             source=z.read(name).decode('utf-8-sig')
-            result[name]={'sha256':hashlib.sha256(z.read(name)).hexdigest(),'source':sanitized(source)}
+            clean=sanitized(source);lines=clean.splitlines();indices=set()
+            for i,line in enumerate(lines):
+                if re.search(r'welcome|splash|home|startup|boot|once|ready|skip|RunScript|ActivateWindow|__main__',line,re.I):
+                    indices.update(range(max(0,i-4),min(len(lines),i+5)))
+            result[name]={'sha256':hashlib.sha256(z.read(name)).hexdigest(),
+                'functions':list(scopes(source)),
+                'startup_excerpts':'\n'.join(f'{i+1}: {lines[i]}' for i in sorted(indices))}
+
     (ROOT/'startup-python.json').write_text(json.dumps(result,indent=2)+'\n')
     transfer('SMARTED startup Python',result)
 
@@ -70,4 +77,11 @@ def dex():
     (ROOT/'startup-native.json').write_text(json.dumps(result,indent=2)+'\n')
     transfer('SMARTED startup native',result)
 
-if __name__=='__main__':{'compare':compare,'startup':startup,'dex':dex}[sys.argv[1]]()
+if __name__=='__main__':
+    try:{'compare':compare,'startup':startup,'dex':dex}[sys.argv[1]]()
+    except Exception as exc:
+        import traceback
+        print('::error title=Historical startup inspection::'+str(exc).replace('\n','%0A'))
+        traceback.print_exc()
+        raise
+
