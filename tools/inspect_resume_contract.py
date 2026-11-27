@@ -17,16 +17,6 @@ def emit(group, data):
 
 
 with zipfile.ZipFile(sys.argv[1]) as archive:
-    selected = {}
-    for path in ('assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/default.py',
-                 'assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/database.py'):
-        import hashlib
-        data = archive.read(path)
-        tree = ast.parse(data.decode('utf-8-sig'))
-        functions = [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
-        selected[path] = {'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data),
-                          'functions': [n.name for n in functions],
-                          'selected': {n.name: ast.unparse(Redact().visit(n)) for n in functions
-                                       if any(word in n.name.lower() for word in ('servid', 'server', 'playvideo', 'play_video', 'resolver')) and n.end_lineno - n.lineno < 180},
-                          'dynamic_execution': any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == 'exec' for n in ast.walk(tree))}
-    emit('brazuca', selected)
+    path = 'assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/default.py'
+    tree = ast.parse(archive.read(path).decode('utf-8-sig'))
+    emit('wrapper', {'wrapper': ast.unparse(Redact().visit(tree))[:10000]})
