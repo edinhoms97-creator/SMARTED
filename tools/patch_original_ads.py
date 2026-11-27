@@ -90,6 +90,7 @@ def build(base, output, work, report):
     plan = json.loads((ROOT / 'android-build/ads-only-plan.json').read_text())
     if plan['base_dropbox_content_hash'] != CONFIG['dropbox_content_hash']:
         raise ValueError('Patch plan does not identify the pinned original')
+    official_apk = CONFIG['url']
     replacements = {}
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
@@ -103,7 +104,8 @@ def build(base, output, work, report):
             else:
                 original = archive.read(path).decode('utf-8')
                 constants = ({'TIMEOUT_HTTP': 8, 'VAST_TAG_PADRAO': 'https://vast.yomeno.xyz/vast?spot_id=1508180'}
-                             if name == 'ads_vast.py' else {'INTERVALO': 0} if name == 'ads_regra.py' else {})
+                             if name == 'ads_vast.py' else {'INTERVALO': 0} if name == 'ads_regra.py' else
+                             {'APK': official_apk, 'DROPBOX_URL': official_apk} if name == 'vip.py' else {})
                 updated = replace_functions(original, code, constants)
             compile(updated, name, 'exec')
             replacements[path] = updated.encode('utf-8')

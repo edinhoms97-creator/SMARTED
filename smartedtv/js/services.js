@@ -98,7 +98,7 @@
 
     /* APP UPDATE — "ATUALIZAR APLICATIVO" --------------------------
        Default: opens the published APK download (the provided
-       Dropbox file "SMARTEDTV-atual.apk"). Register an
+       Dropbox file "SMARTEDTV.apk"). Register an
        implementation to plug the existing update service
        (version check / in-app update flow) instead.               */
     appUpdate: {

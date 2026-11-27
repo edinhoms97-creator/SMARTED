@@ -145,6 +145,15 @@ class Tests(unittest.TestCase):
             self.assertFalse(receipt['exibido'])
             self.assertEqual(self.events, [])
 
+    def test_original_vast_parser_uses_conservative_mp4_selector(self):
+        xml = '<VAST><Ad><InLine><Creatives><Creative><Linear><Duration>00:00:21</Duration><MediaFiles>'
+        xml += '<MediaFile type="video/mp4" width="3840" height="2160" bitrate="15000">https://ads.invalid/4k.mp4</MediaFile>'
+        xml += '<MediaFile type="video/mp4" width="1280" height="720" bitrate="1800" codec="avc1.4d401f,mp4a.40.2">https://ads.invalid/safe.mp4</MediaFile>'
+        xml += '</MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>'
+        ad = self.env['escolher_anuncio'](xml, 1080)
+        self.assertEqual(ad['url'], 'https://ads.invalid/safe.mp4')
+        self.assertEqual(ad['duracao'], 21)
+
     def test_resume_must_be_confirmed(self):
         Player.current = 0
         self.assertTrue(self.env['restaurar']({'caminho': 'vod', 'posicao': 42.125}, dormir=lambda t: None))

@@ -5,6 +5,8 @@ from pathlib import Path
 import types
 import unittest
 
+ORIGINAL = None
+
 PATCHES = Path(__file__).resolve().parent.parent / 'android-build/ads-patches'
 
 
@@ -12,6 +14,7 @@ class Runtime:
     def __init__(self, mode='ended'):
         self.mode = mode
         self.now = 1000.0
+        self.duration = 21
         self.start = self.now
         self.file = 'movie'
         self.playing = True
@@ -50,7 +53,11 @@ class Runtime:
         if self.file != 'ad':
             return
         elapsed = self.now - self.start
-        self.position = 0 if self.mode == 'stall' else elapsed
+        self.position = (0 if self.mode == 'stall' else
+                         min(elapsed, 5.0) if self.mode == 'mid-stall' else
+                         elapsed / 2 if self.mode == 'slow-clock' else elapsed)
+        if self.mode == 'error-playing' and elapsed >= 5:
+            self.observer.onPlayBackError()  # Kodi may still report playing!
         if self.mode == 'late-old-stop' and not self.callback_sent and elapsed >= .2:
             self.callback_sent = True
             self.observer.onPlayBackStopped()  # old stream callback, new ad still plays
@@ -87,7 +94,7 @@ class Runtime:
             '_agora': lambda: self.now, '_arquivo_atual': lambda: self.file,
             '_player_tocando_video': lambda: self.playing,
             '_aguardar_anuncio_tocar': lambda *a, **k: True,
-            '_posicao_e_duracao': lambda: (self.position, 15),
+            '_posicao_e_duracao': lambda: (self.position, self.duration),
             '_garantir_tela_cheia': lambda: None, '_audio_sem_quadro_video': lambda: False,
             '_desligar_surface_tela_preta': lambda **k: self.Player().stop(),
             '_disparar_eventos': lambda urls: self.events.extend(urls),
@@ -95,8 +102,10 @@ class Runtime:
             '_iniciar_em_tela_cheia': self.restore_route,
             '_smarted_restaurar_original': lambda *a, **k: True,
         }
-        source = ast.parse((PATCHES / 'ads_vast.py').read_text())
-        functions = ast.Module(body=[node for node in source.body if isinstance(node, ast.FunctionDef)], type_ignores=[])
+        patch_source = ast.parse((PATCHES / 'ads_vast.py').read_text())
+        names = {node.name for node in patch_source.body if isinstance(node, ast.FunctionDef)}
+        source = ast.parse((ORIGINAL / 'ads_vast.py').read_text()) if ORIGINAL else patch_source
+        functions = ast.Module(body=[node for node in source.body if isinstance(node, ast.FunctionDef) and node.name in names], type_ignores=[])
         exec(compile(functions, str(PATCHES / 'ads_vast.py'), 'exec'), env)
         return env
 
@@ -108,6 +117,103 @@ class Runtime:
 
 
 class Regressions(unittest.TestCase):
+    def session(self, runtime, duration=21):
+        runtime.duration = duration
+        env = runtime.env()
+        ad = {'url': 'ad', 'duracao': duration, 'errors': ['error:[ERRORCODE]'],
+              'impressao': ['impression'], 'eventos': {'complete': ['complete']}}
+        env['exibir'] = lambda **kw: env['reproduzir'](ad, tocar=kw['tocar'], dormir=runtime.sleep)
+        result = env['exibir_e_devolver'](tocar=runtime.play_ad, dormir=runtime.sleep,
+                  estado={'caminho': 'movie', 'posicao': 42.125})
+        return result
+
+    def test_cold_start_21s_ad_freezes_at_5s_aborts_in_3s_and_restores_movie(self):
+        runtime = Runtime('mid-stall')
+        result = self.session(runtime)
+        self.assertEqual(result['motivo'], 'travamento')
+        self.assertGreaterEqual(runtime.now - runtime.start, 8.0)
+        self.assertLessEqual(runtime.now - runtime.start, 8.5)
+        self.assertEqual(runtime.stops, ['ad'])
+        self.assertEqual(runtime.events.count('error:405'), 1)
+        self.assertNotIn('complete', runtime.events)
+        self.assertTrue(result['retomada_confirmada'])
+        self.assertEqual(runtime.file, 'movie')
+        self.assertEqual(runtime.position, 42.125)
+
+    def test_decoder_error_while_kodi_still_claims_playing_aborts_immediately(self):
+        runtime = Runtime('error-playing')
+        result = self.session(runtime)
+        self.assertEqual(result['motivo'], 'erro-player')
+        self.assertLessEqual(runtime.now - runtime.start, 5.5)
+        self.assertEqual(runtime.stops, ['ad'])
+        self.assertTrue(result['retomada_confirmada'])
+
+    def test_black_frame_even_with_advancing_clock_releases_movie(self):
+        runtime = Runtime('slow-clock')
+        env = runtime.env()
+        env['_audio_sem_quadro_video'] = lambda: runtime.now - runtime.start >= 5
+        result = env['reproduzir']({'url': 'ad', 'duracao': 21}, tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(result['motivo'], 'tela-preta-sem-quadro')
+        self.assertLessEqual(runtime.now - runtime.start, 8.5)
+        self.assertEqual(runtime.stops, ['ad'])
+
+    def test_absolute_duration_plus_5_and_35s_cap_even_when_clock_advances(self):
+        for duration, limit in ((21, 26), (120, 35), (0, 35)):
+            with self.subTest(duration=duration):
+                runtime = Runtime('slow-clock')
+                result = self.session(runtime, duration)
+                self.assertEqual(result['motivo'], 'timeout-anuncio')
+                self.assertLessEqual(runtime.now - runtime.start, limit + .5)
+                self.assertGreaterEqual(runtime.now - runtime.start, limit)
+                self.assertTrue(result['retomada_confirmada'])
+                self.assertEqual(runtime.stops, ['ad'])
+                self.assertNotIn('complete', runtime.events)
+
+    def test_xml_latency_counts_against_35s_total_preroll_budget(self):
+        runtime = Runtime('slow-clock')
+        runtime.duration = 120
+        env = runtime.env()
+        env.update(PROFUNDIDADE_WRAPPER=3, sem_namespace=lambda data: data,
+                   escolher_anuncio=lambda *args: {'url': 'ad', 'duracao': 120})
+        def fetch(url):
+            runtime.sleep(7)
+            return '<VAST/>'
+        result = env['exibir'](tag='tag', baixar_tag=fetch, tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(result['motivo'], 'timeout-anuncio')
+        self.assertLessEqual(runtime.now - 1000, 35.5)
+        self.assertEqual(runtime.stops, ['ad'])
+
+    def test_decoder_startup_is_included_in_absolute_deadline(self):
+        runtime = Runtime('slow-clock')
+        env = runtime.env()
+        def delayed_play(url, log):
+            runtime.play_ad(url, log)
+            runtime.sleep(7)
+            return True
+        result = env['reproduzir']({'url': 'ad', 'duracao': 21}, tocar=delayed_play, dormir=runtime.sleep)
+        self.assertEqual(result['motivo'], 'timeout-anuncio')
+        self.assertLessEqual(runtime.now - runtime.start, 26.5)
+
+    def test_safe_mp4_selection_for_cold_decoder(self):
+        import xml.etree.ElementTree as ET
+        env = Runtime().env()
+        def media(attrs, name):
+            return '<MediaFile ' + attrs + '>https://ad.invalid/' + name + '</MediaFile>'
+        safe = media('type="video/mp4" width="1280" height="720" bitrate="1800" codec="avc1.4d401f,mp4a.40.2"', 'safe.mp4')
+        candidates = [
+            media('type="video/mp4" width="3840" height="2160" bitrate="15000"', '4k.mp4'),
+            media('type="video/mp4" width="1920" height="1080" bitrate="9000"', 'huge.mp4'),
+            media('type="video/mp4" codec="hvc1"', 'hevc.mp4'),
+            media('type="video/mp4" codec="avc1.640028"', 'high.mp4'),
+            media('type="video/webm"', 'vp9.webm'),
+            media('type="application/x-mpegURL"', 'stream.m3u8'),
+            media('type="video/mp4" width="1920" height="1080" bitrate="3500"', '1080.mp4')]
+        inline = ET.fromstring('<InLine><Linear><MediaFiles>' + ''.join(candidates + [safe]) + '</MediaFiles></Linear></InLine>')
+        chosen = env['_media_escolhido'](inline, 1080)
+        self.assertEqual(chosen['url'], 'https://ad.invalid/safe.mp4')
+        inline = ET.fromstring('<InLine><Linear>' + ''.join(candidates[:6]) + '</Linear></InLine>')
+        self.assertIsNone(env['_media_escolhido'](inline, 720))
+
     def test_stall_must_not_consume_frequency_or_leave_ad_running(self):
         runtime = Runtime('stall')
         receipt, _ = runtime.play()
@@ -187,4 +293,9 @@ class Regressions(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--original', type=Path)
+    args, remaining = parser.parse_known_args()
+    ORIGINAL = args.original
+    unittest.main(argv=[__file__] + remaining)

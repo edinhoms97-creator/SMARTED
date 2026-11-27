@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Ads-only ZIP patching primitives. No apktool resource/manifest rebuild.
 
-Every non-signature ZIP entry outside an explicit ad-code allowlist must
+Every non-signature ZIP entry outside an explicit ad/link-code allowlist must
 remain byte-identical to the exact original. This is NOT a UI replacement.
 A reviewed plan with original hashes is required before building anything.
 """
@@ -13,6 +13,8 @@ import zipfile
 
 SIGNATURE = re.compile(r"^META-INF/(?:MANIFEST\.MF|[^/]+\.(?:SF|RSA|DSA|EC))$", re.I)
 # The existing bootstrap entry point and all UI/resources are immutable.
+# The reviewed plan additionally permits only APK-link actions in vip.py;
+# patch_original_ads enforces unchanged AST for license/payment functions.
 PROTECTED = {"AndroidManifest.xml", "resources.arsc", "assets/system/addon-manifest.xml",
              "assets/addons/service.smarted.bootstrap/service.py",
              "assets/addons/service.smarted.bootstrap/default.py"}

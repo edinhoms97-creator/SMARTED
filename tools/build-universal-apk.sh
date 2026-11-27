@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exact original SMARTEDTV; ads-only ZIP patch. NO skin/startup/resource rebuild.
+# Exact original SMARTEDTV; reviewed ad/APK-link ZIP patch. NO skin/startup/resource rebuild.
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 : "${ANDROID_HOME:?Set ANDROID_HOME}"
@@ -19,6 +19,8 @@ python3 tools/patch_original_ads.py "$BASE" "$WORK/unsigned.apk" \
 # welcome/demo implementation. Test doubles only; no UI or emulator launched.
 python3 tools/test_original_ad_patch.py "$WORK/patched-modules"
 python3 tools/test_ad_openings.py --original "$WORK/patched-modules"
+python3 tools/test_ads_regressions.py --original "$WORK/patched-modules"
+python3 tools/test_apk_links.py --original "$WORK/patched-modules"
 "$TOOLS/zipalign" -P 16 -f 4 "$WORK/unsigned.apk" "$WORK/aligned.apk"
 KEYSTORE="$PWD/.cache/smartedtv-signing/debug.keystore"
 mkdir -p "$(dirname "$KEYSTORE")"
@@ -35,15 +37,20 @@ fi
 "$TOOLS/zipalign" -P 16 -c -v 4 "$OUT/SMARTEDTV-universal.apk" > "$OUT/zipalign.txt"
 "$TOOLS/aapt2" dump badging "$OUT/SMARTEDTV-universal.apk" > "$OUT/badging.txt"
 # This comparison is stronger than comparing selected manifest attributes:
-# EVERY entry other than the 4 reviewed ad files/signatures must be identical.
+# EVERY entry other than the 5 reviewed ad/link files/signatures must be identical.
 python3 tools/apk_preservation.py "$BASE" "$OUT/SMARTEDTV-universal.apk" --report "$OUT/preservation.json"
 (cd "$OUT" && sha256sum SMARTEDTV-universal.apk > SMARTEDTV-universal.apk.sha256)
 cat > "$OUT/INSTALLATION.txt" <<EOF
-SMARTED ORIGINAL — SOMENTE ANUNCIOS / BUILD DE TESTE
+SMARTED ORIGINAL — WATCHDOG VAST + LINKS DO APK / BUILD DE TESTE
 Fonte: $(git rev-parse HEAD)
 Base original: smartedtv.full 1.0.161 (APK do link Dropbox fornecido).
 Skin, bootstrap, tela inicial, AndroidManifest.xml, resources.arsc e bibliotecas preservados byte a byte.
-Apenas ads_vast.py, smart_ads.py, ads_regra.py e ads_admob.py inerte mudaram.
+Somente anuncios (ads_vast, smart_ads, ads_regra, ads_admob inerte) e acoes de link APK em vip.py mudaram.
+Validacao VIP, pagamento, skin e inicializacao preservados.
+Watchdog: progresso a cada 500ms; 3s sem avanco aborta; limite absoluto min(duracao+5s,35s), incluindo inicio do decoder.
+MP4 progressivo conservador (ate 1080p/5000kbps), preferencia 720p AVC baseline/main quando declarado.
+Baixar/Atualizar abrem SMARTEDTV.apk oficial no Dropbox (dl=1); compartilhar envia/exibe esse mesmo link.
+Download/instalacao dependem das permissoes e confirmacoes do Android.
 Regra: uma tentativa por abertura de canal/filme/episodio, sem intervalo de 2 minutos.
 Pause, seek, reconexao e retorno do anuncio nao repetem a tentativa. No-fill libera o conteudo.
 Nenhuma skin, welcome ou servico de inicializacao novo foi instalado.

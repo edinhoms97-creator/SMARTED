@@ -164,6 +164,13 @@ class Tests(unittest.TestCase):
         self.assertIn('TIMEOUT_HTTP = 8', result)
         self.assertIn("VAST_TAG_PADRAO = 'old'", result)
 
+    def test_apk_link_patch_preserves_license_and_payment_ast(self):
+        from patch_original_ads import replace_functions
+        original = "APK = 'old'\nDROPBOX_URL = 'old'\ndef open_apk_download(): return APK\ndef validar(code): return cloud(code)\ndef abrir_checkout(): return payment_url\n"
+        result = replace_functions(original, "def open_apk_download(): return abrir_url(APK)\n", {'APK': 'official', 'DROPBOX_URL': 'official'})
+        self.assertIn('def validar(code): return cloud(code)', result)
+        self.assertIn('def abrir_checkout(): return payment_url', result)
+
     def test_patch_fails_on_unexpected_function_contract(self):
         from patch_original_ads import replace_functions
         with self.assertRaisesRegex(ValueError, 'contract changed'):

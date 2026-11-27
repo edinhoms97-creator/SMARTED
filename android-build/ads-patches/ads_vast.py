@@ -62,7 +62,8 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
     import xml.etree.ElementTree as _ET
     if not tag:
         return {'exibido': False, 'motivo': 'sem-tag'}
-    deadline = _agora() + 8.0
+    session_deadline = _agora() + min(35.0, max(.5, float(tempo_maximo)))
+    deadline = min(session_deadline, _agora() + 8.0)
     current = tag
     visited = set()
     for _ in range(PROFUNDIDADE_WRAPPER + 1):
@@ -86,7 +87,10 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
             return {'exibido': False, 'motivo': 'xml-invalido'}
         ad = escolher_anuncio(data, altura_tela)
         if ad:
-            receipt = reproduzir(ad, log=log, tempo_maximo=tempo_maximo, tocar=tocar, dormir=dormir)
+            remaining_session = session_deadline - _agora()
+            if remaining_session <= 0:
+                return {'exibido': False, 'motivo': 'timeout-vast'}
+            receipt = reproduzir(ad, log=log, tempo_maximo=remaining_session, tocar=tocar, dormir=dormir)
             receipt['tipo_midia'] = ad.get('tipo')
             receipt['duracao_anuncio'] = ad.get('duracao')
             return receipt
@@ -95,6 +99,58 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
             return {'exibido': False, 'motivo': 'no-fill-ou-sem-midia'}
         current = target
     return {'exibido': False, 'motivo': 'limite-wrappers'}
+
+
+def _media_escolhido(inline, altura_tela=0):
+    """Conservative progressive MP4 for Android cold hardware-decoder start.
+
+    Codec/profile metadata in VAST is optional and is NOT a bitstream probe.
+    Explicitly incompatible codecs/profiles are rejected; unknown MP4 is a
+    fallback protected by the same progress/absolute watchdogs.
+    """
+    import re
+    from urllib.parse import urlsplit
+    candidates = []
+    def number(value):
+        try:
+            return max(0, int(float(value or 0)))
+        except (ValueError, TypeError, OverflowError):
+            return 0
+    target = min(number(altura_tela) or 720, 720)
+    for linear in inline.iter('Linear'):
+        for media in linear.iter('MediaFile'):
+            url = (media.text or '').strip()
+            if urlsplit(url).scheme.lower() not in ('https', 'http'):
+                continue
+            mime = (media.get('type') or '').lower().split(';')[0].strip()
+            if mime not in ('video/mp4', 'video/x-m4v') and not (not mime and urlsplit(url).path.lower().endswith(('.mp4', '.m4v'))):
+                continue
+            if (media.get('delivery') or 'progressive').lower() != 'progressive':
+                continue
+            codec = (media.get('codec') or media.get('codecs') or '').lower()
+            profile = (media.get('profile') or '').lower()
+            if any(word in codec for word in ('hev', 'hvc', 'h265', 'h.265', 'av01', 'av1', 'vp9', 'vp09', 'vp8', '10bit')):
+                continue
+            avc = re.search(r'avc[13]\.([0-9a-f]{2})', codec)
+            if (avc and avc.group(1) not in ('42', '4d')) or (profile and profile not in ('baseline', 'constrained baseline', 'main')):
+                continue
+            if codec and not any(word in codec for word in ('avc1', 'avc3', 'h264', 'h.264')):
+                continue
+            if ('mp4a.' in codec and 'mp4a.40.2' not in codec) or any(word in codec for word in ('ac-3', 'ec-3', 'opus', 'vorbis', 'dts')):
+                continue
+            width, height = number(media.get('width')), number(media.get('height'))
+            bitrate = max(number(media.get('bitrate')), number(media.get('maxBitrate')))
+            if width > 1920 or height > 1080 or bitrate > 5000:
+                continue
+            # Known standard AVC/AAC, moderate bitrate and 720p are preferred;
+            # do not equate the display's resolution with decoder suitability.
+            rank = (0 if height and height <= target else 1 if height else 2,
+                    0 if codec else 1, 0 if bitrate and bitrate <= 3000 else 1,
+                    abs((height or target) - target), bitrate or 2500)
+            candidates.append((rank, {'url': url, 'tipo': mime or 'video/mp4',
+                                     'largura': width, 'altura': height, 'bitrate': bitrate,
+                                     'codec': codec, 'progressivo': True}))
+    return min(candidates, key=lambda pair: pair[0])[1] if candidates else None
 
 
 def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None, dormir=None, anterior=''):
@@ -122,7 +178,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                 self.stopped = True
 
         def onPlayBackError(self):
-            if self.active and not _player_tocando_video():
+            if self.active and (_arquivo_atual() == owned_file[0] or not _player_tocando_video()):
                 self.failed = True
 
     observer = _AdEvents()
@@ -131,6 +187,16 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
     needs_restore = False
     reason = 'player-recusou'
     start = _agora()
+    # The absolute budget includes decoder startup, not just the playing loop.
+    import math
+    try:
+        declared = float(anuncio.get('duracao') or 0)
+        if not math.isfinite(declared) or declared <= 0:
+            declared = 30.0
+    except (TypeError, ValueError):
+        declared = 30.0
+    absolute_limit = min(35.0, max(0.5, float(tempo_maximo)), declared + 5.0)
+    deadline = start + absolute_limit
     progress_at = start
     last_position = 0.0
     no_frame_at = None
@@ -142,7 +208,14 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
     try:
         if tocar(anuncio['url'], log):
             needs_restore = _arquivo_atual() != anterior or not _player_tocando_video()
-            if not _aguardar_anuncio_tocar(log, dormir=dormir, anterior=anterior):
+            # Do not enter the original wait helper: its independent startup
+            # timeout could outlive the entire pre-roll watchdog budget.
+            startup_deadline = min(deadline, _agora() + 8.0)
+            while _agora() < startup_deadline:
+                if _player_tocando_video() and _arquivo_atual() not in ('', anterior):
+                    break
+                dormir(.5)
+            if not (_player_tocando_video() and _arquivo_atual() not in ('', anterior)):
                 reason = 'nao-iniciou'
             else:
                 owned_file[0] = _arquivo_atual()
@@ -153,13 +226,16 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                     needs_restore = True
                     observer.active = True
                     reason = 'interrompido'
-                    start = progress_at = _agora()
-                    while _agora() - start < tempo_maximo:
+                    progress_at = _agora()
+                    while _agora() < deadline:
                         playing = _player_tocando_video()
                         current = _arquivo_atual()
                         if playing and current and current != owned_file[0]:
                             reason, needs_restore = 'conteudo-alterado', False
                             break  # never stop/seek a newer user-selected film
+                        if observer.failed:
+                            reason = 'erro-player'
+                            break
                         if not playing:
                             # Kodi's end/stop notification may lag the media state.
                             for _ in range(8):
@@ -174,12 +250,14 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                         no_frame = _audio_sem_quadro_video()
                         if no_frame:
                             no_frame_at = now if no_frame_at is None else no_frame_at
-                            if now - no_frame_at >= min(float(TEMPO_TELA_PRETA_AUDIO), 4.0):
+                            if now - no_frame_at >= 3.0:
                                 reason = 'tela-preta-sem-quadro'
                                 break
                         else:
                             no_frame_at = None
                         position, duration = _posicao_e_duracao()
+                        if duration and math.isfinite(float(duration)) and float(duration) > 0:
+                            deadline = min(deadline, start + float(duration) + 5.0)
                         if position > last_position + .01:
                             last_position, progress_at = position, now
                             if not started and not no_frame:
@@ -187,7 +265,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                                 _disparar_eventos(anuncio.get('impressao') or [])
                                 _disparar_eventos(events.get('start') or [])
                                 fired.add('start')
-                        elif now - progress_at >= min(float(TEMPO_TRAVAMENTO_ANUNCIO), 8.0):
+                        elif now - progress_at >= 3.0:
                             reason = 'travamento'
                             break
                         if started:
@@ -198,7 +276,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                                     if position / duration >= threshold and name not in fired:
                                         _disparar_eventos(events.get(name) or [])
                                         fired.add(name)
-                        dormir(.1)
+                        dormir(.5)
                     else:
                         reason = 'timeout-anuncio'
         else:
@@ -210,7 +288,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
         observer.active = False
         # Never leave the failed creative playing under the VOD. Never stop
         # the untouched VOD (refusal/no-fill) or a newer user-selected video.
-        if needs_restore and _player_tocando_video():
+        if needs_restore:
             current = _arquivo_atual()
             if current and current != anterior and (not owned_file[0] or current == owned_file[0]):
                 try:
