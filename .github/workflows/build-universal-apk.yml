@@ -221,6 +221,20 @@ jobs:
           if [[ -e /dev/kvm ]]; then sudo chmod a+rw /dev/kvm; fi
           mkdir -p .cache/android-validation
           gh release download "$RELEASE_TAG" --pattern SMARTEDTV-universal.apk --dir .cache/android-validation
+      - name: Testar payload estabilizado exato antes dos ciclos Android
+        if: inputs.android_cycles
+        run: |
+          python3 - <<'PYMODULES'
+          from pathlib import Path
+          import zipfile
+          folder = Path('.cache/android-native-modules')
+          folder.mkdir(parents=True, exist_ok=True)
+          with zipfile.ZipFile('.cache/android-validation/SMARTEDTV-universal.apk') as archive:
+              for name in archive.namelist():
+                  if name.startswith('assets/addons/service.smarted.bootstrap/') and name.endswith('.py'):
+                      (folder / Path(name).name).write_bytes(archive.read(name))
+          PYMODULES
+          python3 tools/test_stabilized_openings.py --original .cache/android-native-modules
       - name: Biblioteca para preview pequeno da evidencia visual
         run: python3 -m pip install --disable-pip-version-check Pillow==11.3.0
       - name: Tentar criar AVD, boot e instalar APK sem mudar ABI
