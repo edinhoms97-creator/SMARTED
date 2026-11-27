@@ -142,4 +142,8 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--original',type=Path)
     args,rest=parser.parse_known_args();ORIGINAL=args.original
     sys.path.insert(0,str(ORIGINAL or ROOT/'android-build/ads-patches'))
-    unittest.main(argv=[__file__]+rest)
+    result=unittest.main(argv=[__file__]+rest,exit=False).result
+    for test,detail in result.failures+result.errors:
+        safe=(str(test)+': '+detail.strip().splitlines()[-1]).replace('%','%25')
+        print('::error title=VAST pixel regression::'+safe,flush=True)
+    raise SystemExit(0 if result.wasSuccessful() else 1)

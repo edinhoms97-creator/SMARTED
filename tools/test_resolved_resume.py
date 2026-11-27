@@ -5,6 +5,7 @@ import importlib.util
 import json
 from pathlib import Path
 import types
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -228,7 +229,7 @@ class Tests(unittest.TestCase):
 
     def test_stale_context_does_not_restore_old_tokens(self):
         r=Runtime()
-        resume.publish_context(PRIMARY,[self.alternate()],'movie-one',r.gui,now=0)
+        resume.publish_context(PRIMARY,[self.alternate()],'movie-one',r.gui,now=time.monotonic()-601)
         self.assertEqual(len(r.snapshot()['resolved_streams']),1)
 
     def test_user_new_selection_is_not_sought_or_stopped(self):
@@ -248,6 +249,7 @@ class Tests(unittest.TestCase):
         r=Runtime(); state=r.snapshot();state['smarted_estava_pausado']=True
         self.assertTrue(r.restore(state))
         self.assertEqual(r.pauses,[PRIMARY])
+        self.assertAlmostEqual(r.position,42.125)
 
 
 if __name__=='__main__':
@@ -255,4 +257,8 @@ if __name__=='__main__':
     args,rest=parser.parse_known_args();folder=args.original or FOLDER
     spec=importlib.util.spec_from_file_location('tested_ads_resume',folder/'ads_resume.py')
     resume=importlib.util.module_from_spec(spec);spec.loader.exec_module(resume)
-    unittest.main(argv=[__file__]+rest)
+    result=unittest.main(argv=[__file__]+rest,exit=False).result
+    for test,detail in result.failures+result.errors:
+        safe=(str(test)+': '+detail.strip().splitlines()[-1]).replace('%','%25')
+        print('::error title=Resolved resume regression::'+safe,flush=True)
+    raise SystemExit(0 if result.wasSuccessful() else 1)

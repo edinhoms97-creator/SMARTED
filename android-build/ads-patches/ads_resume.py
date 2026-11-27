@@ -331,8 +331,22 @@ def restore(state, kodi, gui=None, wait=20, sleep=None, clock=None, ad_url='', f
                             state['_restored_path'] = current
                             if fullscreen:
                                 fullscreen()
-                            if state.get('smarted_estava_pausado') and not kodi.getCondVisibility('Player.Paused'):
-                                player.pause()
+                            if state.get('smarted_estava_pausado'):
+                                # Stability observation must not advance the
+                                # final position of an originally paused VOD.
+                                if not live:
+                                    player.seekTime(target)
+                                    paused_deadline = min(deadline, clock() + 1.0)
+                                    while clock() < paused_deadline:
+                                        if not player.isPlayingVideo() or player.getPlayingFile() != current:
+                                            return False
+                                        if abs(float(player.getTime()) - target) <= .25:
+                                            break
+                                        sleep(.05)
+                                    else:
+                                        continue
+                                if not kodi.getCondVisibility('Player.Paused'):
+                                    player.pause()
                             return True
                     sleep(.1)
             except Exception:
