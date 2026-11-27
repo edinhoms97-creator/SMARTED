@@ -1,0 +1,1279 @@
+{
+  "method": "Actual signed release ZIP entries SHA-256; META-INF and ZIP signing blocks excluded; AST scope comparison does not execute scripts.",
+  "versions": {
+    "tracking_restored": {
+      "release": "smarted-original-ads-46028834505-1",
+      "sha256": "f45cad169285cf511ac51d86660176972aa6d821d59791dab40d31235135b3a3",
+      "bytes": 263226778,
+      "bootstrap_scripts": {
+        "assets/addons/service.smarted.bootstrap/repository.py": {
+          "sha256": "cee2d693b01da2d24ad9565850dc30d35cb4b8d0bf1ed99a1de0cf0d80523849",
+          "bytes": 8901,
+          "imports": [
+            "__future__",
+            "glob",
+            "os",
+            "repair",
+            "shutil",
+            "xml.etree",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/retomar.py": {
+          "sha256": "523c1218d5639a703f3a492c429c58b612525b526a829b3c091618e036d3be30",
+          "bytes": 8457,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "threading",
+            "time",
+            "xbmc",
+            "xbmcgui",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ad_return.py": {
+          "sha256": "e5e92999e9e200476e55ac9d4a6000fb9ad8afb2afd90a1650d79d52731ed112",
+          "bytes": 12991,
+          "imports": [
+            "__future__",
+            "ads_regra",
+            "ao_vivo",
+            "json",
+            "threading",
+            "time",
+            "xbmc"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_regra.py": {
+          "sha256": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b",
+          "bytes": 13812,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "time",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_vast.py": {
+          "sha256": "6c76834e08172c4ec0704be5a16f35f90b9ac3cc1b0dab45c40fbc56688d64cf",
+          "bytes": 45056,
+          "imports": [
+            "__future__",
+            "ads_tracking",
+            "ao_vivo",
+            "ipaddress",
+            "json",
+            "os",
+            "re",
+            "socket",
+            "ssl",
+            "sys",
+            "threading",
+            "time",
+            "urllib.parse",
+            "urllib.request",
+            "xbmc",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ao_vivo.py": {
+          "sha256": "a4bed2804d3d3b9e74462e5cb19aa23b6451b02200e87ab4aa5a09ac607d2a9c",
+          "bytes": 11022,
+          "imports": [
+            "__future__",
+            "ipaddress",
+            "json",
+            "os",
+            "socket",
+            "threading",
+            "time",
+            "urllib.parse",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/check.py": {
+          "sha256": "99357d4c09d85e587782963b06a6dc6cbd0791f4147555cf036272c5a814eaaa",
+          "bytes": 8138,
+          "imports": [
+            "__future__",
+            "favourites",
+            "menu_smarted",
+            "performance",
+            "service",
+            "skin_setup",
+            "smart_ads",
+            "sys",
+            "xbmc",
+            "xbmcgui",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/favourites.py": {
+          "sha256": "4880877fdd7ca447a9e33fde1bb31b9026b469fb7692defff2649d1d188bd8e7",
+          "bytes": 4352,
+          "imports": [
+            "__future__",
+            "os",
+            "urllib",
+            "urllib.parse",
+            "xml.etree",
+            "xml.sax.saxutils"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/menu_smarted.py": {
+          "sha256": "8349c135dab8491e91a1445cb286063dcc28fca9bdccaa30c6b285d7b2bab787",
+          "bytes": 13652,
+          "imports": [
+            "__future__",
+            "base64",
+            "json",
+            "os",
+            "urllib.parse",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcvfs",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/performance.py": {
+          "sha256": "e79286e08a32086253822220f5064ec857de785622ceb8f3a75326680940ebd6",
+          "bytes": 12116,
+          "imports": [
+            "__future__",
+            "ao_vivo",
+            "os",
+            "unicodedata",
+            "variante"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/repair.py": {
+          "sha256": "2a387829819342c94dfae1bdd99a3f7b5ae6428fead403679508d9e92734fb78",
+          "bytes": 13570,
+          "imports": [
+            "__future__",
+            "os",
+            "shutil",
+            "xml.etree",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/service.py": {
+          "sha256": "d8784cc145e532ec6947c670a18e8edba0ad0da856180060f73c95cef4065233",
+          "bytes": 50488,
+          "imports": [
+            "__future__",
+            "favourites",
+            "json",
+            "menu_smarted",
+            "os",
+            "performance",
+            "repair",
+            "shutil",
+            "skin_setup",
+            "smart_ads",
+            "sqlite3",
+            "threading",
+            "time",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcgui",
+            "xbmcvfs",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/skin_setup.py": {
+          "sha256": "686e00d32b41fccb9b49bd3991b8760ef18306b4de14a4f01c1fd14db0ce2412",
+          "bytes": 8300,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "re",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smart_ads.py": {
+          "sha256": "d3ccdda1cd2acc1576ead653ac3a1a458ec07b064edd409b370f433e5ad6ba09",
+          "bytes": 55493,
+          "imports": [
+            "__future__",
+            "ad_return",
+            "ads_regra",
+            "ads_vast",
+            "ao_vivo",
+            "importlib.util",
+            "json",
+            "os",
+            "subprocess",
+            "threading",
+            "time",
+            "unicodedata",
+            "variante",
+            "vip",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smarted_release.py": {
+          "sha256": "ef611b2e3bcc989cdbd8aceeb96b7532b34afc599c70701e115dbfecd629221a",
+          "bytes": 119,
+          "imports": []
+        },
+        "assets/addons/service.smarted.bootstrap/variante.py": {
+          "sha256": "5e544594ce6a33e80208546013ab31080991636b682d2740714985216ee84fe5",
+          "bytes": 45993,
+          "imports": [
+            "__future__",
+            "os",
+            "re",
+            "subprocess",
+            "time",
+            "unicodedata",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/vip.py": {
+          "sha256": "f219873a6557c75775a98c6a048242fc486427b61c6c09a6ca3322ae0af21d99",
+          "bytes": 55109,
+          "imports": [
+            "__future__",
+            "calendar",
+            "hashlib",
+            "json",
+            "os",
+            "re",
+            "smarted_release",
+            "threading",
+            "time",
+            "urllib",
+            "urllib.parse",
+            "urllib.request",
+            "urllib2",
+            "variante",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcgui",
+            "xbmcvfs",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_admob.py": {
+          "sha256": "6a5281b10d12487f81f18045836506e6fe1851565d4cedf1baed5019f989a05a",
+          "bytes": 475,
+          "imports": []
+        },
+        "assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+          "sha256": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f",
+          "bytes": 1847,
+          "imports": [
+            "datetime",
+            "random",
+            "re",
+            "sys",
+            "urllib.parse",
+            "xbmc"
+          ]
+        }
+      }
+    },
+    "previous_candidate": {
+      "release": "smarted-original-ads-46035861727-1",
+      "sha256": "1e8ca00f71b070a909561b793966f39c67540c80204d38c792322c20348ccbfb",
+      "bytes": 263226879,
+      "bootstrap_scripts": {
+        "assets/addons/service.smarted.bootstrap/repository.py": {
+          "sha256": "cee2d693b01da2d24ad9565850dc30d35cb4b8d0bf1ed99a1de0cf0d80523849",
+          "bytes": 8901,
+          "imports": [
+            "__future__",
+            "glob",
+            "os",
+            "repair",
+            "shutil",
+            "xml.etree",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/retomar.py": {
+          "sha256": "523c1218d5639a703f3a492c429c58b612525b526a829b3c091618e036d3be30",
+          "bytes": 8457,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "threading",
+            "time",
+            "xbmc",
+            "xbmcgui",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ad_return.py": {
+          "sha256": "e5e92999e9e200476e55ac9d4a6000fb9ad8afb2afd90a1650d79d52731ed112",
+          "bytes": 12991,
+          "imports": [
+            "__future__",
+            "ads_regra",
+            "ao_vivo",
+            "json",
+            "threading",
+            "time",
+            "xbmc"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_regra.py": {
+          "sha256": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b",
+          "bytes": 13812,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "time",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_vast.py": {
+          "sha256": "f84ec692a37f3b09a0640b61d021ca6ee56da7e8e9586bd53cfba7641fd7c60d",
+          "bytes": 46776,
+          "imports": [
+            "__future__",
+            "ads_openings",
+            "ads_tracking",
+            "ao_vivo",
+            "ipaddress",
+            "json",
+            "os",
+            "re",
+            "socket",
+            "ssl",
+            "sys",
+            "threading",
+            "time",
+            "urllib.parse",
+            "urllib.request",
+            "xbmc",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ao_vivo.py": {
+          "sha256": "a4bed2804d3d3b9e74462e5cb19aa23b6451b02200e87ab4aa5a09ac607d2a9c",
+          "bytes": 11022,
+          "imports": [
+            "__future__",
+            "ipaddress",
+            "json",
+            "os",
+            "socket",
+            "threading",
+            "time",
+            "urllib.parse",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/check.py": {
+          "sha256": "99357d4c09d85e587782963b06a6dc6cbd0791f4147555cf036272c5a814eaaa",
+          "bytes": 8138,
+          "imports": [
+            "__future__",
+            "favourites",
+            "menu_smarted",
+            "performance",
+            "service",
+            "skin_setup",
+            "smart_ads",
+            "sys",
+            "xbmc",
+            "xbmcgui",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/favourites.py": {
+          "sha256": "4880877fdd7ca447a9e33fde1bb31b9026b469fb7692defff2649d1d188bd8e7",
+          "bytes": 4352,
+          "imports": [
+            "__future__",
+            "os",
+            "urllib",
+            "urllib.parse",
+            "xml.etree",
+            "xml.sax.saxutils"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/menu_smarted.py": {
+          "sha256": "8349c135dab8491e91a1445cb286063dcc28fca9bdccaa30c6b285d7b2bab787",
+          "bytes": 13652,
+          "imports": [
+            "__future__",
+            "base64",
+            "json",
+            "os",
+            "urllib.parse",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcvfs",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/performance.py": {
+          "sha256": "e79286e08a32086253822220f5064ec857de785622ceb8f3a75326680940ebd6",
+          "bytes": 12116,
+          "imports": [
+            "__future__",
+            "ao_vivo",
+            "os",
+            "unicodedata",
+            "variante"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/repair.py": {
+          "sha256": "2a387829819342c94dfae1bdd99a3f7b5ae6428fead403679508d9e92734fb78",
+          "bytes": 13570,
+          "imports": [
+            "__future__",
+            "os",
+            "shutil",
+            "xml.etree",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/service.py": {
+          "sha256": "d8784cc145e532ec6947c670a18e8edba0ad0da856180060f73c95cef4065233",
+          "bytes": 50488,
+          "imports": [
+            "__future__",
+            "favourites",
+            "json",
+            "menu_smarted",
+            "os",
+            "performance",
+            "repair",
+            "shutil",
+            "skin_setup",
+            "smart_ads",
+            "sqlite3",
+            "threading",
+            "time",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcgui",
+            "xbmcvfs",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/skin_setup.py": {
+          "sha256": "686e00d32b41fccb9b49bd3991b8760ef18306b4de14a4f01c1fd14db0ce2412",
+          "bytes": 8300,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "re",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smart_ads.py": {
+          "sha256": "79fe83036dbb9021d9eefc5b1eaa245e08753c11eda6a518eb5be49b3b069ece",
+          "bytes": 59933,
+          "imports": [
+            "__future__",
+            "ad_return",
+            "ads_openings",
+            "ads_regra",
+            "ads_vast",
+            "ao_vivo",
+            "importlib.util",
+            "json",
+            "os",
+            "subprocess",
+            "threading",
+            "time",
+            "unicodedata",
+            "variante",
+            "vip",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smarted_release.py": {
+          "sha256": "ef611b2e3bcc989cdbd8aceeb96b7532b34afc599c70701e115dbfecd629221a",
+          "bytes": 119,
+          "imports": []
+        },
+        "assets/addons/service.smarted.bootstrap/variante.py": {
+          "sha256": "5e544594ce6a33e80208546013ab31080991636b682d2740714985216ee84fe5",
+          "bytes": 45993,
+          "imports": [
+            "__future__",
+            "os",
+            "re",
+            "subprocess",
+            "time",
+            "unicodedata",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/vip.py": {
+          "sha256": "f219873a6557c75775a98c6a048242fc486427b61c6c09a6ca3322ae0af21d99",
+          "bytes": 55109,
+          "imports": [
+            "__future__",
+            "calendar",
+            "hashlib",
+            "json",
+            "os",
+            "re",
+            "smarted_release",
+            "threading",
+            "time",
+            "urllib",
+            "urllib.parse",
+            "urllib.request",
+            "urllib2",
+            "variante",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcgui",
+            "xbmcvfs",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_admob.py": {
+          "sha256": "6a5281b10d12487f81f18045836506e6fe1851565d4cedf1baed5019f989a05a",
+          "bytes": 475,
+          "imports": []
+        },
+        "assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+          "sha256": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f",
+          "bytes": 1847,
+          "imports": [
+            "datetime",
+            "random",
+            "re",
+            "sys",
+            "urllib.parse",
+            "xbmc"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_openings.py": {
+          "sha256": "aa36906f5866e59c8137a1c1e21f9e05420f3f8cd603e9da3eef944ec01f44e0",
+          "bytes": 4298,
+          "imports": [
+            "json",
+            "threading",
+            "time"
+          ]
+        }
+      }
+    },
+    "immediate_intermediate": {
+      "release": "smarted-original-ads-46043711441-1",
+      "sha256": "ae3dd85e0cfd4954e6774b5f854d75a0f31992407cc50eda7f8ec1f5a32153b4",
+      "bytes": 263230975,
+      "bootstrap_scripts": {
+        "assets/addons/service.smarted.bootstrap/repository.py": {
+          "sha256": "cee2d693b01da2d24ad9565850dc30d35cb4b8d0bf1ed99a1de0cf0d80523849",
+          "bytes": 8901,
+          "imports": [
+            "__future__",
+            "glob",
+            "os",
+            "repair",
+            "shutil",
+            "xml.etree",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/retomar.py": {
+          "sha256": "523c1218d5639a703f3a492c429c58b612525b526a829b3c091618e036d3be30",
+          "bytes": 8457,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "threading",
+            "time",
+            "xbmc",
+            "xbmcgui",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ad_return.py": {
+          "sha256": "e5e92999e9e200476e55ac9d4a6000fb9ad8afb2afd90a1650d79d52731ed112",
+          "bytes": 12991,
+          "imports": [
+            "__future__",
+            "ads_regra",
+            "ao_vivo",
+            "json",
+            "threading",
+            "time",
+            "xbmc"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_regra.py": {
+          "sha256": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b",
+          "bytes": 13812,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "time",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_vast.py": {
+          "sha256": "f84ec692a37f3b09a0640b61d021ca6ee56da7e8e9586bd53cfba7641fd7c60d",
+          "bytes": 46776,
+          "imports": [
+            "__future__",
+            "ads_openings",
+            "ads_tracking",
+            "ao_vivo",
+            "ipaddress",
+            "json",
+            "os",
+            "re",
+            "socket",
+            "ssl",
+            "sys",
+            "threading",
+            "time",
+            "urllib.parse",
+            "urllib.request",
+            "xbmc",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ao_vivo.py": {
+          "sha256": "a4bed2804d3d3b9e74462e5cb19aa23b6451b02200e87ab4aa5a09ac607d2a9c",
+          "bytes": 11022,
+          "imports": [
+            "__future__",
+            "ipaddress",
+            "json",
+            "os",
+            "socket",
+            "threading",
+            "time",
+            "urllib.parse",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/check.py": {
+          "sha256": "99357d4c09d85e587782963b06a6dc6cbd0791f4147555cf036272c5a814eaaa",
+          "bytes": 8138,
+          "imports": [
+            "__future__",
+            "favourites",
+            "menu_smarted",
+            "performance",
+            "service",
+            "skin_setup",
+            "smart_ads",
+            "sys",
+            "xbmc",
+            "xbmcgui",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/favourites.py": {
+          "sha256": "4880877fdd7ca447a9e33fde1bb31b9026b469fb7692defff2649d1d188bd8e7",
+          "bytes": 4352,
+          "imports": [
+            "__future__",
+            "os",
+            "urllib",
+            "urllib.parse",
+            "xml.etree",
+            "xml.sax.saxutils"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/menu_smarted.py": {
+          "sha256": "8349c135dab8491e91a1445cb286063dcc28fca9bdccaa30c6b285d7b2bab787",
+          "bytes": 13652,
+          "imports": [
+            "__future__",
+            "base64",
+            "json",
+            "os",
+            "urllib.parse",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcvfs",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/performance.py": {
+          "sha256": "e79286e08a32086253822220f5064ec857de785622ceb8f3a75326680940ebd6",
+          "bytes": 12116,
+          "imports": [
+            "__future__",
+            "ao_vivo",
+            "os",
+            "unicodedata",
+            "variante"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/repair.py": {
+          "sha256": "2a387829819342c94dfae1bdd99a3f7b5ae6428fead403679508d9e92734fb78",
+          "bytes": 13570,
+          "imports": [
+            "__future__",
+            "os",
+            "shutil",
+            "xml.etree",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/service.py": {
+          "sha256": "d8784cc145e532ec6947c670a18e8edba0ad0da856180060f73c95cef4065233",
+          "bytes": 50488,
+          "imports": [
+            "__future__",
+            "favourites",
+            "json",
+            "menu_smarted",
+            "os",
+            "performance",
+            "repair",
+            "shutil",
+            "skin_setup",
+            "smart_ads",
+            "sqlite3",
+            "threading",
+            "time",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcgui",
+            "xbmcvfs",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/skin_setup.py": {
+          "sha256": "686e00d32b41fccb9b49bd3991b8760ef18306b4de14a4f01c1fd14db0ce2412",
+          "bytes": 8300,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "re",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smart_ads.py": {
+          "sha256": "ce5c737fe54a76b6393969cb5b055e371b112905beed708467f6017c37a4ce57",
+          "bytes": 60109,
+          "imports": [
+            "__future__",
+            "ad_return",
+            "ads_openings",
+            "ads_regra",
+            "ads_vast",
+            "ao_vivo",
+            "importlib.util",
+            "json",
+            "os",
+            "subprocess",
+            "threading",
+            "time",
+            "unicodedata",
+            "variante",
+            "vip",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smarted_release.py": {
+          "sha256": "ef611b2e3bcc989cdbd8aceeb96b7532b34afc599c70701e115dbfecd629221a",
+          "bytes": 119,
+          "imports": []
+        },
+        "assets/addons/service.smarted.bootstrap/variante.py": {
+          "sha256": "5e544594ce6a33e80208546013ab31080991636b682d2740714985216ee84fe5",
+          "bytes": 45993,
+          "imports": [
+            "__future__",
+            "os",
+            "re",
+            "subprocess",
+            "time",
+            "unicodedata",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/vip.py": {
+          "sha256": "f219873a6557c75775a98c6a048242fc486427b61c6c09a6ca3322ae0af21d99",
+          "bytes": 55109,
+          "imports": [
+            "__future__",
+            "calendar",
+            "hashlib",
+            "json",
+            "os",
+            "re",
+            "smarted_release",
+            "threading",
+            "time",
+            "urllib",
+            "urllib.parse",
+            "urllib.request",
+            "urllib2",
+            "variante",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcgui",
+            "xbmcvfs",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_admob.py": {
+          "sha256": "6a5281b10d12487f81f18045836506e6fe1851565d4cedf1baed5019f989a05a",
+          "bytes": 475,
+          "imports": []
+        },
+        "assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+          "sha256": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f",
+          "bytes": 1847,
+          "imports": [
+            "datetime",
+            "random",
+            "re",
+            "sys",
+            "urllib.parse",
+            "xbmc"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_openings.py": {
+          "sha256": "a2fc185e5865502a2adeb60a3558e9320b2e0ba0290179f5d4a3e35025312534",
+          "bytes": 6661,
+          "imports": [
+            "ao_vivo",
+            "json",
+            "threading",
+            "time"
+          ]
+        }
+      }
+    },
+    "current": {
+      "release": "smarted-original-ads-46044121903-1",
+      "sha256": "5187f34599911310dbf60dd2181b3ceac6d306b7d0ccc61a58fc1c4c051875c9",
+      "bytes": 263230975,
+      "bootstrap_scripts": {
+        "assets/addons/service.smarted.bootstrap/repository.py": {
+          "sha256": "cee2d693b01da2d24ad9565850dc30d35cb4b8d0bf1ed99a1de0cf0d80523849",
+          "bytes": 8901,
+          "imports": [
+            "__future__",
+            "glob",
+            "os",
+            "repair",
+            "shutil",
+            "xml.etree",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/retomar.py": {
+          "sha256": "523c1218d5639a703f3a492c429c58b612525b526a829b3c091618e036d3be30",
+          "bytes": 8457,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "threading",
+            "time",
+            "xbmc",
+            "xbmcgui",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ad_return.py": {
+          "sha256": "e5e92999e9e200476e55ac9d4a6000fb9ad8afb2afd90a1650d79d52731ed112",
+          "bytes": 12991,
+          "imports": [
+            "__future__",
+            "ads_regra",
+            "ao_vivo",
+            "json",
+            "threading",
+            "time",
+            "xbmc"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_regra.py": {
+          "sha256": "67608a5be7f30292b7657b44275dca18d7b38faeef9c98bfbc65fac4cfc6065b",
+          "bytes": 13812,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "time",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_vast.py": {
+          "sha256": "f84ec692a37f3b09a0640b61d021ca6ee56da7e8e9586bd53cfba7641fd7c60d",
+          "bytes": 46776,
+          "imports": [
+            "__future__",
+            "ads_openings",
+            "ads_tracking",
+            "ao_vivo",
+            "ipaddress",
+            "json",
+            "os",
+            "re",
+            "socket",
+            "ssl",
+            "sys",
+            "threading",
+            "time",
+            "urllib.parse",
+            "urllib.request",
+            "xbmc",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ao_vivo.py": {
+          "sha256": "a4bed2804d3d3b9e74462e5cb19aa23b6451b02200e87ab4aa5a09ac607d2a9c",
+          "bytes": 11022,
+          "imports": [
+            "__future__",
+            "ipaddress",
+            "json",
+            "os",
+            "socket",
+            "threading",
+            "time",
+            "urllib.parse",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/check.py": {
+          "sha256": "99357d4c09d85e587782963b06a6dc6cbd0791f4147555cf036272c5a814eaaa",
+          "bytes": 8138,
+          "imports": [
+            "__future__",
+            "favourites",
+            "menu_smarted",
+            "performance",
+            "service",
+            "skin_setup",
+            "smart_ads",
+            "sys",
+            "xbmc",
+            "xbmcgui",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/favourites.py": {
+          "sha256": "4880877fdd7ca447a9e33fde1bb31b9026b469fb7692defff2649d1d188bd8e7",
+          "bytes": 4352,
+          "imports": [
+            "__future__",
+            "os",
+            "urllib",
+            "urllib.parse",
+            "xml.etree",
+            "xml.sax.saxutils"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/menu_smarted.py": {
+          "sha256": "8349c135dab8491e91a1445cb286063dcc28fca9bdccaa30c6b285d7b2bab787",
+          "bytes": 13652,
+          "imports": [
+            "__future__",
+            "base64",
+            "json",
+            "os",
+            "urllib.parse",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcvfs",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/performance.py": {
+          "sha256": "e79286e08a32086253822220f5064ec857de785622ceb8f3a75326680940ebd6",
+          "bytes": 12116,
+          "imports": [
+            "__future__",
+            "ao_vivo",
+            "os",
+            "unicodedata",
+            "variante"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/repair.py": {
+          "sha256": "2a387829819342c94dfae1bdd99a3f7b5ae6428fead403679508d9e92734fb78",
+          "bytes": 13570,
+          "imports": [
+            "__future__",
+            "os",
+            "shutil",
+            "xml.etree",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/service.py": {
+          "sha256": "d8784cc145e532ec6947c670a18e8edba0ad0da856180060f73c95cef4065233",
+          "bytes": 50488,
+          "imports": [
+            "__future__",
+            "favourites",
+            "json",
+            "menu_smarted",
+            "os",
+            "performance",
+            "repair",
+            "shutil",
+            "skin_setup",
+            "smart_ads",
+            "sqlite3",
+            "threading",
+            "time",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcgui",
+            "xbmcvfs",
+            "xml.etree.ElementTree"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/skin_setup.py": {
+          "sha256": "686e00d32b41fccb9b49bd3991b8760ef18306b4de14a4f01c1fd14db0ce2412",
+          "bytes": 8300,
+          "imports": [
+            "__future__",
+            "json",
+            "os",
+            "re",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smart_ads.py": {
+          "sha256": "ce5c737fe54a76b6393969cb5b055e371b112905beed708467f6017c37a4ce57",
+          "bytes": 60109,
+          "imports": [
+            "__future__",
+            "ad_return",
+            "ads_openings",
+            "ads_regra",
+            "ads_vast",
+            "ao_vivo",
+            "importlib.util",
+            "json",
+            "os",
+            "subprocess",
+            "threading",
+            "time",
+            "unicodedata",
+            "variante",
+            "vip",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smarted_release.py": {
+          "sha256": "ef611b2e3bcc989cdbd8aceeb96b7532b34afc599c70701e115dbfecd629221a",
+          "bytes": 119,
+          "imports": []
+        },
+        "assets/addons/service.smarted.bootstrap/variante.py": {
+          "sha256": "5e544594ce6a33e80208546013ab31080991636b682d2740714985216ee84fe5",
+          "bytes": 45993,
+          "imports": [
+            "__future__",
+            "os",
+            "re",
+            "subprocess",
+            "time",
+            "unicodedata",
+            "xbmc",
+            "xbmcvfs"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/vip.py": {
+          "sha256": "f219873a6557c75775a98c6a048242fc486427b61c6c09a6ca3322ae0af21d99",
+          "bytes": 55109,
+          "imports": [
+            "__future__",
+            "calendar",
+            "hashlib",
+            "json",
+            "os",
+            "re",
+            "smarted_release",
+            "threading",
+            "time",
+            "urllib",
+            "urllib.parse",
+            "urllib.request",
+            "urllib2",
+            "variante",
+            "xbmc",
+            "xbmcaddon",
+            "xbmcgui",
+            "xbmcvfs",
+            "zipfile"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_admob.py": {
+          "sha256": "6a5281b10d12487f81f18045836506e6fe1851565d4cedf1baed5019f989a05a",
+          "bytes": 475,
+          "imports": []
+        },
+        "assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+          "sha256": "7d3b1ec706598817bc6e398afad30f3e30ae4888c2aa4b948ae36896eacba36f",
+          "bytes": 1847,
+          "imports": [
+            "datetime",
+            "random",
+            "re",
+            "sys",
+            "urllib.parse",
+            "xbmc"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/ads_openings.py": {
+          "sha256": "a767c70f70d21e9d64993b2cd140d0223234a3f605482eeef657e471825f1157",
+          "bytes": 6764,
+          "imports": [
+            "ao_vivo",
+            "json",
+            "threading",
+            "time"
+          ]
+        }
+      }
+    }
+  },
+  "comparisons": {
+    "tracking_restored_to_current": {
+      "changed_non_signature_entries": [
+        "assets/addons/service.smarted.bootstrap/ads_openings.py",
+        "assets/addons/service.smarted.bootstrap/ads_vast.py",
+        "assets/addons/service.smarted.bootstrap/smart_ads.py"
+      ],
+      "unchanged_non_signature_entries": 8051,
+      "script_scopes": {
+        "assets/addons/service.smarted.bootstrap/ads_openings.py": {
+          "added": [
+            "Opening.__init__",
+            "Opening.claim",
+            "Opening.close",
+            "Opening.finish",
+            "Opening.observe_ui",
+            "batch_id",
+            "context",
+            "current",
+            "emit",
+            "observe",
+            "state",
+            "watch_home"
+          ],
+          "removed": [],
+          "changed": []
+        },
+        "assets/addons/service.smarted.bootstrap/ads_vast.py": {
+          "added": [],
+          "removed": [],
+          "changed": [
+            "_disparar_eventos",
+            "disparar",
+            "exibir",
+            "exibir_e_devolver",
+            "reproduzir",
+            "restaurar"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smart_ads.py": {
+          "added": [
+            "MonitorPreRoll._smarted_end_original",
+            "MonitorPreRoll._smarted_stop_original",
+            "MonitorPreRoll._smarted_talvez_mostrar_original",
+            "_smarted_iniciar_monitor_original"
+          ],
+          "removed": [],
+          "changed": [
+            "MonitorPreRoll._ciclo_vast",
+            "MonitorPreRoll._talvez_mostrar",
+            "MonitorPreRoll.onPlayBackEnded",
+            "MonitorPreRoll.onPlayBackStopped",
+            "abrir_anuncio",
+            "iniciar_monitor",
+            "tocar_anuncio_de_video"
+          ]
+        }
+      }
+    },
+    "previous_candidate_to_current": {
+      "changed_non_signature_entries": [
+        "assets/addons/service.smarted.bootstrap/ads_openings.py",
+        "assets/addons/service.smarted.bootstrap/smart_ads.py"
+      ],
+      "unchanged_non_signature_entries": 8052,
+      "script_scopes": {
+        "assets/addons/service.smarted.bootstrap/ads_openings.py": {
+          "added": [
+            "observe"
+          ],
+          "removed": [],
+          "changed": [
+            "Opening.claim",
+            "Opening.close",
+            "watch_home"
+          ]
+        },
+        "assets/addons/service.smarted.bootstrap/smart_ads.py": {
+          "added": [],
+          "removed": [],
+          "changed": [
+            "MonitorPreRoll._talvez_mostrar",
+            "MonitorPreRoll.onPlayBackEnded",
+            "MonitorPreRoll.onPlayBackStopped"
+          ]
+        }
+      }
+    },
+    "immediate_intermediate_to_current": {
+      "changed_non_signature_entries": [
+        "assets/addons/service.smarted.bootstrap/ads_openings.py"
+      ],
+      "unchanged_non_signature_entries": 8053,
+      "script_scopes": {
+        "assets/addons/service.smarted.bootstrap/ads_openings.py": {
+          "added": [],
+          "removed": [],
+          "changed": [
+            "observe"
+          ]
+        }
+      }
+    }
+  },
+  "audit_run": 46072046071,
+  "audit_source_commit": "0046f4e",
+  "no_runtime_or_ad_requests": true
+}
