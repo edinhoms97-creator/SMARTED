@@ -38,6 +38,6 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
         layers += 1
     decoded = tree
     functions = [n for n in ast.walk(decoded) if isinstance(n, ast.FunctionDef)]
-    emit('decoded', {'sha256': hashlib.sha256(raw).hexdigest(), 'size': len(raw), 'layers': layers,
-                     'functions': [{'name': n.name, 'lines': n.end_lineno - n.lineno} for n in functions],
-                     'selected': {n.name: ast.unparse(Redact().visit(n)) for n in functions if any(word in n.name.lower() for word in ('servid', 'server', 'playvideo', 'play_video', 'resolver')) and n.end_lineno - n.lineno < 180}})
+    emit('playback', {'sha256': hashlib.sha256(raw).hexdigest(),
+                      'selected': {n.name: ast.unparse(Redact().visit(n)) for n in functions if n.name in ('player_normal', 'check_player')},
+                      'selector_owners': [n.name for n in functions if any(isinstance(c, ast.Constant) and isinstance(c.value, str) and 'ESCOLHA O SERVIDOR' in c.value.upper() for c in ast.walk(n))]})
