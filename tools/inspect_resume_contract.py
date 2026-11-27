@@ -13,9 +13,10 @@ from inspect_ad_contract import Redact
 with zipfile.ZipFile(sys.argv[1]) as archive:
     selected, inventory = {}, []
     for filename, names in (
-        ('ads_vast.py', ('_tocar', '_garantir_tela_cheia', '_disparar_eventos', 'resumo')),
-        ('smart_ads.py', ('_e_video', '_ads_vast', 'iniciar_monitor', 'esquecer', '_chave_conteudo', '_normalizar_caminho_chave')),
+        ('ads_vast.py', ('_tocar', '_garantir_tela_cheia', '_disparar_eventos', 'resumo', '_candidatos_restauracao', '_iniciar_em_tela_cheia', '_aguardar_anuncio_tocar')),
+        ('smart_ads.py', ('_e_video', '_ads_vast', 'iniciar_monitor', 'esquecer', '_chave_conteudo', '_normalizar_caminho_chave', '_kodi_em_foco')),
         ('ad_return.py', ('Retomada',)),
+        ('ads_regra.py', ('encerrar_conteudo', 'tentativa_feita', 'ja_anunciado', 'marcar_anunciado')),
     ):
         path = 'assets/addons/service.smarted.bootstrap/' + filename
         if path not in archive.namelist():
