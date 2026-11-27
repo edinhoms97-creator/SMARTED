@@ -65,10 +65,20 @@ class Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "architecture"):
             apk.inspect_apk(path)
 
-    def test_incomplete_native_dependencies_rejected(self):
+    def test_architecture_specific_optional_library_lists_can_differ(self):
         path = self.archive(extras={"lib/arm64-v8a/libextra.so": elf("arm64-v8a")})
-        with self.assertRaisesRegex(ValueError, "library sets differ"):
-            apk.require_universal(apk.inspect_apk(path))
+        apk.require_universal(apk.inspect_apk(path))
+        # Full DT_NEEDED verification runs after decode; folder presence
+        # alone is not the final universal gate.
+
+    def test_actual_native_dependencies_not_name_list_equality(self):
+        spec = importlib.util.spec_from_file_location("native", Path(__file__).with_name("check_native_dependencies.py"))
+        native = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(native)
+        needed = native.needed_from_output("0x1 (NEEDED) Shared library: [libc.so]\n0x1 (NEEDED) Shared library: [libpython3.11.so]")
+        self.assertEqual(native.unresolved(needed, {"libpython3.11.so"}), [])
+        self.assertEqual(native.unresolved(needed, set()), ["libpython3.11.so"])
+        self.assertEqual(native.unresolved(["libssl.so", "libc++_shared.so"], set()), ["libc++_shared.so", "libssl.so"])
 
     def test_zip_traversal_rejected(self):
         with self.assertRaisesRegex(ValueError, "Unsafe"):

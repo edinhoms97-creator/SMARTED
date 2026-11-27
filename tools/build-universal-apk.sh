@@ -17,6 +17,7 @@ for tool in "$TOOLS/zipalign" "$TOOLS/apksigner" "$TOOLS/aapt2" "$ANALYZER"; do
 done
 command -v java >/dev/null
 command -v keytool >/dev/null
+command -v readelf >/dev/null
 # Require all requested VAST changes, and a clean source tree for provenance.
 git merge-base --is-ancestor 0fea261 HEAD
 git diff --exit-code HEAD -- smartedtv kodi-addon skin tools android-build .github
@@ -31,6 +32,7 @@ python3 tools/apk_pipeline.py inspect "$BASE" --report "$OUT/base-inventory.json
 "$TOOLS/apksigner" verify --verbose --print-certs "$BASE" > "$OUT/base-signature.txt"
 "$ANALYZER" manifest print "$BASE" > "$OUT/base-AndroidManifest.xml"
 java -Xmx2g -jar "$APKTOOL_JAR" d -f -s "$BASE" -o "$WORK/decoded"
+python3 tools/check_native_dependencies.py "$WORK/decoded/lib" --report "$OUT/native-dependencies.json"
 python3 tools/apk_pipeline.py prepare "$WORK/decoded" --revision "$REVISION" --source-manifest "$OUT/base-AndroidManifest.xml" --report "$OUT/build-info.json"
 java -Xmx2g -jar "$APKTOOL_JAR" b "$WORK/decoded" -o "$WORK/unsigned.apk"
 # Android native libraries aligned on 16 KiB ZIP boundaries. This does NOT

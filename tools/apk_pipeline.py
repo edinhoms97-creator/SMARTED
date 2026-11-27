@@ -128,8 +128,11 @@ def require_universal(inventory):
     require(all(abi in abis for abi in CONFIG["required_abis"]),
             "Base is NOT ARM-universal. Required: armeabi-v7a + arm64-v8a; found: "
             + ", ".join(sorted(abis)) + ". Supply a genuine multi-ABI base/native source; renaming is not a conversion.")
-    require(abis["armeabi-v7a"] == abis["arm64-v8a"],
-            "ARM32/ARM64 library sets differ; review native dependencies before claiming universal support")
+    for abi in CONFIG["required_abis"]:
+        require(set(abis[abi]).intersection({"libkodi.so", "libxbmc.so"}),
+                "Missing Kodi native core for " + abi + "; found: " + ", ".join(abis[abi]))
+    # Optional per-ABI addons may differ. Their actual DT_NEEDED resolution
+    # is checked after decode, before building/signing, not by list equality.
 
 
 def launcher(root):
