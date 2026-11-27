@@ -4,6 +4,10 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      read_publish_log:
+        description: 'Diagnostico somente leitura de falha de publicacao existente'
+        type: string
+        default: ''
       vast_comparison:
         description: 'Somente relatorio dos scripts em APKs ja publicados; nao gera APK nem consulta anuncios'
         type: boolean
@@ -81,7 +85,7 @@ env:
 
 jobs:
   build:
-    if: ${{ !inputs.vast_comparison && !inputs.android_probe && inputs.android_log_run == '' }}
+    if: ${{ inputs.read_publish_log == '' && !inputs.vast_comparison && !inputs.android_probe && inputs.android_log_run == '' }}
     name: Original SMARTED — patch restrito de anuncios
     runs-on: ubuntu-24.04
     timeout-minutes: 8
@@ -301,3 +305,26 @@ jobs:
             .cache/vast-apk-comparison/comparison.json
             .cache/vast-apk-comparison/scripts.diff
           retention-days: 30
+
+  publish_diagnostic:
+    if: inputs.read_publish_log != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Ler erro existente sem reconstruir nem publicar APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.read_publish_log }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          gh run view "$RUN_ID" --log-failed > .cache-publish-error.txt
+          python3 - <<'PYLOG'
+          import base64, gzip, json
+          from pathlib import Path
+          data = base64.b64encode(gzip.compress(Path('.cache-publish-error.txt').read_bytes()[-18000:])).decode()
+          for i in range(0, len(data), 3500):
+              print('::notice title=Publish diagnostic chunks::'+json.dumps({'part':i//3500,'data':data[i:i+3500]}))
+          PYLOG
