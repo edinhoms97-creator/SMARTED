@@ -86,19 +86,26 @@ def run_cycles(adb, evidence, apk=None):
         if not ready:
             result['cycle_blocker'] = 'original-welcome-not-ready-for-free-choice'
             return result
-        # Original welcome control 312, "Assistir com anuncios", left card.
-        # Fixed AVD resolution 960x540; never tap QR/VIP/payment/activation controls.
-        result['welcome_free_tap'] = command('shell', 'input', 'tap', '148', '420')[0]
+        # Use the ACTUAL immutable 1080i layout, not a visual guess. Control
+        # 312 is on the bottom RIGHT; the left-card button is not the free choice.
+        def button_center(control_id):
+            entry = next(item for item in controls if item['id'] == str(control_id)
+                         and item['file'].endswith('/1080i/DialogWelcome.xml'))
+            values = entry['values']
+            return (str(round((float(values['left']) + float(values['width'])/2)*w/1920)),
+                    str(round((float(values['top']) + float(values['height'])/2)*h/1080)))
+        free_x, free_y = button_center(312)
+        result['welcome_free_button_center'] = [free_x, free_y]
+        result['welcome_free_tap'] = command('shell', 'input', 'tap', free_x, free_y)[0]
         time.sleep(8)
         _, welcome_log = command('logcat', '-d', '-v', 'brief')
-        if 'Botao 312 (Assistir com anuncios) acionado.' not in welcome_log:
+        if 'Botao 312 (Assistir com anuncios) acionado.' not in welcome_log and 'control_id=312' not in welcome_log:
             result['cycle_blocker'] = 'original-free-welcome-button-not-confirmed'
             return result
-        # Original onClick(312) opens the ads notice and explicitly focuses 905
-        # (Back); its adjacent control 906 is Continue with ads. Confirm through
-        # native DPAD, never license/profile settings or a Python eval shortcut.
-        command('shell', 'input', 'keyevent', 'KEYCODE_DPAD_RIGHT')
-        command('shell', 'input', 'keyevent', 'KEYCODE_DPAD_CENTER')
+        # Original onClick(312) opens the notice. Its existing control 906
+        # is Continue with ads; use its actual XML center through native input.
+        continue_x, continue_y = button_center(906)
+        command('shell', 'input', 'tap', continue_x, continue_y)
         time.sleep(3)
         _, welcome_log = command('logcat', '-d', '-v', 'brief')
         result['welcome_continue_906_observed'] = 'control_id=906' in welcome_log
