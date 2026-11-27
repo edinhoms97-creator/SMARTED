@@ -185,6 +185,21 @@ class Tests(unittest.TestCase):
         self.assertIn('def _smarted_estado_do_conteudo_original(', updated)
         self.assertIn("def untouched_ui(): return 'skin'", updated)
 
+    def test_vast_startup_gate_patch_keeps_legacy_alias_and_other_callbacks(self):
+        from patch_original_ads import replace_functions
+        original = ("class MonitorPreRoll:\n"
+                    "    def _talvez_mostrar(self): return 'legacy'\n"
+                    "    def onPlayBackStarted(self): self.sessao += 1\n"
+                    "    def onAVStarted(self): self._talvez_mostrar()\n"
+                    "    def ui_layout(self): return 'original'\n")
+        replacements = ("class MonitorPreRoll:\n"
+                        "    def _talvez_mostrar(self): return 'vast'\n"
+                        "    def onPlayBackStarted(self): self._talvez_mostrar()\n")
+        updated = replace_functions(original, replacements)
+        self.assertIn('def _smarted_talvez_mostrar_original', updated)
+        self.assertIn("def ui_layout(self): return 'original'", updated)
+        self.assertIn('def onAVStarted(self): self._talvez_mostrar()', updated)
+
     def test_patch_fails_on_unexpected_function_contract(self):
         from patch_original_ads import replace_functions
         with self.assertRaisesRegex(ValueError, 'contract changed'):

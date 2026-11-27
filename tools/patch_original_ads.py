@@ -43,13 +43,13 @@ def replace_functions(original, replacements, constants=None):
         if not set(replacements_by_name).issubset(original_methods):
             raise ValueError('Original ad monitor method contract changed')
         for name, replacement in replacements_by_name.items():
-            if name not in ('_disparar', '_ciclo_vast', 'onPlayBackStopped'):
+            if name not in ('_disparar', '_ciclo_vast', 'onPlayBackStopped', '_talvez_mostrar', 'onPlayBackStarted'):
                 raise ValueError('Unreviewed ad monitor method')
             node = original_methods[name]
             text = textwrap.indent(ast.unparse(replacement), ' ' * node.col_offset) + '\n'
-            if name == '_disparar':
+            if name in ('_disparar', '_talvez_mostrar'):
                 fragment = ''.join(lines[node.lineno - 1:node.end_lineno])
-                text = fragment.replace('def _disparar(', 'def _smarted_disparar_original(', 1).rstrip() + '\n\n' + text
+                text = fragment.replace('def ' + name + '(', 'def _smarted' + name + '_original(', 1).rstrip() + '\n\n' + text
             edits.append((node.lineno - 1, node.end_lineno, text))
     found_constants = set()
     for node in tree.body:
@@ -75,7 +75,7 @@ def replace_functions(original, replacements, constants=None):
                 continue
             if isinstance(node, ast.ClassDef) and node.name in methods:
                 node = copy.deepcopy(node)
-                ignored = set(methods[node.name]) | {'_smarted_disparar_original'}
+                ignored = set(methods[node.name]) | {'_smarted_disparar_original', '_smarted_talvez_mostrar_original'}
                 node.body = [child for child in node.body if not (isinstance(child, ast.FunctionDef) and child.name in ignored)]
             nodes.append(ast.dump(node, include_attributes=False))
         return nodes

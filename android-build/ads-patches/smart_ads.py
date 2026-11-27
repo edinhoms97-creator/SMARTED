@@ -47,8 +47,6 @@ def mostrar_preroll(log=None, intervalo=None, agora=None, caminho=None, chave=No
     with _LOCK_OPORTUNIDADE:
         if vip_ativo():
             return False  # retain the original VIP exemption
-        if not forcar and sessao is not None and sessao == globals().get('_ultima_sessao'):
-            return False
         key = chave or _chave_conteudo(caminho)
         if not globals().get('_smarted_regra_iniciada'):
             # A new app process must not inherit the previous process's
@@ -58,6 +56,11 @@ def mostrar_preroll(log=None, intervalo=None, agora=None, caminho=None, chave=No
                 data.pop(field, None)
             ads_regra._gravar(data)
             globals()['_smarted_regra_iniciada'] = True
+            globals()['_ultima_sessao'] = None
+            globals()['_ultimo_caminho_preroll'] = None
+        if (not forcar and sessao is not None and sessao == globals().get('_ultima_sessao')
+                and (chave or _chave_conteudo(caminho)) == globals().get('_ultimo_caminho_preroll')):
+            return False
         if not forcar:
             ads_regra.abrir_troca(key)
             allowed, reason = ads_regra.pode_anunciar(key, agora)
@@ -88,6 +91,42 @@ def mostrar_preroll(log=None, intervalo=None, agora=None, caminho=None, chave=No
 class MonitorPreRoll:
     # Only the listed ad dispatch/stop methods are replaced. All other methods/attributes in
     # the ORIGINAL MonitorPreRoll class are preserved by AST scope checks.
+    def _talvez_mostrar(self):
+        if not usar_vast():
+            return self._smarted_talvez_mostrar_original()
+        if self._em_vast:
+            return
+        try:
+            if not _e_video(self):
+                return  # onAVStarted retries when the resolved video is ready
+            path = self._caminho()
+            if not path:
+                return
+            key = _normalizar_caminho_chave(path)
+            # Only a known return from THIS process/session is suppressible.
+            # Legacy ad_return.e_volta may contain startup/profile state and
+            # must not swallow the first two VODs before the VAST query.
+            if (self._ate_ignorar_volta_vast > time.monotonic()
+                    and self._volta_vast_chave and key == self._volta_vast_chave):
+                return
+            if key != self._volta_vast_chave:
+                self._ate_ignorar_volta_vast, self._volta_vast_chave = 0.0, ''
+            self.ultimo_caminho = path
+            mostrar_preroll(self.log, self.intervalo, caminho=path,
+                            chave=_chave_conteudo(path), sessao=self.sessao,
+                            disparar=self._disparar)
+        except Exception as exc:
+            if self.log:
+                self.log('[SmartAdsDiag] abertura-vast:%s' % type(exc).__name__)
+
+    def onPlayBackStarted(self):
+        if self._em_vast:
+            return
+        self.sessao += 1
+        # Do not depend solely on a later AVStarted (some Android paths lose
+        # that callback). Claim once, then AVStarted/Play are idempotent.
+        self._talvez_mostrar()
+
     def _disparar(self, atividade, log):
         if not usar_vast():
             return self._smarted_disparar_original(atividade, log)

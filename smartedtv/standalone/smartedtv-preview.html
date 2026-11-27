@@ -469,7 +469,7 @@ window.SMARTEDTV_CONFIG = {
   "use strict";
 
   var DEFAULT_TIMEOUT_MS = 8000;
-  var STALL_TIMEOUT_MS = 12000;
+  var STALL_TIMEOUT_MS = 3000;
 
   /* ---------- time helpers ---------- */
 
@@ -883,6 +883,26 @@ window.SMARTEDTV_CONFIG = {
         self._fire("skip");
         self._finish({ outcome: "skipped" });
       });
+      // A touch/media-key pause must not strand the overlay. Do not rearm
+      // the progress watchdog on interaction or on another playing event.
+      var resuming = false;
+      var resumeAd = function () {
+        if (self._done || !video.paused || resuming) return;
+        resuming = true;
+        var failed = function () {
+          resuming = false;
+          if (self._done) return;
+          self._fireError(405);
+          self._finish({ outcome: "error", reason: "resume-blocked" });
+        };
+        try {
+          var attempt = video.play();
+          if (attempt && attempt.then) attempt.then(function () { resuming = false; }, failed);
+          else resuming = false;
+        } catch (e) { failed(); }
+      };
+      video.addEventListener("pause", resumeAd);
+      video.addEventListener("click", function () { if (video.paused) resumeAd(); });
       if (ad.clickThrough) {
         video.addEventListener("click", function () {
           fireAll(ad.clickTracking, null, self.onEvent, "click");

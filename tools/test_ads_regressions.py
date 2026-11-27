@@ -27,6 +27,10 @@ class Runtime:
         self.seek_calls = []
         self.restores = []
         self.callback_sent = False
+        self.paused = False
+        self.resumes = []
+        self.builtins = []
+        self.restore_times = []
         runtime = self
 
         class Player:
@@ -62,6 +66,13 @@ class Runtime:
                 self.position += seconds
             return
         elapsed = self.now - self.start
+        if self.mode in ('pause-resume', 'pause-stuck', 'buffer-at-one') and elapsed >= 1:
+            if not self.callback_sent:
+                self.callback_sent = True
+                self.paused = self.mode != 'buffer-at-one'
+            if self.paused or self.mode == 'buffer-at-one':
+                self.position = 1.0
+                return
         self.position = (0 if self.mode == 'stall' else
                          min(elapsed, 5.0) if self.mode == 'mid-stall' else
                          elapsed / 2 if self.mode == 'slow-clock' else elapsed)
@@ -76,7 +87,7 @@ class Runtime:
         elif self.mode == 'stopped' and elapsed >= .6:
             self.playing = False
             self.observer.onPlayBackStopped()
-        elif self.mode in ('ended', 'late-old-stop', 'old-error') and elapsed >= 15:
+        elif self.mode in ('ended', 'late-old-stop', 'old-error', 'pause-resume') and elapsed >= 15:
             self.playing = False
             self.observer.onPlayBackEnded()
 
@@ -90,8 +101,18 @@ class Runtime:
 
     def restore_route(self, route, **kwargs):
         self.restores.append(route)
+        self.restore_times.append(self.now)
         self.file, self.playing, self.position = route, True, 0
         return True
+
+    def rpc(self, payload):
+        import json
+        request = json.loads(payload)
+        if request['method'] == 'Player.PlayPause':
+            self.resumes.append((self.file, self.now, request['params']['play']))
+            if self.mode == 'pause-resume':
+                self.paused = False
+        return '{}'
 
     def env(self):
         sys.path.insert(0, str(ORIGINAL or PATCHES))
@@ -100,7 +121,8 @@ class Runtime:
             'TEMPO_TELA_PRETA_AUDIO': 3, 'TEMPO_TRAVAMENTO_ANUNCIO': 2,
             'VAST_TAG_PADRAO': 'https://vast.yomeno.xyz/vast?spot_id=1508180',
             'time': types.SimpleNamespace(time=lambda: self.now, sleep=self.sleep),
-            'xbmc': types.SimpleNamespace(Player=self.Player, LOGWARNING=2, getCondVisibility=lambda _: False),
+            'xbmc': types.SimpleNamespace(Player=self.Player, LOGWARNING=2, getCondVisibility=lambda name: self.paused if name == 'Player.Paused' else False,
+                                            executeJSONRPC=self.rpc, executebuiltin=self.builtins.append),
             '_smarted_estado_do_conteudo_original': lambda **kw: {'caminho': self.file, 'posicao': self.position, 'ao_vivo': False},
             '_agora': lambda: self.now, '_arquivo_atual': lambda: self.file,
             '_player_tocando_video': lambda: self.playing,
@@ -137,6 +159,104 @@ class Regressions(unittest.TestCase):
         result = env['exibir_e_devolver'](tocar=runtime.play_ad, dormir=runtime.sleep,
                   estado={'caminho': 'https://media.invalid/movie.mp4', 'posicao': 42.125})
         return result
+
+    def test_unstarted_decoder_is_stopped_at_three_seconds_not_eight(self):
+        runtime = Runtime()
+        env = runtime.env()
+        def start_without_surface(url, log):
+            runtime.file, runtime.playing, runtime.start = 'ad', False, runtime.now
+            return True
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=start_without_surface, dormir=runtime.sleep)
+        self.assertEqual(receipt['motivo'], 'nao-iniciou')
+        self.assertTrue(receipt['precisa_restaurar'])
+        self.assertLessEqual(runtime.stop_times[0] - runtime.start, 3.0)
+        self.assertEqual(runtime.stops, ['ad'])
+
+    def test_default_ad_start_is_direct_native_and_has_no_independent_wait(self):
+        from unittest.mock import patch
+        runtime = Runtime()
+        env = runtime.env()
+        from test_resolved_resume import Item
+        fake_gui = types.SimpleNamespace(ListItem=lambda label='', path='': Item(path=path, label=label))
+        with patch.dict(sys.modules, {'xbmcgui': fake_gui}):
+            self.assertTrue(env['_tocar']('https://ads.invalid/ad.mp4'))
+        self.assertEqual(runtime.restores, ['https://ads.invalid/ad.mp4'])
+        self.assertEqual(runtime.now, 1000.0)
+        self.assertFalse(env['_tocar']('plugin://choose-server'))
+
+    def test_pause_at_one_resumes_without_reopening_ad_or_stealing_focus(self):
+        runtime = Runtime('pause-resume')
+        env = runtime.env()
+        fullscreen = []
+        env['_garantir_tela_cheia'] = lambda: fullscreen.append(runtime.now)
+        receipt = env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(receipt['motivo'], 'concluido')
+        self.assertEqual(len(runtime.resumes), 1)
+        self.assertEqual(runtime.resumes[0][0], 'ad')
+        self.assertIs(runtime.resumes[0][2], True)
+        self.assertEqual(len(fullscreen), 1)  # not once per watchdog tick
+        self.assertEqual(runtime.restores, [])  # play=true, never reopen
+
+    def test_pause_or_buffer_stuck_at_one_stops_and_restores_within_three_seconds(self):
+        for mode in ('pause-stuck', 'buffer-at-one'):
+            with self.subTest(mode=mode):
+                runtime = Runtime(mode)
+                result = self.session(runtime, duration=25)
+                self.assertEqual(result['motivo'], 'travamento')
+                self.assertLessEqual(runtime.stop_times[0] - runtime.start, 4.5)
+                self.assertGreaterEqual(runtime.stop_times[0] - runtime.start, 4.0)
+                self.assertTrue(result['retomada_confirmada'])
+                self.assertEqual(runtime.file, 'https://media.invalid/movie.mp4')
+                self.assertLessEqual(runtime.restore_times[0] - runtime.stop_times[0], .1)
+                self.assertIn('Dialog.Close(videoosd,true)', runtime.builtins)
+                self.assertIn('Dialog.Close(seekbar,true)', runtime.builtins)
+                self.assertNotIn('complete', runtime.events)
+
+    def test_stuck_ad_restarts_live_cleanly_without_seek_or_overlay(self):
+        runtime = Runtime('pause-stuck')
+        env = runtime.env()
+        env['exibir'] = lambda **kw: env['reproduzir']({'url': 'ad', 'duracao': 25},
+                                                     tocar=kw['tocar'], dormir=runtime.sleep)
+        receipt = env['exibir_e_devolver'](tocar=runtime.play_ad, dormir=runtime.sleep,
+                    estado={'caminho': runtime.file, 'posicao': 42.125, 'ao_vivo': True})
+        self.assertTrue(receipt['retomada_confirmada'])
+        self.assertEqual(runtime.seek_calls, [])
+        self.assertEqual(runtime.stops, ['ad'])
+        self.assertIn('Dialog.Close(videoosd,true)', runtime.builtins)
+
+    def test_query_is_not_skipped_when_initial_snapshot_is_not_ready(self):
+        runtime = Runtime()
+        env = runtime.env()
+        captures, queries = [], []
+        actual = env['estado_do_conteudo']
+        def snapshot(**kw):
+            captures.append(True)
+            return None if len(captures) == 1 else actual(**kw)
+        env['estado_do_conteudo'] = snapshot
+        def query(**kw):
+            queries.append(True)
+            return env['reproduzir']({'url': 'ad', 'duracao': 25}, tocar=kw['tocar'], dormir=runtime.sleep)
+        env['exibir'] = query
+        receipt = env['exibir_e_devolver'](tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(queries, [True])
+        self.assertEqual(len(captures), 2)
+        self.assertTrue(receipt['retomada_confirmada'])
+
+    def test_initial_missing_snapshot_nofill_still_queries_without_touching_player(self):
+        runtime = Runtime()
+        env = runtime.env()
+        env['estado_do_conteudo'] = lambda **kw: None
+        queries = []
+        def query(**kw):
+            queries.append(True)
+            return {'exibido': False, 'motivo': 'no-fill'}
+        env['exibir'] = query
+        receipt = env['exibir_e_devolver'](tocar=runtime.play_ad, dormir=runtime.sleep)
+        self.assertEqual(queries, [True])
+        self.assertEqual(receipt['motivo'], 'no-fill')
+        self.assertEqual(runtime.stops, [])
+        self.assertEqual(runtime.restores, [])
+        self.assertEqual(runtime.file, 'https://media.invalid/movie.mp4')
 
     def test_completion_skip_and_abort_restore_same_vod_without_plugin_helpers(self):
         for mode in ('ended', 'stopped', 'mid-stall', 'error'):

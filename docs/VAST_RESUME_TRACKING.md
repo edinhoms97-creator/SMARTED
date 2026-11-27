@@ -1,5 +1,19 @@
 # Retomada resolvida e auditoria de pixels VAST
 
+## Correção de pausa e primeiras aberturas (revisão seguinte)
+
+A inspeção encontrou três gates que podiam impedir a consulta inicial: `_talvez_mostrar` ainda consultava `ad_return.e_volta` legado, a sessão era comparada sem comparar conteúdo, e `exibir_e_devolver` retornava antes da busca da tag quando o snapshot ainda não estava pronto. Esses casos agora têm regressões determinísticas. Sem logs do aparelho não é possível afirmar qual deles explica cada uma das duas falhas reportadas, nem distinguir isso de no-fill real.
+
+- `onPlayBackStarted` tenta o pre-roll assim que o vídeo está pronto, sem depender só de `onAVStarted`; callbacks duplicados continuam consumindo uma única oportunidade.
+- O caminho VAST não consulta `Retomada.e_volta` legado; apenas o retorno conhecido da sessão atual é suprimido. Conteúdos diferentes não são bloqueados pelo contador inicial nem pelo intervalo antigo.
+- A consulta da tag não depende do snapshot inicial. Antes de substituir o vídeo, um snapshot válido é obrigatório e pode ser recapturado após o download da tag. Se não for possível retomar com segurança, o conteúdo não é interrompido; consultar não garante disponibilidade/exibição de anúncio.
+- `_tocar` usa diretamente o player nativo Kodi, ListItem MP4 e `windowed=False`, sem atividade Android separada, diálogo ou espera independente. Startup sem superfície também fica limitado a 3 s.
+- Pausa detectada no anúncio: tenta `Player.PlayPause(play=true)` uma vez por episódio de pausa, sem reabrir a URL; fallback para toggle apenas se a API estiver indisponível e ainda estiver pausado. O watchdog não reinicia com clique, callback, foco ou tentativa de play. Após 3 s sem avanço, stop e retomada direta.
+- Recuperação de fullscreen no anúncio apenas na entrada, não a cada 500 ms: não disputar continuamente o foco dos controles. Na saída, stop da peça ainda pertencente à sessão e fechamento dos OSDs nativos `videoosd`/`seekbar`; a retomada restaura fullscreen do conteúdo. Não fecha janelas arbitrárias de uma nova seleção do usuário.
+- Na referência web separada, `pause` tenta `video.play()`; rejeição encerra e limpa o overlay. O watchdog é de 3 s e não é renovado por interação. Essa referência web **não substitui o player/UI do APK**.
+
+Novas regressões: primeiro e segundo VOD por callbacks com estado legado, callbacks duplicados, sessão zero compartilhada entre conteúdos, snapshot inicial ausente com consulta VAST, pausa em 00:01 com retomada, pausa/buffer travado em 00:01 com stop em 3 s após o último avanço, decoder sem superfície, VOD/live direto e limpeza do OSD/overlay. A aprovação em hardware continua pendente.
+
 ## Causas confirmadas na inspeção somente leitura
 
 - `_candidatos_restauracao` original incluía `plugin_path` nos fallbacks. Reabrir esse caminho executava o provider e podia abrir novamente **ESCOLHA O SERVIDOR**.

@@ -173,6 +173,27 @@ def _media_escolhido(inline, altura_tela=0):
     return min(candidates, key=lambda pair: pair[0])[1] if candidates else None
 
 
+def _tocar(url, log=None):
+    """Native Kodi player only; no external activity, dialog or startup wait."""
+    try:
+        from urllib.parse import urlsplit
+        if urlsplit(url).scheme.lower() not in ('http', 'https'):
+            return False
+        try:
+            import xbmcgui
+            item = xbmcgui.ListItem(label='Anúncio', path=url)
+            item.setProperty('IsPlayable', 'true')
+            item.setProperty('ForceResolvePlugin', 'false')
+            item.setMimeType('video/mp4')
+            item.setContentLookup(False)
+        except ImportError:
+            item = None
+        xbmc.Player().play(url, listitem=item, windowed=False)
+        return True  # asynchronous start: only the watchdog confirms progress
+    except Exception:
+        return False
+
+
 def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None, dormir=None, anterior=''):
     """Confirm progress, own callbacks and release failed ads before fallback."""
     if not anuncio or not anuncio.get('url'):
@@ -220,6 +241,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
     progress_at = start
     last_position = 0.0
     no_frame_at = None
+    paused_at, resume_sent = None, False
 
     def error():
         urls = list(anuncio.get('errors') or []) + list(events.get('error') or [])
@@ -231,13 +253,16 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
             needs_restore = _arquivo_atual() != anterior or not _player_tocando_video()
             # Do not enter the original wait helper: its independent startup
             # timeout could outlive the entire pre-roll watchdog budget.
-            startup_deadline = min(deadline, _agora() + 8.0)
+            startup_deadline = min(deadline, start + 3.0)
             while _agora() < startup_deadline:
                 if _player_tocando_video() and _arquivo_atual() not in ('', anterior):
                     break
                 dormir(.5)
             if not (_player_tocando_video() and _arquivo_atual() not in ('', anterior)):
                 reason = 'nao-iniciou'
+                # Async play may have replaced the old surface after tocar
+                # returned. Re-evaluate instead of retaining the initial flag.
+                needs_restore = _arquivo_atual() in ('', anuncio['url']) or not _player_tocando_video()
             else:
                 owned_file[0] = _arquivo_atual()
                 # The old VOD's clock is not proof that the ad has started.
@@ -245,6 +270,7 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                     reason = 'anuncio-nao-assumiu-player'
                 else:
                     needs_restore = True
+                    _garantir_tela_cheia()  # once: do not steal control focus every tick
                     observer.active = True
                     reason = 'interrompido'
                     progress_at = _agora()
@@ -268,6 +294,27 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                                       'erro-player' if observer.failed else 'interrompido')
                             break
                         now = _agora()
+                        # A paused Kodi video still reports isPlayingVideo().
+                        # Resume idempotently (not PlayMedia/reopen), once per
+                        # pause episode. Neither clicks nor callbacks reset
+                        # the clock-based three-second watchdog.
+                        paused = bool(xbmc.getCondVisibility('Player.Paused'))
+                        if paused:
+                            paused_at = now if paused_at is None else paused_at
+                            if not resume_sent and now - paused_at >= .5:
+                                resume_sent = True
+                                try:
+                                    import json as _json
+                                    xbmc.executeJSONRPC(_json.dumps({'jsonrpc': '2.0', 'id': 1,
+                                        'method': 'Player.PlayPause',
+                                        'params': {'playerid': 1, 'play': True}}))
+                                except Exception:
+                                    # Older Kodi bindings: toggle only when
+                                    # the owned creative is demonstrably paused.
+                                    if xbmc.getCondVisibility('Player.Paused'):
+                                        xbmc.Player().pause()
+                        else:
+                            paused_at, resume_sent = None, False
                         no_frame = _audio_sem_quadro_video()
                         if no_frame:
                             no_frame_at = now if no_frame_at is None else no_frame_at
@@ -290,7 +337,6 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
                             reason = 'travamento'
                             break
                         if started:
-                            _garantir_tela_cheia()
                             duration = duration or anuncio.get('duracao') or 0
                             if duration > 0:
                                 for name, threshold in (('firstQuartile', .25), ('midpoint', .5), ('thirdQuartile', .75)):
@@ -311,9 +357,15 @@ def reproduzir(anuncio, log=None, tempo_maximo=TEMPO_MAXIMO_ANUNCIO, tocar=None,
         # the untouched VOD (refusal/no-fill) or a newer user-selected video.
         if needs_restore:
             current = _arquivo_atual()
-            if current and current != anterior and (not owned_file[0] or current == owned_file[0]):
+            if current and current != anterior and current in (owned_file[0], anuncio['url']):
                 try:
                     xbmc.Player().stop()
+                except Exception:
+                    pass
+            if not current or current in (owned_file[0], anterior):
+                try:
+                    xbmc.executebuiltin('Dialog.Close(videoosd,true)')
+                    xbmc.executebuiltin('Dialog.Close(seekbar,true)')
                 except Exception:
                     pass
     eligible = started and reason in ('concluido', 'pulado')
@@ -360,12 +412,23 @@ def exibir_e_devolver(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO
             estado.setdefault('smarted_estava_pausado', bool(xbmc.getCondVisibility('Player.Paused')))
         except Exception:
             estado.setdefault('smarted_estava_pausado', False)
-    if not estado or not estado.get('resolved_streams'):
-        # Do not replace an unresolved plugin or lose its resolver context.
-        return {'exibido': False, 'motivo': 'sem-stream-resolvido', 'precisa_restaurar': False}
+    expected_content = (estado or {}).get('caminho') or _arquivo_atual()
+    unavailable = [False]
     def start_ad(url, logger):
-        if estado and _player_tocando_video() and _arquivo_atual() != estado['caminho']:
+        nonlocal estado
+        # Query VAST even if the first callback preceded a usable snapshot.
+        # Recapture before replacing anything; the main stream keeps playing
+        # during tag IO. No-fill never touches its player/surface.
+        if expected_content and _arquivo_atual() not in ('', expected_content):
             return False  # user changed the film while the tag was loading
+        if not estado or not estado.get('resolved_streams'):
+            estado = estado_do_conteudo(log=log)
+        if not estado or not estado.get('resolved_streams'):
+            unavailable[0] = True
+            return False  # never replace a stream that cannot be restored
+        if _arquivo_atual() != estado['caminho']:
+            return False
+        estado.setdefault('smarted_estava_pausado', bool(xbmc.getCondVisibility('Player.Paused')))
         try:
             estado['posicao'] = float(xbmc.Player().getTime()) or 0.0
         except Exception:
@@ -377,6 +440,8 @@ def exibir_e_devolver(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO
     except Exception:
         receipt = {'exibido': False, 'motivo': 'excecao-fluxo',
                    'precisa_restaurar': bool(estado and (_arquivo_atual() != estado['caminho'] or not _player_tocando_video()))}
+    if unavailable[0]:
+        receipt.update(motivo='sem-stream-resolvido', precisa_restaurar=False)
     # A user selecting another film during the ad must not be sent back.
     restore = receipt.get('motivo') != 'conteudo-alterado' and estado and (
         receipt.get('exibido') or receipt.get('precisa_restaurar') or not _player_tocando_video())

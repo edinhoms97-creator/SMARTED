@@ -160,6 +160,40 @@ NOFILL = {'exibido': False, 'motivo': 'no-fill'}
 
 
 class Tests(unittest.TestCase):
+    def test_first_and_second_vod_callbacks_query_despite_stale_return_state(self):
+        h = Harness([NOFILL, SUCCESS])
+        # Old ad_return falsely considers every content a return. VAST must
+        # not consult this legacy object before querying the first videos.
+        h.monitor._retomada = lambda: types.SimpleNamespace(e_volta=lambda *a: True)
+        h.env['_ultima_sessao'] = 0
+        h.env['_ultimo_caminho_preroll'] = 'previous-process'
+        h.state.update(conteudo='vod1', tentativa='vod1', anunciado=True, ultimo_anuncio=999.9)
+        for key in ('vod1', 'vod2'):
+            h.file, h.playing = key, True
+            h.monitor.onPlayBackStarted()  # no dependency on later AV callback
+            h.join()
+            h.monitor._talvez_mostrar()  # duplicate AVStarted/Play
+            h.join()
+        self.assertEqual(h.calls, ['vod1', 'vod2'])
+
+    def test_changed_content_same_initial_session_is_not_suppressed(self):
+        h = Harness([NOFILL, NOFILL])
+        for key in ('vod1', 'vod2'):
+            h.file, h.playing = key, True
+            h.monitor._talvez_mostrar()  # session counter still zero
+            h.join()
+        self.assertEqual(h.calls, ['vod1', 'vod2'])
+
+    def test_early_started_without_video_waits_for_av_and_still_queries_first_vod(self):
+        h = Harness([SUCCESS])
+        h.monitor.onPlayBackStarted()
+        h.join()
+        self.assertEqual(h.calls, [])
+        h.file, h.playing = 'vod1', True
+        h.monitor._talvez_mostrar()
+        h.join()
+        self.assertEqual(h.calls, ['vod1'])
+
     def test_seven_contents_without_two_minute_wait(self):
         h = Harness([{'exibido': False, 'motivo': 'travamento'}, NOFILL, SUCCESS, SUCCESS,
                      {'exibido': False, 'motivo': 'falha-rede-vast'}, SUCCESS, SUCCESS])
