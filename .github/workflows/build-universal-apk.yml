@@ -375,7 +375,7 @@ jobs:
           gh release edit "$tag" --notes-file dist/INSTALLATION.txt
 
   vast_function_lab:
-    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget'
+    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget' && inputs.vast_function_lab != 'history-release'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -565,3 +565,106 @@ jobs:
             .cache/history-startup/*.log
             .cache/history-startup/*/evidence/
           retention-days: 30
+
+  history_release:
+    if: inputs.vast_function_lab == 'history-release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .cache/smartedtv-signing
+          key: smartedtv-test-debug-key-v1
+      - name: Recuperar APK atual e provas anteriores ANTES de aplicar alteracoes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/history-startup/{historical,current} .cache/history-recovery/{comparison-before,budget-before}
+          gh release download smarted-original-ads-45992589750-1 --pattern SMARTEDTV-universal.apk --dir .cache/history-startup/historical
+          gh release download smarted-vast-only-46079704676-1 --pattern SMARTEDTV-universal.apk --dir .cache/history-startup/current
+          gh run download 46082641102 --name history-startup-baseline --dir .cache/history-recovery/comparison-before
+          gh run download 46083525180 --name history-startup-baseline --dir .cache/history-recovery/budget-before
+          python3 - <<'PYGATE'
+          import json,hashlib
+          from pathlib import Path
+          from sys import path
+          path.insert(0,'tools')
+          from patch_history_recovery import BASE_SHA
+          assert hashlib.sha256(Path('.cache/history-startup/current/SMARTEDTV-universal.apk').read_bytes()).hexdigest()==BASE_SHA
+          r=json.load(open('.cache/history-recovery/budget-before/request-budget-http-before.json'))
+          assert r['historical']['selected'] and not r['current']['selected']
+          assert all(x['kind']=='controlled-real-loopback-HTTP-not-provider' for x in r.values())
+          print('Prova anterior: historico seleciona HTTP lento; atual descarta antes do player. Gate liberado.')
+          PYGATE
+          python3 -m pip install --disable-pip-version-check playwright==1.58.0 imageio-ffmpeg==0.6.0 pillow==12.1.0
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run verify
+      - name: Aplicar apenas orcamento VAST e dispatcher inicial; assinar e auditar
+        run: |
+          set -o pipefail
+          bash tools/build_history_recovery.sh 2>&1 | tee .cache/history-recovery/build.log
+      - name: Comparacao de tres versoes com relogio controlado
+        run: python3 tools/compare_vast_request_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --after .cache/history-recovery/release/SMARTEDTV-universal.apk --out .cache/history-recovery/release/budget-virtual-three-versions.json
+      - name: Comparacao de tres versoes com HTTP local REAL e downloader nativo
+        run: python3 tools/compare_vast_http_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --after .cache/history-recovery/release/SMARTEDTV-universal.apk --out .cache/history-recovery/release/budget-http-three-versions.json
+      - name: Laboratorio posterior, tres chamadas reais novas e matriz completa sem pixels
+        run: |
+          set -o pipefail
+          python3 tools/vast_visual_lab.py --apk .cache/history-recovery/release/SMARTEDTV-universal.apk --out .cache/history-recovery/after/evidence --live --selection --expect-selection 2>&1 | tee .cache/history-recovery/after.log
+      - name: Regressoes do payload nativo completo do mesmo APK
+        run: |
+          set -o pipefail
+          python3 tools/test_stabilized_openings.py --original .cache/history-recovery/after/native-modules -v 2>&1 | tee .cache/history-recovery/full-module-tests.log
+      - name: Print real da consulta ao provedor
+        run: python3 tools/vast_evidence_preview.py .cache/history-recovery 001
+      - name: Print real da selecao de ramo irmao preservada
+        run: python3 tools/vast_evidence_preview.py .cache/history-recovery 020
+      - name: Arquivar evidencias completas para leitura independente
+        run: python3 tools/archive_history_recovery.py .cache/history-recovery
+      - name: Diagnostico em caso de falha
+        if: failure()
+        run: |
+          python3 tools/report_build_diagnostics.py .cache/history-recovery/build.log
+          python3 tools/report_build_diagnostics.py .cache/history-recovery/after.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: SMARTED-history-recovery
+          path: |
+            .cache/history-recovery/release/
+            .cache/history-recovery/*.log
+          compression-level: 0
+          retention-days: 30
+      - name: Publicar apenas prerelease previamente criada com fonte exata
+        if: inputs.publish_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="smarted-recovery-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+          test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+          cd .cache/history-recovery/release
+          sha256sum -c SMARTEDTV-universal.apk.sha256
+          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt INSTALLATION.txt ads_vast-recovery.diff default-recovery.diff startup-before-after.json budget-virtual-three-versions.json budget-http-three-versions.json history-recovery-evidence.zip history-recovery-evidence.zip.sha256
+          gh release edit "$tag" --notes-file INSTALLATION.txt
+          gh release view "$tag" --json url --jq .url

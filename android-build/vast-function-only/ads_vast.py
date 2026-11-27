@@ -22,7 +22,11 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
         from ads_tracking import expand, device_user_agent
         _disparar_eventos([expand(url, error_code=code, user_agent=device_user_agent(xbmc)) for url in errors])
         return {'exibido': False, 'motivo': reason, 'vast_attempt_id': _attempt_id}
-    deadline = _agora() + 8.0
+    # Historical corrected-skin build budgets each HTTP hop independently.
+    # Preserve that 8s transport budget, plus a bounded whole traversal; no sleep,
+    # no root retries and no cooldown/state shared with another opening.
+    request_budget = 8.0
+    deadline = _agora() + request_budget * (PROFUNDIDADE_WRAPPER + 1)
     last = ['no-fill-ou-sem-midia', 303]
 
     def reject(reason, code, branch_errors, depth):
@@ -61,7 +65,7 @@ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
         emit(xbmc, 'vast-request', hop=depth + 1, wrapper=depth > 0)
         try:
             remaining = deadline - _agora()
-            data = baixar_tag(url) if baixar_tag else baixar(url, timeout=remaining)
+            data = baixar_tag(url) if baixar_tag else baixar(url, timeout=min(request_budget, remaining))
         except Exception:
             data = None
         emit(xbmc, 'vast-response', received=data is not None, size=len(data or b''))

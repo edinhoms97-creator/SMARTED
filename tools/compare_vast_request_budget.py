@@ -34,4 +34,6 @@ if __name__=='__main__':
     if a.after:assert r['after']['chain-12s-valid']['selected']
     assert all(case['root_requests']==1 for cases in r.values() for case in cases.values())
     a.out.parent.mkdir(parents=True,exist_ok=True);a.out.write_text(json.dumps(r,indent=2)+'\n')
-    print('::notice title=VAST request budget comparison::'+json.dumps(r))
+    from inspect_vast_history_startup import transfer
+    transfer('VAST request budget chunks',r)
+    print('::notice title=VAST virtual budget summary::'+json.dumps({role:{name:dict(selected=case['selected'],elapsed=case['virtual_elapsed_seconds'],requests=len(case['requests'])) for name,case in cases.items()} for role,cases in r.items()}))

@@ -136,7 +136,7 @@ class NativeSelectionTests(EntryTests):
         def fetch(url):
             self.requests.append(url)
             if url==TAG:return ads(wrapper(NEXT),wrapper(NEXT+'2'))
-            clock[0]=9
+            clock[0]=8*(self.env['PROFUNDIDADE_WRAPPER']+1)+1
             return '<VAST/>'
         result=self.env['exibir'](baixar_tag=fetch)
         self.assertFalse(result['exibido']);self.assertEqual(len(self.requests),2)

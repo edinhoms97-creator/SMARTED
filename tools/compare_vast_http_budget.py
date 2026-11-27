@@ -56,4 +56,6 @@ if __name__=='__main__':
     assert result['historical']['selected'];assert not result['current']['selected']
     if a.after:assert result['after']['selected']
     a.out.parent.mkdir(parents=True,exist_ok=True);a.out.write_text(json.dumps(result,indent=2)+'\n')
-    print('::notice title=VAST actual HTTP budget comparison::'+json.dumps(result))
+    from inspect_vast_history_startup import transfer
+    transfer('VAST HTTP budget chunks',result)
+    print('::notice title=VAST HTTP budget summary::'+json.dumps({role:dict(selected=case['selected'],elapsed=case['elapsed_seconds'],requests=len(case['requests']),timeouts=[r.get('timeout') for r in case['requests']]) for role,case in result.items()}))

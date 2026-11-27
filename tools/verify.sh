@@ -8,6 +8,8 @@ python3 tools/test_minimal_clickadilla.py
 python3 tools/test_delivery_probe.py
 python3 tools/test_stabilized_openings.py
 python3 tools/test_vast_single_function.py
+python3 tools/test_history_recovery.py
+bash -n tools/build_history_recovery.sh
 bash -n tools/build_vast_single_function.sh
 python3 tools/test_confirmed_tracking.py
 python3 tools/test_ads_regressions.py
