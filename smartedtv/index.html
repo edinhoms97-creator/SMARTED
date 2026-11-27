@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="SMARTEDTV — ative seu VIP com um código, assine o plano mensal ou continue gratuitamente com anúncios.">
+  <title>SMARTEDTV — Ativação e assinatura</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <noscript><p style="color:#bcbcbc;font-family:Arial,Helvetica,sans-serif;text-align:center;padding:1rem">Ative o JavaScript para usar a ativação, o compartilhamento e a navegação por controle (D-PAD).</p></noscript>
+
+  <div class="stage">
+    <main class="screen" aria-label="Tela de boas-vindas SMARTEDTV" data-testid="welcome-screen">
+
+      <header class="top">
+        <div class="brand">
+          <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.2v13.6L19 12z"/></svg></div>
+          <div>
+            <h1>SMARTEDTV</h1>
+            <p>Ativação e assinatura</p>
+          </div>
+        </div>
+        <div class="seg" aria-label="Aparelho">
+          <button type="button" aria-selected="true" data-testid="device-android-tv-button">Android TV</button>
+          <button type="button" aria-selected="false" data-testid="device-mobile-button">Celular</button>
+        </div>
+      </header>
+
+      <section class="grid">
+        <article class="card welcome" data-testid="welcome-card" aria-labelledby="welcome-title">
+          <div class="eyebrow">BEM-VINDO</div>
+          <h3 id="welcome-title">
+            <span class="line"><span>Sua TV,</span></span>
+            <span class="line"><span>do seu jeito.</span></span>
+          </h3>
+          <p>Ative o VIP com um código ou continue gratuitamente com anúncios.</p>
+          <ul class="list" data-testid="benefit-list">
+            <li><span class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></span>Canais ao vivo, sem travar</li>
+            <li><span class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></span>Sem anúncios com o VIP ativo</li>
+            <li><span class="tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></span>Ativação em poucos segundos</li>
+          </ul>
+          <div class="btn-stack welcome-actions">
+            <button class="btn ghost" type="button" id="atualizar" data-testid="update-app-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.9-6.6"/><path d="M21 3v6h-6"/></svg>
+              ATUALIZAR APLICATIVO
+            </button>
+          </div>
+        </article>
+
+        <article class="card" data-testid="checkout-card" aria-labelledby="checkout-title">
+          <div class="card-head">
+            <h2 id="checkout-title">Sem anúncios</h2>
+            <span class="chip">Plano mensal</span>
+          </div>
+          <div class="qr-wrap">
+            <div class="qr-plate">
+              <img src="assets/qr-checkout.png" alt="QR Code para abrir o checkout da assinatura mensal" width="396" height="396" data-testid="checkout-qr-image">
+            </div>
+          </div>
+          <p class="hint">Aponte a câmera de outro celular.<br>Valor e condições aparecem no checkout.</p>
+          <button class="btn ghost" type="button" id="checkout" data-testid="open-checkout-button">Abrir checkout</button>
+        </article>
+
+        <article class="card" data-testid="referral-card" aria-labelledby="referral-title">
+          <div class="card-head">
+            <h2 id="referral-title">Indique e ganhe</h2>
+            <span class="chip">Compartilhar</span>
+          </div>
+          <div class="qr-wrap">
+            <div class="qr-plate">
+              <img src="assets/qr-apk.png" alt="QR Code para compartilhar e baixar o aplicativo Android" width="588" height="588" data-testid="referral-qr-image">
+            </div>
+          </div>
+          <p class="hint">Aponte a câmera e envie o link<br>do app a quem quiser.</p>
+          <div class="btn-stack">
+            <button class="btn ghost" type="button" id="share" data-testid="share-link-button">Compartilhar link</button>
+            <button class="btn quiet" type="button" id="baixar-apk" data-testid="download-apk-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+              Baixar APK (Android)
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <footer class="bar" data-testid="activation-bar">
+        <div class="bar-copy">
+          <h3>Já é assinante? Ative seu VIP</h3>
+          <p>Digite o código que você recebeu.</p>
+        </div>
+        <div class="bar-form">
+          <div class="plan" role="group" aria-label="Plano do código">
+            <button type="button" data-plan="10min" aria-pressed="true" data-testid="plan-10min-button">10 min</button>
+            <button type="button" data-plan="1month" aria-pressed="false" data-testid="plan-1month-button">1 mês</button>
+          </div>
+          <span class="field-wrap">
+            <label class="sr-only" for="codigo">Código de ativação</label>
+            <input class="field" id="codigo" data-testid="activation-code-input" placeholder="Código de ativação"
+                   autocomplete="off" spellcheck="false" aria-describedby="codigo-error">
+            <span class="field-error" id="codigo-error" role="alert" data-testid="code-error" hidden>Digite seu código para ativar.</span>
+          </span>
+          <button class="btn primary" type="button" id="ativar" data-testid="activate-code-button">Ativar</button>
+        </div>
+        <div class="divider" role="presentation"></div>
+        <button class="btn quiet" type="button" id="gratis" data-testid="ads-continue-button">Continuar com anúncios</button>
+      </footer>
+
+      <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ads-title" data-testid="ads-dialog">
+        <div class="dialog">
+          <h4 id="ads-title">Continuar com anúncios?</h4>
+          <p>Você vai ver anúncios durante o uso. Para removê-los, assine pelo checkout ou ative um código VIP quando quiser.</p>
+          <div class="row">
+            <button class="btn quiet" type="button" id="voltar" data-testid="ads-cancel-button">Voltar</button>
+            <button class="btn primary" type="button" id="seguir" data-testid="ads-confirm-button">Continuar com anúncios</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay" id="overlay-status" role="dialog" aria-modal="true" aria-labelledby="status-title" data-testid="status-dialog">
+        <div class="dialog">
+          <h4 id="status-title" data-testid="status-dialog-title"></h4>
+          <p id="status-text" data-testid="status-dialog-text"></p>
+          <div class="row">
+            <button class="btn primary" type="button" id="status-ok" data-testid="status-dialog-ok">Entendi</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast-wrap" id="toast-region" role="region" aria-live="polite" data-testid="toast-region"></div>
+    </main>
+
+    <div class="legend" data-testid="legend" aria-label="Android TV, 16 por 9, tela única sem rolagem, setas e Enter navegam pelo D-PAD">
+      <div class="legend-track">
+        <span>ANDROID TV&nbsp;&nbsp;·&nbsp;&nbsp;16:9&nbsp;&nbsp;·&nbsp;&nbsp;TELA ÚNICA, SEM ROLAGEM&nbsp;&nbsp;·&nbsp;&nbsp;SETAS / ENTER NAVEGAM (D-PAD)&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+        <span aria-hidden="true">ANDROID TV&nbsp;&nbsp;·&nbsp;&nbsp;16:9&nbsp;&nbsp;·&nbsp;&nbsp;TELA ÚNICA, SEM ROLAGEM&nbsp;&nbsp;·&nbsp;&nbsp;SETAS / ENTER NAVEGAM (D-PAD)&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/services.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

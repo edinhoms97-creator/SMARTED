@@ -1,0 +1,15 @@
+# Downloaded originals from Dropbox (kept locally, distributed via Dropbox links)
+dropbox/
+
+# Android binaries — distributed via Dropbox, never committed (263 MB)
+*.apk
+*.aab
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db

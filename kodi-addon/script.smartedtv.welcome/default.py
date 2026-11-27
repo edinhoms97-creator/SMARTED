@@ -1,0 +1,74 @@
+# -*- coding: utf-8 -*-
+"""Janela independente de boas-vindas do SMARTEDTV para Kodi Omega 21.
+
+Esta tela é somente a camada visual. A validação VIP, o compartilhamento
+nativo e a continuidade do fluxo gratuito precisam ser conectados às funções
+existentes do SMARTEDTV quando este módulo for integrado ao addon principal.
+"""
+import xbmc
+import xbmcgui
+import xbmcaddon
+import os
+
+
+class WelcomeDialog(xbmcgui.WindowXMLDialog):
+    def __init__(self, *args, **kwargs):
+        super(WelcomeDialog, self).__init__(*args, **kwargs)
+        self._closing = False
+
+    def onInit(self):
+        # Mantém o foco inicial no campo de código, como no HTML de referência.
+        try:
+            self.setFocusId(310)
+        except Exception:
+            pass
+
+    def onClick(self, control_id):
+        if control_id == 312:
+            self.setProperty("show_free_dialog", "true")
+            try:
+                self.setFocusId(905)
+            except Exception:
+                pass
+        elif control_id == 905:
+            self.clearProperty("show_free_dialog")
+            try:
+                self.setFocusId(312)
+            except Exception:
+                pass
+        elif control_id == 906:
+            # A confirmação visual é fechada. O addon principal deve assumir
+            # aqui a navegação para o modo gratuito com anúncios.
+            self.close()
+        elif control_id in (120, 121, 311):
+            # Sem integração com checkout, share ou API VIP nesta janela isolada:
+            # não simula sucesso nem validações.
+            return
+
+    def onAction(self, action):
+        if action in (xbmcgui.ACTION_NAV_BACK, xbmcgui.ACTION_PREVIOUS_MENU):
+            if self.getProperty("show_free_dialog") == "true":
+                self.clearProperty("show_free_dialog")
+                try:
+                    self.setFocusId(312)
+                except Exception:
+                    pass
+                return
+            self.close()
+
+
+def open_welcome():
+    addon = xbmcaddon.Addon()
+    addon_path = addon.getAddonInfo("path")
+    dialog = WelcomeDialog(
+        "DialogWelcome.xml",
+        addon_path,
+        "Default",
+        "1080i"
+    )
+    dialog.doModal()
+    del dialog
+
+
+if __name__ == "__main__":
+    open_welcome()
