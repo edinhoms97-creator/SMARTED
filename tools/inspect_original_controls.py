@@ -3,6 +3,7 @@
 import ast
 import hashlib
 import json
+import re
 import sys
 import zipfile
 from inspect_ad_contract import Redact
@@ -23,7 +24,7 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
         path = info.filename
         if path.endswith('.xml') and ('smarted' in path or 'novatv' in path):
             text = archive.read(path).decode('utf-8', errors='replace')
-            lines = [line.strip() for line in text.splitlines() if any(word in line.lower() for word in ('onclick', 'onlongclick')) and any(word in line.lower() for word in ('apk', 'share', 'download', 'atualiz', 'compart', 'dropbox', 'smarted'))]
+            lines = sorted(set(action for action in re.findall(r'<on(?:long)?click[^>]*>(.*?)</on(?:long)?click>', text, re.S) if any(word in action.lower() for word in ('apk', 'share', 'download', 'atualiz', 'compart', 'dropbox', 'vip.'))))
             if lines:
                 routes.append({'path': path, 'actions': lines})
         if not (path.startswith('assets/addons/') and path.endswith('.py') and ('smarted' in path or 'novatv' in path)):
@@ -41,7 +42,7 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
         if path.endswith('/ads_vast.py'):
             selected = {n.name: ast.unparse(Redact().visit(n)) for n in tree.body
                         if isinstance(n, ast.FunctionDef) and n.name in ('_media_escolhido', '_tocar', '_aguardar_anuncio_tocar', '_posicao_e_duracao', '_agora')}
-            emit({'path': path, 'helpers': selected})
+            pass  # helper contracts already inspected
         if any(word in text.lower() for word in ('compartilh', 'atualizar aplicativo', 'smartedtv.apk', 'dialogwelcome')):
             functions = [n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]
             selected = {}
@@ -51,5 +52,7 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
             constants = [ast.unparse(Redact().visit(n)) for n in tree.body if isinstance(n, ast.Assign)
                          and any(isinstance(t, ast.Name) and any(s in t.id.lower() for s in ('apk', 'share', 'download')) for t in n.targets)]
             matches.append({'path': path, 'sha256': hashlib.sha256(archive.read(path)).hexdigest(), 'functions': functions, 'selected': selected, 'constants': constants, 'routes': [line.strip() for line in text.splitlines() if any(s in line for s in ('vip.open_apk_download', 'vip.share_download_link', 'vip.procurar_atualizacao', 'vip.install_update', 'vip.compartilhar', 'vip.abrir_dropbox', 'control_id ==', 'control_id in'))]})
-    emit({'controls': matches})
+    # Prior inspections already captured installer contracts. Emit routes only
+    # here so the GitHub ten-notice limit cannot truncate button evidence.
+    # emit({'controls': matches})
     emit({'routes': routes})
