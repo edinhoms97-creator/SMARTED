@@ -15,7 +15,7 @@ from urllib.request import Request, urlopen
 SAMPLES = ('big_buck_bunny.mp4', 'echo-hereweare.mp4')
 
 
-def run_cycles(adb, evidence):
+def run_cycles(adb, evidence, apk=None):
     evidence = Path(evidence)
     evidence.mkdir(parents=True, exist_ok=True)
     def command(*args, timeout=30):
@@ -43,6 +43,49 @@ def run_cycles(adb, evidence):
               'sample_repository': 'https://github.com/mediaelement/mediaelement-files',
               'sample_downloads': [], 'cycle_blocker': None}
     try:
+        if apk:
+            import zipfile
+            import xml.etree.ElementTree as ET
+            controls = []
+            with zipfile.ZipFile(apk) as archive:
+                for name in archive.namelist():
+                    if not (name.startswith('assets/addons/script.smartedtv.welcome/') and name.endswith('.xml')):
+                        continue
+                    try:
+                        root = ET.fromstring(archive.read(name))
+                    except ET.ParseError:
+                        continue
+                    for node in root.iter('control'):
+                        if node.get('id') in ('312', '905', '906'):
+                            controls.append(dict(file=name, id=node.get('id'), type=node.get('type'),
+                                                 values={child.tag: child.text for child in node if child.tag in ('label', 'left', 'top', 'posx', 'posy', 'width', 'height', 'onleft', 'onright')}))
+            result['welcome_control_layout'] = controls
+        # Cold ARM translation can finish startup AFTER the initial wait. Wait
+        # for a real bootstrap milestone AND the original two QR cards before
+        # tapping; a successful ADB tap alone never proves the welcome was ready.
+        import io
+        from PIL import Image
+        ready = False
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline:
+            _, startup = command('logcat', '-d', '-v', 'brief')
+            if 'sem pop-up de abertura em video na Home' in startup:
+                frame = subprocess.run([adb, '-s', 'emulator-5554', 'exec-out', 'screencap', '-p'], capture_output=True, timeout=20)
+                image = Image.open(io.BytesIO(frame.stdout)).convert('L')
+                w, h = image.size
+                fractions = []
+                for left, top, right, bottom in ((.43, .32, .56, .58), (.75, .31, .90, .57)):
+                    crop = image.crop((int(left*w), int(top*h), int(right*w), int(bottom*h)))
+                    hist = crop.histogram()
+                    fractions.append(sum(hist[180:]) / (crop.width*crop.height))
+                if all(value > .12 for value in fractions):
+                    ready = True
+                    break
+            time.sleep(2)
+        result['welcome_ready_observed'] = ready
+        if not ready:
+            result['cycle_blocker'] = 'original-welcome-not-ready-for-free-choice'
+            return result
         # Original welcome control 312, "Assistir com anuncios", left card.
         # Fixed AVD resolution 960x540; never tap QR/VIP/payment/activation controls.
         result['welcome_free_tap'] = command('shell', 'input', 'tap', '148', '420')[0]

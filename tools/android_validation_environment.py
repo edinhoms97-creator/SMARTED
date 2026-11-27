@@ -146,7 +146,7 @@ def prepare(report, sdk, apk):
             evidence.mkdir(parents=True, exist_ok=True)
             if os.environ.get('ANDROID_CONTENT_CYCLES') == 'true':
                 from android_content_cycles import run_cycles
-                report.update(run_cycles(tools['adb'], evidence))
+                report.update(run_cycles(tools['adb'], evidence, apk))
             for name, args in (
                 ('ui.xml', ['shell', 'uiautomator', 'dump', '/sdcard/smarted-ui.xml']),
                 ('activities.txt', ['shell', 'dumpsys', 'activity', 'activities']),
