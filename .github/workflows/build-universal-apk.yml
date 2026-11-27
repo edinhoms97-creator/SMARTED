@@ -4,6 +4,10 @@ run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
+      delivery_probe:
+        description: 'Inspecao: duas tentativas sem pixels, fonte original e Clickadilla; decode CPU se houver criativo'
+        type: boolean
+        default: false
       minimal_clickadilla:
         description: 'Original Dropbox: somente tag Clickadilla + tracking, sem os patches anteriores de player'
         type: boolean
@@ -70,10 +74,16 @@ jobs:
           path: .cache/smartedtv-signing
           key: smartedtv-test-debug-key-v1
       - name: Inspecao somente leitura dos botoes e helpers
-        if: inputs.inspect_only
+        if: inputs.inspect_only && !inputs.delivery_probe
         run: |
           python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk --report .cache/base-identity.json
           python3 tools/inspect_resume_contract.py .cache/smartedtv-base/base.apk
+      - name: Comparar entrega original e Clickadilla sem pixels (duas tentativas)
+        if: inputs.inspect_only && inputs.delivery_probe
+        run: |
+          python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk --report .cache/base-identity.json
+          python3 -m pip install --disable-pip-version-check --no-deps imageio-ffmpeg==0.6.0
+          python3 tools/probe_ad_delivery.py .cache/smartedtv-base/base.apk --report .cache/delivery-probe.json
       - name: Empacotar somente anuncios; verificar todos os outros arquivos
         if: ${{ !inputs.inspect_only }}
         run: bash tools/build-universal-apk.sh
