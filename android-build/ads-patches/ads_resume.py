@@ -99,6 +99,26 @@ def capture(state, player, kodi, gui=None):
     def add(url, listitem=None, properties=None, mime='', label=''):
         if direct_stream(url) and url not in seen:
             seen.add(url)
+            # Kodi's getPlayingItem() copies CFileItem.m_strDynPath.
+            # ListItem.setPath() and Player.play(url, item) only change Path,
+            # not DynPath: reusing that native item for another URL would
+            # silently replay the expired primary/proxy instead of fallback.
+            if listitem is item and item is not None and url != result.get('caminho'):
+                copied = dict(properties or {})
+                for name in ('inputstream', 'inputstreamaddon',
+                             'inputstream.adaptive.manifest_type',
+                             'inputstream.adaptive.manifest_headers',
+                             'inputstream.adaptive.stream_headers',
+                             'inputstream.adaptive.license_type',
+                             'inputstream.adaptive.license_key',
+                             'inputstream.adaptive.license_flags'):
+                    try:
+                        value = item.getProperty(name)
+                        if value:
+                            copied.setdefault(name, value)
+                    except Exception:
+                        pass
+                properties, listitem = copied, None
             streams.append({'url': url, 'listitem': listitem, 'properties': properties or {},
                             'mime': mime, 'label': label})
     add(result.get('caminho'), item)

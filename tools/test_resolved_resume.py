@@ -134,6 +134,18 @@ class Tests(unittest.TestCase):
         return {'url':SECOND,'resolved':True,'content_id':'movie-one',
                 'properties':{'inputstream.adaptive.stream_headers':'Referer=backup'}}
 
+    def test_proxy_real_url_uses_fresh_item_without_stale_native_dynpath(self):
+        r = Runtime()
+        state = resume.capture({'caminho': PRIMARY, 'url_real': SECOND, 'posicao': 42.125},
+                                    r.Player(), r.kodi, r.gui)
+        self.assertIs(state['resolved_streams'][0]['listitem'], r.item)
+        self.assertIsNone(state['resolved_streams'][1]['listitem'])
+        r.fail.add(PRIMARY)
+        self.assertTrue(resume.restore(state, r.kodi, r.gui, sleep=r.sleep, clock=lambda:r.now))
+        self.assertEqual(r.file, SECOND)
+        self.assertIsNot(r.opens[-1][1], r.item)
+        self.assertEqual(r.opens[-1][1].getProperty('inputstream'), 'inputstream.adaptive')
+
     def test_snapshot_retains_exact_url_listitem_headers_metadata_and_timestamp(self):
         r = Runtime()
         state = r.snapshot()

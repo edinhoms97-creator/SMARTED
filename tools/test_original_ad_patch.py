@@ -169,6 +169,7 @@ class Tests(unittest.TestCase):
                 Player.current += seconds
         self.env['_agora'] = lambda: clock[0]
         Player.current = 0
+        Player.file = 'https://media.invalid/vod.mp4'
         self.assertTrue(self.env['restaurar']({'caminho': 'https://media.invalid/vod.mp4', 'posicao': 42.125}, dormir=sleep))
         self.assertGreaterEqual(Player.current, 42.125)
         self.assertLess(Player.current, 43.7)
