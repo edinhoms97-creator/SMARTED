@@ -1,0 +1,18 @@
+name: Inspecionar contratos originais de botoes (somente leitura)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .cache/smartedtv-base
+          key: smartedtv-base-dropbox-03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277
+      - run: python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk --report .cache/base-identity.json
+      - name: Helpers do player e acoes dos botoes
+        run: python3 tools/inspect_original_controls.py .cache/smartedtv-base/base.apk
