@@ -405,7 +405,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test '${{ inputs.vast_function_lab }}' = baseline || test '${{ inputs.vast_function_lab }}' = release
+          test '${{ inputs.vast_function_lab }}' = baseline || test '${{ inputs.vast_function_lab }}' = release || test '${{ inputs.vast_function_lab }}' = selector-baseline
           mkdir -p .cache/vast-lab/base
           gh release download smarted-original-ads-46074593488-1 --pattern SMARTEDTV-universal.apk --dir .cache/vast-lab/base
           echo '2b64c443f42902cb07031db1106137a59d852ae39bb8fbd8b9379b8a6d2682bc  .cache/vast-lab/base/SMARTEDTV-universal.apk' | sha256sum -c -
@@ -420,7 +420,22 @@ jobs:
           set -o pipefail
           extra=()
           if [[ '${{ inputs.vast_function_lab }}' == baseline ]]; then extra+=(--live); fi
-          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/base/SMARTEDTV-universal.apk --out .cache/vast-lab/baseline/evidence "${extra[@]}" 2>&1 | tee .cache/vast-lab/lab.log
+          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/base/SMARTEDTV-universal.apk --out .cache/vast-lab/baseline/evidence --selection "${extra[@]}" 2>&1 | tee .cache/vast-lab/lab.log
+      - name: Leitura exata dos helpers de selecao, sem alteracao
+        run: |
+          python3 - <<'PYSELECT'
+          import ast,base64,gzip,json,zipfile
+          with zipfile.ZipFile('.cache/vast-lab/base/SMARTEDTV-universal.apk') as z:
+              s=z.read('assets/addons/service.smarted.bootstrap/ads_vast.py').decode()
+          names={'_media_escolhido','tag_do_wrapper','tag_do_vmap','sem_namespace','escolher_anuncio','_urls_de_evento','_urls_de_impressao','_duracao','_segundos','_inteiro','_texto'}
+          functions={n.name:ast.get_source_segment(s,n) for n in ast.parse(s).body if isinstance(n,ast.FunctionDef) and n.name in names}
+          data=base64.b64encode(gzip.compress(json.dumps(functions).encode())).decode()
+          for i in range(0,len(data),3500):
+              print('::notice title=VAST exact selection helpers::'+json.dumps({'part':i//3500,'total':(len(data)+3499)//3500,'data':data[i:i+3500]}))
+          summary=json.load(open('.cache/vast-lab/baseline/evidence/summary.json'))
+          for a in summary['attempts'][9:]:
+              print(a['label'],a.get('selection_matches_expectation'),a.get('media'),a['receipt'])
+          PYSELECT
       - name: Alterar SOMENTE exibir e assinar com certificado conferido
         if: inputs.vast_function_lab == 'release'
         run: |

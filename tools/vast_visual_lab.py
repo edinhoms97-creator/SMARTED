@@ -72,8 +72,9 @@ def read_module(apk, work):
 
 
 class Lab:
-    def __init__(self, apk, out, browser, live):
+    def __init__(self, apk, out, browser, live, selection=False, expect_selection=False):
         self.out,self.browser,self.live = out,browser,live
+        self.selection,self.expect_selection=selection,expect_selection
         out.mkdir(parents=True,exist_ok=True)
         self.env,self.kodi=read_module(apk,out.parent/'native-modules')
         self.results=[]
@@ -135,11 +136,13 @@ class Lab:
             if self.current['mode']=='fixture-timeout':raise TimeoutError('controlled fixture')
             if self.current['mode'].startswith('fixture'):
                 import io
-                data=self.fixture_body.encode()
+                body=self.fixture_body.get(url) if isinstance(self.fixture_body,dict) else self.fixture_body
+                if body is None:raise URLError('unmapped controlled URL')
+                data=body.encode()
                 class Response(io.BytesIO):
                     status=200;headers={'Content-Type':'application/xml'}
                     def getcode(self):return 200
-                    def geturl(self):return TAG
+                    def geturl(self):return url
                 response=Response(data)
             else:
                 response=self.real_open(request,**kwargs)
@@ -237,6 +240,20 @@ class Lab:
             self.attempt(9,'New call AFTER empty/error/timeout, same module process','fixture-valid',INLINE)
             assert all(r.get('browser_playback',{}).get('current_time',0)>0 and not r['browser_playback']['error'] for r in self.results if r['mode']=='fixture-valid'), 'Controlled test pattern did not play'
             assert self.results[-1].get('media'), 'Previous empty/failure blocked new call inside exibir'
+            if self.selection:
+                from vast_selection_cases import CASES
+                for number,case in enumerate(CASES,10):
+                    result=self.attempt(number,case['name'],'fixture-selection',case['pages'])
+                    actual=bool(result.get('media'))
+                    result['selection_expected']=case['selected']
+                    result['selection_matches_expectation']=actual==case['selected']
+                    if actual and case.get('duration') is not None:
+                        result['selection_matches_expectation'] &= result['media']['duracao']==case['duration']
+                    self.save()
+                mismatches=[r['label'] for r in self.results if r.get('selection_matches_expectation') is False]
+                self.event('selection-matrix-complete',mismatches=mismatches)
+                if self.expect_selection:assert not mismatches, 'Selection failures: '+str(mismatches)
+
             assert all(r['requests'] for r in self.results), 'A direct exibir call skipped HTTP'
             summary={'utc':now(),'tag':TAG,'real_root_calls':3 if self.live else 0,
                      'scope':'Production exibir/baixar/parser; native player not executed; browser is lab-only; tracking suppressed',
@@ -257,12 +274,12 @@ class Lab:
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--apk',type=Path,required=True);p.add_argument('--out',type=Path,required=True);p.add_argument('--live',action='store_true');args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--apk',type=Path,required=True);p.add_argument('--out',type=Path,required=True);p.add_argument('--live',action='store_true');p.add_argument('--selection',action='store_true');p.add_argument('--expect-selection',action='store_true');args=p.parse_args()
     from playwright.sync_api import sync_playwright
     with sync_playwright() as pw:
         executable=shutil.which('google-chrome') or shutil.which('chromium')
         browser=pw.chromium.launch(executable_path=executable,headless=True,args=['--no-sandbox'])
-        try:Lab(args.apk,args.out,browser,args.live).run()
+        try:Lab(args.apk,args.out,browser,args.live,args.selection,args.expect_selection).run()
         finally:browser.close()
 
 if __name__=='__main__':main()
