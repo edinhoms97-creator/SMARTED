@@ -142,14 +142,7 @@ def run_cycles(adb, evidence, apk=None):
                     normalize = lambda text: ' '.join(re.sub(r'\[[^]]+\]', '', text).casefold().split())
                     navigation.append(label)
                     if normalize(label) == normalize(expected) and expected:
-                        rpc('Input.Select')
-                        time.sleep(2)
-                        after = ((gui() or {}).get('currentcontrol') or {}).get('label') or ''
-                        if normalize(after) == normalize(label):
-                            # Focus was observed, but RPC dispatch alone is not
-                            # proof of activation. Send the real remote OK key.
-                            command('shell', 'input', 'keyevent', 'KEYCODE_DPAD_CENTER')
-                            time.sleep(2)
+                        result.setdefault('welcome_select_responses', []).append(rpc('Input.Select'))
                         return True
                     rpc('Input.Right')
                     if index > 1 and navigation[-1] == navigation[-2]:
@@ -161,9 +154,37 @@ def run_cycles(adb, evidence, apk=None):
                 result['welcome_navigation'] = navigation
                 result['cycle_blocker'] = 'original-free-welcome-focus-not-reached'
                 return result
-            time.sleep(2)
-            result['welcome_continue_906_observed'] = select_existing(906)
+            def wait_click(target, seconds=18):
+                until = time.monotonic() + seconds
+                while time.monotonic() < until:
+                    _, native = command('exec-out', 'cat', '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/temp/kodi.log')
+                    if 'control_id=' + str(target) in native:
+                        return True
+                    time.sleep(.5)
+                return False
+            # Never send a second OK based on a stale focus label: it can
+            # activate the notice's default Back button and close it again.
+            clicked = wait_click(312)
+            if not clicked:
+                command('shell', 'input', 'tap', *button_center(312))
+                clicked = wait_click(312)
+            result['welcome_312_callback_confirmed'] = clicked
+            result['welcome_continue_906_observed'] = False
+            if clicked:
+                # The Python handler logs BEFORE the modal is painted.
+                # Let focus reach the notice without issuing another Select.
+                deadline = time.monotonic() + 15
+                expected_labels = {next(item['values']['label'] for item in controls if item['id'] == str(i)).casefold() for i in (905, 906)}
+                while time.monotonic() < deadline:
+                    label = ((gui() or {}).get('currentcontrol') or {}).get('label') or ''
+                    if label.casefold() in expected_labels:
+                        break
+                    time.sleep(.5)
+                if select_existing(906):
+                    result['welcome_continue_906_observed'] = wait_click(906)
             result['welcome_navigation'] = navigation
+            _, native = command('exec-out', 'cat', '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/temp/kodi.log')
+            result['welcome_callback_diagnostics'] = [line for line in native.splitlines() if 'onClick recebido' in line or 'Botao 312' in line][-12:]
         else:
             free_x, free_y = button_center(312)
             result['welcome_free_button_center'] = [free_x, free_y]
