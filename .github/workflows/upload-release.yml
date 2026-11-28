@@ -7,6 +7,9 @@ on:
       - 'release-parts/**'
       - '.github/workflows/upload-release.yml'
 
+permissions:
+  contents: write
+
 jobs:
   upload:
     runs-on: ubuntu-latest
@@ -18,8 +21,12 @@ jobs:
       - name: Reassemble APK
         run: |
           cat release-parts/SMARTEDTV-universal.apk.part.* > SMARTEDTV-universal.apk
-          echo "Size: $(stat -c%s SMARTEDTV-universal.apk)"
-          echo "Expected: 259710320"
+          SIZE=$(stat -c%s SMARTEDTV-universal.apk)
+          echo "Size: $SIZE"
+          if [ "$SIZE" != "259710320" ]; then
+            echo "Size mismatch! Expected 259710320, got $SIZE"
+            exit 1
+          fi
 
       - name: Verify SHA256
         run: |
@@ -33,18 +40,8 @@ jobs:
           echo "SHA256 OK"
 
       - name: Upload to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Token present: ${GH_TOKEN:+yes}"
           gh release upload vast-fix-1508180 SMARTEDTV-universal.apk --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cleanup parts
-        run: |
-          rm -rf release-parts/
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A release-parts/
-          git diff --staged --quiet || git commit -m "chore: remove APK parts after successful upload"
-          git push || echo "Push failed (non-critical)"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
