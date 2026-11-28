@@ -241,6 +241,10 @@ jobs:
           if [[ -e /dev/kvm ]]; then sudo chmod a+rw /dev/kvm; fi
           mkdir -p .cache/android-validation
           gh release download "$RELEASE_TAG" --pattern SMARTEDTV-universal.apk --dir .cache/android-validation
+          if [[ "$RELEASE_TAG" == smarted-content-* ]]; then
+            mkdir -p .cache/android-validation/upgrade-base
+            gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/android-validation/upgrade-base
+          fi
       - name: Testar payload estabilizado exato antes dos ciclos Android
         if: inputs.android_cycles
         run: |
@@ -263,8 +267,13 @@ jobs:
           ANDROID_CONTENT_CYCLES: ${{ inputs.android_cycles }}
           ANDROID_STARTUP_TRACE: true
         run: |
+          APK=.cache/android-validation/SMARTEDTV-universal.apk
+          if [[ -f .cache/android-validation/upgrade-base/SMARTEDTV-universal.apk ]]; then
+            export ANDROID_CONTENT_UPGRADE_TO="$PWD/$APK"
+            APK=.cache/android-validation/upgrade-base/SMARTEDTV-universal.apk
+          fi
           python3 tools/android_validation_environment.py --prepare \
-            --apk .cache/android-validation/SMARTEDTV-universal.apk \
+            --apk "$APK" \
             --report .cache/android-validation/result.json
       - name: Guardar resultado real, inclusive limitacoes
         if: always()

@@ -165,6 +165,19 @@ def prepare(report, sdk, apk):
             if startup_stop is not None:
                 startup_stop.set()
                 startup_thread.join(timeout=25)
+            # Optional content-only upgrade audit: leave the seeded profile intact.
+            upgrade_to = os.environ.get('ANDROID_CONTENT_UPGRADE_TO')
+            if upgrade_to:
+                report['content_upgrade_base_sha256'] = report['apk_sha256']
+                report['content_profile_before_upgrade'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'ls', '-l', '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/plugin.video.BrazucaPlay.Matrix/default.py'])
+                execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'am', 'force-stop', 'smartedtv.full'])
+                report['content_upgrade_install'] = execute([tools['adb'], '-s', 'emulator-5554', 'install', '-r', '-g', upgrade_to], timeout=100)
+                if report['content_upgrade_install']['code'] != 0:
+                    raise RuntimeError('Content upgrade installation failed')
+                apk = Path(upgrade_to)
+                report['apk_sha256'] = hashlib.sha256(apk.read_bytes()).hexdigest()
+                report['content_upgrade_launch'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'am', 'start', '-W', '-n', 'smartedtv.full/smartedtv.full.Splash'], timeout=60)
+                time.sleep(120)
             evidence = Path('.cache/android-validation')
             evidence.mkdir(parents=True, exist_ok=True)
             if os.environ.get('ANDROID_CONTENT_CYCLES') == 'true':
@@ -223,6 +236,13 @@ def prepare(report, sdk, apk):
                 for name in names:
                     actual = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'sha256sum', root+'/'+name], timeout=10)
                     report['runtime_ad_module_sha256'][root+'/'+name] = actual
+            if upgrade_to:
+                prefix = 'assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/'
+                profile = '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/plugin.video.BrazucaPlay.Matrix/'
+                with zipfile.ZipFile(apk) as archive:
+                    report['content_expected_sha256'] = {name: hashlib.sha256(archive.read(prefix+name)).hexdigest() for name in ('default.py','content_network.py')}
+                report['content_runtime_sha256'] = {name: execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'sha256sum', profile+name]) for name in ('default.py','content_network.py')}
+                report['content_upgrade_delivered'] = all(row['code']==0 and row['output'].startswith(report['content_expected_sha256'][name]) for name,row in report['content_runtime_sha256'].items())
             native_log = '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/temp/kodi.log'
             contents = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'exec-out', 'cat', native_log], capture_output=True, timeout=30)
             if contents.returncode == 0:
