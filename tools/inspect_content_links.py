@@ -61,6 +61,10 @@ def delivery():
         for name in ('assets/addons/service.smarted.bootstrap/menu_smarted.py','assets/addons/service.smarted.bootstrap/service.py'):
             source=z.read(name).decode();tree=ast.parse(source)
             result['sources'][name]={n.name:ast.get_source_segment(source,n) for n in tree.body if isinstance(n,ast.FunctionDef) and any(t in ast.get_source_segment(source,n) for t in ('BrazucaPlay','brazuca','smarted/profile')) and len(ast.get_source_segment(source,n))<18000}
+        result['payload_inventory']=[dict(path=n,bytes=z.getinfo(n).file_size) for n in z.namelist() if '/payload/' in n]
+        service=z.read('assets/addons/service.smarted.bootstrap/service.py').decode()
+        result['repair_sources']={n.name:ast.get_source_segment(service,n) for n in ast.parse(service).body if isinstance(n,ast.FunctionDef) and n.name in ('run_repair','repair_until_ready')}
+        result['service_imports']=[ast.unparse(n) for n in ast.parse(service).body if isinstance(n,(ast.Import,ast.ImportFrom))]
         transfer('Content addon deployment',result)
 
 def emit(kind):
