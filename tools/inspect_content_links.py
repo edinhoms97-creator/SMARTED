@@ -55,6 +55,14 @@ def main():
             (a.out/('source-'+str(index)+'.json')).write_text(json.dumps(dict(path=name,source=s),ensure_ascii=False))
             # Split source by line boundaries, retaining exact string reconstruction.
             for part in range(0,min(len(s),18000),18000):transfer('Content source '+str(index)+' segment '+str(part//18000),dict(path=name,offset=part,source=s[part:part+18000]))
+def delivery():
+    with zipfile.ZipFile('.cache/content-links/base/SMARTEDTV-universal.apk') as z:
+        result={'addon_xml':z.read('assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/addon.xml').decode(),'sources':{}}
+        for name in ('assets/addons/service.smarted.bootstrap/menu_smarted.py','assets/addons/service.smarted.bootstrap/service.py'):
+            source=z.read(name).decode();tree=ast.parse(source)
+            result['sources'][name]={n.name:ast.get_source_segment(source,n) for n in tree.body if isinstance(n,ast.FunctionDef) and any(t in ast.get_source_segment(source,n) for t in ('BrazucaPlay','brazuca','smarted/profile')) and len(ast.get_source_segment(source,n))<18000}
+        transfer('Content addon deployment',result)
+
 def emit(kind):
     folder=Path('.cache/content-links/inspection')
     filename='plugin.video.BrazucaPlay.Matrix-'+('codec.py' if kind=='dns' else 'default.py')+'.decoded'
@@ -67,5 +75,6 @@ def emit(kind):
     (folder/(kind+'.json')).write_text(json.dumps(result,indent=2)+'\n')
     transfer('Content '+kind,result)
 if __name__=='__main__':
-    if len(sys.argv)>1 and sys.argv[1]=='emit':emit(sys.argv[2])
+    if len(sys.argv)>1 and sys.argv[1]=='delivery':delivery()
+    elif len(sys.argv)>1 and sys.argv[1]=='emit':emit(sys.argv[2])
     else:main()

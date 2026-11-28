@@ -694,6 +694,8 @@ jobs:
           gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-links/base
       - name: Locate exact error and content resolver code
         run: python3 tools/inspect_content_links.py .cache/content-links/base/SMARTEDTV-universal.apk --out .cache/content-links/inspection
+      - name: Inspect only existing content addon delivery and runtime repairs
+        run: python3 tools/inspect_content_links.py delivery
       - name: Inspect content HTTP functions
         run: python3 tools/inspect_content_links.py emit transport
       - name: Inspect existing addon DNS behavior
