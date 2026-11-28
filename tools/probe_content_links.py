@@ -54,12 +54,13 @@ def main():
             video_id=url.rstrip('/').split('-')[-1]
             endpoint='https://'+urlsplit(url).netloc+'/index.php?app=videobox&module=video&controller=view&do=playerData&id='+video_id
             fetch(endpoint,'playerData-without-ajax-headers')
+            fetch(endpoint.replace(urlsplit(url).netloc,constants['OVERFLIXTV_HOST']), 'original-configured-host-ajax', headers={'X-Requested-With':'XMLHttpRequest','Referer':url.replace(urlsplit(url).netloc,constants['OVERFLIXTV_HOST'])})
             result=fetch(endpoint,'original-ajax-playerData',headers={'X-Requested-With':'XMLHttpRequest','Referer':url})
             if result is not None:
                 try:report['http'][-1]['json_keys']=list(result.json())
                 except ValueError:report['http'][-1]['json_error']=True
             if r is not None:
-                report['http'].append(dict(kind='detail-parser-hints',url=url,snippets=[r.text[max(0,m.start()-100):m.end()+400] for m in list(re.finditer(r'playerData|servers_dub|servers_leg|csrfKey|player_data|videobox',r.text,re.I))[:12]],scripts=re.findall(r'<script[^>]+src=[\"\x27]([^\"\x27]+)',r.text)[-12:]))
+                report['http'].append(dict(kind='detail-parser-hints',url=url,snippets=[r.text[max(0,m.start()-100):m.end()+400] for m in list(re.finditer(r'playerData|servers_dub|servers_leg|csrfKey|player_data|videobox',r.text,re.I))[:12]],episode_links=list(dict.fromkeys(urljoin(url,x) for x in re.findall(r'href=[\"\x27]([^\"\x27]+)',r.text) if re.search(r'/episod|/episode',x)))[:5],scripts=re.findall(r'<script[^>]+src=[\"\x27]([^\"\x27]+)',r.text)[-12:]))
     (OUT/'network-before.json').write_text(json.dumps(report,indent=2)+'\n')
     transfer('Content real network diagnosis',report)
 if __name__=='__main__':main()
