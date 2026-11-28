@@ -2,9 +2,13 @@ name: Upload APK to Release
 
 on:
   workflow_dispatch:
+    inputs:
+      dropbox_url:
+        description: 'Dropbox temporary download URL'
+        required: true
+        default: ''
   push:
     paths:
-      - 'release-parts/**'
       - '.github/workflows/upload-release.yml'
 
 permissions:
@@ -13,35 +17,147 @@ permissions:
 jobs:
   upload:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Reassemble APK
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Download original APK from Dropbox
         run: |
-          cat release-parts/SMARTEDTV-universal.apk.part.* > SMARTEDTV-universal.apk
-          SIZE=$(stat -c%s SMARTEDTV-universal.apk)
-          echo "Size: $SIZE"
-          if [ "$SIZE" != "259710320" ]; then
-            echo "Size mismatch! Expected 259710320, got $SIZE"
-            exit 1
+          DROPBOX_URL="${{ github.event.inputs.dropbox_url }}"
+          if [ -z "$DROPBOX_URL" ]; then
+            echo "No Dropbox URL provided, skipping download"
+            exit 0
+          fi
+          echo "Downloading APK from Dropbox..."
+          curl -L --max-time 300 -o SMARTEDTV-original.apk "$DROPBOX_URL"
+          ORIG_SIZE=$(stat -c%s SMARTEDTV-original.apk)
+          ORIG_SHA=$(sha256sum SMARTEDTV-original.apk | awk '{print $1}')
+          echo "Original size: $ORIG_SIZE bytes"
+          echo "Original SHA256: $ORIG_SHA"
+
+      - name: Inspect APK
+        run: |
+          echo "=== APK top-level structure ==="
+          unzip -l SMARTEDTV-original.apk | head -50
+          echo ""
+          mkdir -p extracted
+          cd extracted
+          unzip -q -o ../SMARTEDTV-original.apk
+          echo "=== Searching for ad/VAST URLs ==="
+          echo "--- Files mentioning 'vast' ---"
+          grep -rli "vast" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null | head -20
+          echo "--- Files mentioning 'hilltop' ---"
+          grep -rli "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null | head -20
+          echo "--- Files mentioning 'clickadilla' or 'yomeno' ---"
+          grep -rli "clickadilla\|yomeno" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null | head -20
+          echo "--- All ad-related URLs found ---"
+          grep -rhoP 'https?://[^"'"'"' <>\\]+' --include="*.py" --include="*.js" --include="*.html" . 2>/dev/null | sort -u | head -30
+          echo "--- VAST config files ---"
+          find . -name "vast.py" -o -name "vast.js" -o -name "config.js" 2>/dev/null | head -10
+
+      - name: Replace HilltopAds VAST URL with ClickAdilla
+        run: |
+          cd extracted
+          CLICKADILLA_URL="https://vast.yomeno.xyz/vast?spot_id=1508180"
+          REPLACED=0
+          # Find and replace in all text files
+          for f in $(find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.html" -o -name "*.xml" -o -name "*.json" -o -name "*.txt" -o -name "*.cfg" -o -name "*.ini" -o -name "*.properties" \) 2>/dev/null); do
+            if grep -qi "hilltop" "$f" 2>/dev/null; then
+              echo "Replacing HilltopAds in: $f"
+              grep -in "hilltop" "$f" 2>/dev/null
+              # Replace any URL containing hilltop with ClickAdilla
+              sed -i 's|https\?://[^"'"'"' <>]*hilltop[^"'"'"' <>]*|'"$CLICKADILLA_URL"'|gI' "$f"
+              REPLACED=$((REPLACED+1))
+            fi
+            # Check for VAST_TAG/vastTagUrl that points to non-ClickAdilla
+            if grep -q "VAST_TAG\|vastTagUrl" "$f" 2>/dev/null; then
+              while IFS= read -r line; do
+                VAST_URL=$(echo "$line" | grep -oP 'https?://[^"'"'"' ]+' | head -1)
+                if [ -n "$VAST_URL" ] && ! echo "$VAST_URL" | grep -qi "yomeno\|clickadilla"; then
+                  echo "Replacing non-ClickAdilla VAST URL in: $f"
+                  echo "  Old: $VAST_URL"
+                  sed -i "s|$VAST_URL|$CLICKADILLA_URL|g" "$f"
+                  REPLACED=$((REPLACED+1))
+                fi
+              done < <(grep -n "VAST_TAG\|vastTagUrl" "$f" 2>/dev/null)
+            fi
+          done
+          echo ""
+          echo "Total files modified: $REPLACED"
+          if [ $REPLACED -eq 0 ]; then
+            echo "WARNING: No HilltopAds URLs found! The APK may already have ClickAdilla."
+            echo "Proceeding to repackage anyway."
           fi
 
-      - name: Verify SHA256
+      - name: Verify no HilltopAds remain
         run: |
-          SHA=$(sha256sum SMARTEDTV-universal.apk | awk '{print $1}')
-          echo "Got: $SHA"
-          echo "Expected: 4a497269ac7f1a9475e299fd39af3b8d688a3f5b145cc256b08d1b25f6efddb4"
-          if [ "$SHA" != "4a497269ac7f1a9475e299fd39af3b8d688a3f5b145cc256b08d1b25f6efddb4" ]; then
-            echo "SHA256 MISMATCH!"
+          cd extracted
+          REMAINING=$(grep -rli "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null | wc -l)
+          echo "Files still containing HilltopAds: $REMAINING"
+          if [ "$REMAINING" -gt 0 ]; then
+            grep -rni "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null
             exit 1
           fi
-          echo "SHA256 OK"
+          echo "ClickAdilla URL found in:"
+          grep -rli "vast.yomeno.xyz" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" . 2>/dev/null | head -10
+
+      - name: Repackage APK
+        run: |
+          cd extracted
+          echo "=== Creating new APK ==="
+          zip -r -q -n ".so:.dex" ../SMARTEDTV-new-unsigned.apk .
+          cd ..
+          echo "Unsigned size: $(stat -c%s SMARTEDTV-new-unsigned.apk) bytes"
+
+      - name: Zipalign and sign
+        run: |
+          echo "=== Zipaligning ==="
+          if which zipalign 2>/dev/null; then
+            zipalign -f -p 4 SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
+          else
+            echo "zipalign not found, installing..."
+            echo "y" | sudo sdkmanager --install "build-tools;34.0.0" 2>/dev/null || true
+            if which zipalign 2>/dev/null; then
+              zipalign -f -p 4 SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
+            else
+              echo "Using unsigned APK as-is"
+              cp SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
+            fi
+          fi
+          echo ""
+          echo "=== Generating signing key ==="
+          keytool -genkey -v -keystore /tmp/debug.keystore -alias debug \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=SMARTEDTV, OU=SMARTEDTV, O=SMARTEDTV, L=SP, S=SP, C=BR" 2>&1 | tail -2
+          echo ""
+          echo "=== Signing ==="
+          if which apksigner 2>/dev/null; then
+            apksigner sign --ks /tmp/debug.keystore --ks-pass pass:android \
+              --key-pass pass:android --ks-key-alias debug \
+              --out SMARTEDTV-universal.apk SMARTEDTV-aligned.apk
+          else
+            jarsigner -keystore /tmp/debug.keystore -storepass android -keypass android \
+              -signedjar SMARTEDTV-universal.apk SMARTEDTV-aligned.apk debug 2>&1 | tail -5
+          fi
+          FINAL_SIZE=$(stat -c%s SMARTEDTV-universal.apk 2>/dev/null)
+          FINAL_SHA=$(sha256sum SMARTEDTV-universal.apk | awk '{print $1}')
+          echo ""
+          echo "=== Final APK ==="
+          echo "Size: $FINAL_SIZE bytes"
+          echo "SHA256: $FINAL_SHA"
+          echo "FINAL_SIZE=$FINAL_SIZE" >> $GITHUB_ENV
+          echo "FINAL_SHA=$FINAL_SHA" >> $GITHUB_ENV
 
       - name: Upload to Release
+        run: |
+          gh release upload vast-fix-1508180 SMARTEDTV-universal.apk --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Token present: ${GH_TOKEN:+yes}"
-          gh release upload vast-fix-1508180 SMARTEDTV-universal.apk --clobber
