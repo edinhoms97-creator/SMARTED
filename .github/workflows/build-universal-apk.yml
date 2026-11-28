@@ -375,7 +375,7 @@ jobs:
           gh release edit "$tag" --notes-file dist/INSTALLATION.txt
 
   vast_function_lab:
-    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget' && inputs.vast_function_lab != 'history-release'
+    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget' && inputs.vast_function_lab != 'history-release' && inputs.vast_function_lab != 'content-links-inspect'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -668,3 +668,26 @@ jobs:
           gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt INSTALLATION.txt ads_vast-recovery.diff default-recovery.diff startup-before-after.json budget-virtual-three-versions.json budget-http-three-versions.json history-recovery-evidence.zip history-recovery-evidence.zip.sha256
           gh release edit "$tag" --notes-file INSTALLATION.txt
           gh release view "$tag" --json url --jq .url
+
+  content_links_inspect:
+    if: inputs.vast_function_lab == 'content-links-inspect'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Download exact physically tested base, read only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/content-links/base
+          gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-links/base
+      - name: Locate exact error and content resolver code
+        run: python3 tools/inspect_content_links.py .cache/content-links/base/SMARTEDTV-universal.apk --out .cache/content-links/inspection
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: content-links-readonly-inspection
+          path: .cache/content-links/inspection/
+          retention-days: 30
