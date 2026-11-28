@@ -384,7 +384,7 @@ jobs:
           gh release edit "$tag" --notes-file dist/INSTALLATION.txt
 
   vast_function_lab:
-    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget' && inputs.vast_function_lab != 'history-release' && inputs.vast_function_lab != 'content-links-inspect' && inputs.vast_function_lab != 'content-links-release'
+    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget' && inputs.vast_function_lab != 'history-release' && inputs.vast_function_lab != 'content-links-inspect' && inputs.vast_function_lab != 'content-links-release' && inputs.vast_function_lab != 'content-links-validate'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -786,3 +786,36 @@ jobs:
           sha256sum -c SMARTEDTV-universal.apk.sha256
           gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt content-functions.diff content-real-before-after.json
           gh release view "$tag" --json url --jq .url
+
+  content_links_validate:
+    if: inputs.vast_function_lab == 'content-links-validate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Validate exact already published candidate, no new APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          mkdir -p .cache/content-validation/{base,after}
+          gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-validation/base
+          gh release download smarted-content-46094787897-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-validation/after
+          python3 -m pip install --disable-pip-version-check -r tools/content-test-requirements.txt
+          python3 tools/validate_content_links.py --base .cache/content-validation/base/SMARTEDTV-universal.apk --after .cache/content-validation/after/SMARTEDTV-universal.apk --out .cache/content-validation/revalidation.json 2>&1 | tee .cache/content-validation/log.txt
+      - name: Report actual failure
+        if: failure()
+        run: python3 tools/report_build_diagnostics.py .cache/content-validation/log.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: content-link-live-revalidation
+          path: |
+            .cache/content-validation/revalidation.json
+            .cache/content-validation/log.txt
+          retention-days: 30

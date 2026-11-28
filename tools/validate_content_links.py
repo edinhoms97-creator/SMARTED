@@ -93,12 +93,13 @@ def main():
     def unavailable():
         def fail(*args):raise socket.gaierror(socket.EAI_NONAME,'simulated Android resolver unavailable')
         return fail
-    with patch.object(content_network,'_native_resolver',side_effect=unavailable):
+    with patch.object(content_network,'_native_resolver',side_effect=unavailable), patch.object(content_network,'_https_dns',wraps=content_network._https_dns) as actual_doh:
         for kind,url in discovered or []:
             reference=('movie2='+url.rstrip('/').split('/')[-1]) if kind=='movie' else 'serie3='+url
             start=time.monotonic();value=env['overflix_resolver'](reference)
             rows.append(dict(kind=kind,native_dns_failure_injected=True,real_https_dns_and_provider=True,selected=bool(value and value!='stop'),elapsed=round(time.monotonic()-start,3)))
-    report['after_forced_dns_failure']=dict(cases=rows,trace=trace,dialogs=dialogs)
+    report['after_forced_dns_failure']=dict(cases=rows,trace=trace,dialogs=dialogs,https_dns_calls=actual_doh.call_count,hosts=[call.args[0] for call in actual_doh.call_args_list])
+    if not actual_doh.called:raise RuntimeError('DNS fallback was not exercised; do not label this a recovery test')
     a.out.parent.mkdir(parents=True,exist_ok=True);a.out.write_text(json.dumps(report,indent=2)+'\n')
     transfer('Content actual before after requests',report)
     if not discovered:raise RuntimeError('No live catalog samples discovered; cannot claim link tests passed')
