@@ -68,7 +68,9 @@ def repair_source():
                         if entry.endswith('/default.py') and 'Brazuca' in entry:
                             raw=package.read(entry);row=dict(package=name,entry=entry,sha256=hashlib.sha256(raw).hexdigest(),bytes=len(raw),head=raw[:250].decode(errors='replace'))
                             try:
-                                decoded,_=unpack(raw.decode());transform(decoded);row['patch_contract']='passed'
+                                decoded,_=unpack(raw.decode())
+                                row['content_functions']={n.name:ast.get_source_segment(decoded,n) for n in ast.parse(decoded).body if isinstance(n,ast.FunctionDef) and n.name in ('getMovieData','valide_v2')}
+                                transform(decoded);row['patch_contract']='passed'
                             except Exception as error:row['patch_error']=type(error).__name__+': '+str(error)
                             packages.append(row)
         transfer('Content packaged active candidates',packages)
