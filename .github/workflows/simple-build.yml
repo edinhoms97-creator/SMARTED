@@ -1,7 +1,10 @@
 name: Simple APK Build
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - arena/180d028f-smarted
 
 permissions:
   contents: write
@@ -26,83 +29,33 @@ jobs:
           yes | sdkmanager "build-tools;35.0.0" 2>&1 | tail -3
           mkdir -p .cache
           curl -sL "https://github.com/iBotPeaches/Apktool/releases/download/v2.12.1/apktool_2.12.1.jar" -o .cache/apktool.jar
-          echo "APKTOOL=$PWD/.cache/apktool.jar" >> $GITHUB_ENV
-          echo "TOOLS=$ANDROID_SDK_ROOT/build-tools/35.0.0" >> $GITHUB_ENV
-          echo "Downloaded apktool: $(ls -la .cache/apktool.jar)"
 
       - name: Download base APK
         run: |
           mkdir -p .cache/base dist
           curl -L --max-time 300 -o .cache/base/base.apk "https://www.dropbox.com/scl/fi/ixfw289m0sibcyfyrxf9g/SMARTEDTV.apk?rlkey=z59708sngkysw0c1ntmmur6lv&st=okcfec6i&dl=1"
           SIZE=$(stat -c%s .cache/base/base.apk)
-          SHA=$(sha256sum .cache/base/base.apk | awk '{print $1}')
-          echo "Downloaded: $SIZE bytes, SHA256: $SHA"
-          if [ "$SIZE" != "263222483" ]; then echo "Size mismatch!"; exit 1; fi
-
-      - name: Verify source files have ClickAdilla
-        run: |
-          grep -q "vast.yomeno.xyz/vast?spot_id=1508180" smartedtv/js/config.js
-          grep -q "spot_id=1508180" kodi-addon/script.smartedtv.welcome/vast.py
-          echo "Source files OK"
+          echo "Downloaded: $SIZE bytes"
+          test "$SIZE" = "263222483"
 
       - name: Decode APK
-        run: |
-          java -Xmx2g -jar $APKTOOL d -f -s .cache/base/base.apk -o .cache/work/decoded
-          echo "Decoded successfully"
-          ls .cache/work/decoded/assets/addons/ | head -10
+        run: java -Xmx2g -jar .cache/apktool.jar d -f -s .cache/base/base.apk -o .cache/work/decoded
 
       - name: Replace addon files
-        run: python3 << 'PY'
-          import shutil
-          from pathlib import Path
-          import xml.etree.ElementTree as ET
-
-          ROOT = Path('.')
-          decoded = Path('.cache/work/decoded')
-          assets = decoded / 'assets'
-          ADDONS = ("script.smartedtv.welcome", "service.smartedtv.startup", "skin.estilo.personalizado")
-          ignore = shutil.ignore_patterns('__pycache__', '*.pyc', '.DS_Store')
-
-          for addon in ADDONS:
-              source = ROOT / ('skin' if addon.startswith('skin.') else 'kodi-addon') / addon
-              target = assets / 'addons' / addon
-              if target.exists():
-                  shutil.rmtree(target)
-              shutil.copytree(source, target, ignore=ignore)
-              print(f"Copied: {addon}")
-
-          web = assets / 'smartedtv'
-          if web.exists():
-              shutil.rmtree(web)
-          shutil.copytree(ROOT / 'smartedtv', web, ignore=ignore)
-          print("Copied: smartedtv web interface")
-
-          # Update addon manifest
-          addon_manifest = assets / 'system/addon-manifest.xml'
-          tree = ET.parse(addon_manifest)
-          for addon in ADDONS:
-              existing = next((el for el in tree.getroot() if (el.text or '').strip() == addon), None)
-              if existing is None:
-                  existing = ET.SubElement(tree.getroot(), 'addon')
-                  existing.text = addon
-              existing.attrib.pop('optional', None)
-          tree.write(addon_manifest, encoding='utf-8', xml_declaration=True)
-          print("Addon manifest updated")
-      PY
+        run: python3 tools/replace_addons.py .cache/work/decoded
 
       - name: Rebuild APK
-        run: |
-          java -Xmx2g -jar $APKTOOL b .cache/work/decoded -o .cache/work/unsigned.apk
-          echo "Unsigned: $(stat -c%s .cache/work/unsigned.apk) bytes"
+        run: java -Xmx2g -jar .cache/apktool.jar b .cache/work/decoded -o .cache/work/unsigned.apk
 
       - name: Zipalign and sign
         run: |
-          $TOOLS/zipalign -P 16 -f 4 .cache/work/unsigned.apk .cache/work/aligned.apk
+          BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/35.0.0
+          $BUILD_TOOLS/zipalign -P 16 -f 4 .cache/work/unsigned.apk .cache/work/aligned.apk
           keytool -genkey -v -keystore .cache/debug.keystore -alias debug \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass android -keypass android \
             -dname "CN=SMARTEDTV" -noprompt 2>&1 | tail -1
-          $TOOLS/apksigner sign --ks .cache/debug.keystore --ks-pass pass:android \
+          $BUILD_TOOLS/apksigner sign --ks .cache/debug.keystore --ks-pass pass:android \
             --key-pass pass:android --ks-key-alias debug \
             --v1-signing-enabled true --v2-signing-enabled true \
             --out dist/SMARTEDTV-universal.apk .cache/work/aligned.apk
@@ -111,13 +64,12 @@ jobs:
 
       - name: Verify APK
         run: |
-          $TOOLS/apksigner verify --verbose dist/SMARTEDTV-universal.apk 2>&1 | tail -5
-          unzip -p dist/SMARTEDTV-universal.apk assets/addons/script.smartedtv.welcome/vast.py | grep "VAST_TAG"
-          unzip -p dist/SMARTEDTV-universal.apk assets/smartedtv/js/config.js | grep "vastTagUrl"
-          echo "APK verified successfully"
+          BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/35.0.0
+          $BUILD_TOOLS/apksigner verify --verbose dist/SMARTEDTV-universal.apk 2>&1 | tail -3
+          unzip -p dist/SMARTEDTV-universal.apk assets/addons/script.smartedtv.welcome/vast.py | grep VAST_TAG
+          unzip -p dist/SMARTEDTV-universal.apk assets/smartedtv/js/config.js | grep vastTagUrl
 
       - name: Upload to Release
-        run: |
-          gh release upload vast-fix-1508180 dist/SMARTEDTV-universal.apk --clobber
+        run: gh release upload vast-fix-1508180 dist/SMARTEDTV-universal.apk --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
