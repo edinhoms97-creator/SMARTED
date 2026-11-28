@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import urlparse,urljoin
 import urllib.parse as urllib
 import requests
+from unittest.mock import patch
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from patch_content_links import unpack,ENTRY,ROOT
@@ -83,9 +84,25 @@ def main():
                 except requests.RequestException as e:row['embed_error']=type(e).__name__
             rows.append(row)
         report['versions'][role]=dict(cases=rows,trace=trace,dialogs=dialogs,selected=sum(x['resolver_selected'] for x in rows))
+    import content_network
+    # DNS fault injection only; the fallback DNS HTTPS, content TLS and provider
+    # JSON requests below are REAL network requests, not fixture responses.
+    content_network._CACHE.clear()
+    env,trace,dialogs=environment(source,a.out.parent)
+    rows=[]
+    def unavailable():
+        def fail(*args):raise socket.gaierror(socket.EAI_NONAME,'simulated Android resolver unavailable')
+        return fail
+    with patch.object(content_network,'_native_resolver',side_effect=unavailable):
+        for kind,url in discovered or []:
+            reference=('movie2='+url.rstrip('/').split('/')[-1]) if kind=='movie' else 'serie3='+url
+            start=time.monotonic();value=env['overflix_resolver'](reference)
+            rows.append(dict(kind=kind,native_dns_failure_injected=True,real_https_dns_and_provider=True,selected=bool(value and value!='stop'),elapsed=round(time.monotonic()-start,3)))
+    report['after_forced_dns_failure']=dict(cases=rows,trace=trace,dialogs=dialogs)
     a.out.parent.mkdir(parents=True,exist_ok=True);a.out.write_text(json.dumps(report,indent=2)+'\n')
     transfer('Content actual before after requests',report)
     if not discovered:raise RuntimeError('No live catalog samples discovered; cannot claim link tests passed')
+    if not all(x['selected'] for x in rows):raise RuntimeError('Real HTTPS DNS recovery failed; publication blocked')
     if not all(x['resolver_selected'] for x in report['versions']['after']['cases']):
         raise RuntimeError('Content link selection failed; publication blocked')
 if __name__=='__main__':main()
