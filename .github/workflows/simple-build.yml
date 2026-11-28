@@ -23,9 +23,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install build tools and apktool
         run: |
           set -e
@@ -37,9 +34,9 @@ jobs:
           if [[ ! -f "$jar" ]]; then
             curl --fail --location -o "$jar" "https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VERSION}/apktool_${APKTOOL_VERSION}.jar"
           fi
-          ls -la "$jar"
           echo "APKTOOL=$PWD/$jar" >> $GITHUB_ENV
           echo "TOOLS=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION" >> $GITHUB_ENV
+          ls -la "$jar"
 
       - name: Download base APK from Dropbox
         run: |
