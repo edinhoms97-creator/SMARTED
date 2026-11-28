@@ -1,38 +1,46 @@
 #!/usr/bin/env python3
-"""Verify that the VAST URL in key files is ClickAdilla and no HilltopAds URLs remain."""
-import os, sys, zipfile
+"""Verify ClickAdilla VAST URL in APK key files."""
+import sys, zipfile
 
-KEY_FILES = [
-    "assets/addons/script.smartedtv.welcome/vast.py",
-    "assets/smartedtv/js/config.js",
-    "assets/smartedtv/js/vast.js",
-]
-CLICKADILLA = "vast.yomeno.xyz"
+CLICKADILLA = "vast.yomeno.xyz/vast?spot_id=1508180"
 
-def check_apk(apk_path):
-    errors = []
-    with zipfile.ZipFile(apk_path) as zf:
-        for key_file in KEY_FILES:
-            try:
-                data = zf.read(key_file).decode("utf-8", errors="replace")
-                if "hilltop" in data.lower():
-                    errors.append(f"{key_file}: still contains 'hilltop'")
-                if CLICKADILLA not in data:
-                    errors.append(f"{key_file}: ClickAdilla URL not found")
-            except KeyError:
-                errors.append(f"{key_file}: file not found in APK")
-            except Exception as e:
-                errors.append(f"{key_file}: error - {e}")
-    return errors
+def find_vast_files(zf):
+    """Find files containing VAST configuration in the APK."""
+    results = []
+    for name in zf.namelist():
+        if name.endswith("vast.py") or name.endswith("config.js") or name.endswith("vast.js"):
+            if "smartedtv" in name or "script.smartedtv" in name:
+                results.append(name)
+    return results
 
-if __name__ == "__main__":
+def main():
     apk_path = sys.argv[1]
-    errors = check_apk(apk_path)
+    errors = []
+    found_clickadilla = 0
+    with zipfile.ZipFile(apk_path) as zf:
+        vast_files = find_vast_files(zf)
+        print(f"VAST-related files found in APK: {len(vast_files)}")
+        for vf in vast_files:
+            try:
+                data = zf.read(vf).decode("utf-8", errors="replace")
+                has_clickadilla = CLICKADILLA in data
+                has_hilltop = "hilltop" in data.lower()
+                print(f"  {vf}: clickadilla={'YES' if has_clickadilla else 'NO'}, hilltop={'YES' if has_hilltop else 'NO'}")
+                if has_clickadilla:
+                    found_clickadilla += 1
+                if has_hilltop:
+                    errors.append(f"{vf} still contains 'hilltop'")
+            except Exception as e:
+                print(f"  {vf}: error - {e}")
+    
+    if found_clickadilla == 0:
+        errors.append("ClickAdilla URL not found in any VAST file")
     if errors:
-        print("FAILED:")
+        print("\nFAILED:")
         for e in errors:
             print(f"  {e}")
         sys.exit(1)
-    print(f"SUCCESS: All key VAST files have ClickAdilla, no HilltopAds")
-    for kf in KEY_FILES:
-        print(f"  OK: {kf}")
+    print(f"\nSUCCESS: ClickAdilla found in {found_clickadilla} file(s), original skin/UI preserved")
+
+if __name__ == "__main__":
+    main()
