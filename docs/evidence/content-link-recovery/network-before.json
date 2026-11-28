@@ -1,0 +1,314 @@
+{
+  "utc": "2026-11-28T01:39:35.322392+00:00",
+  "kind": "real-runner-network-not-user-mobile",
+  "constants": {
+    "OVERFLIXTV_HOST": "www.overflix.download",
+    "TIMEOUT_DEFAULT": [
+      5,
+      10
+    ],
+    "useragent": "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
+    "sec_ch_ua": "\"Google Chrome\";v=\"148\", \"Not-A.Brand\";v=\"8\", \"Chromium\";v=\"148\""
+  },
+  "hosts": {
+    "www.overflix.download": {
+      "system_dns": [
+        "104.21.55.3",
+        "172.67.143.194",
+        "2606:4700:3034::ac43:8fc2",
+        "2606:4700:3037::6815:3703"
+      ],
+      "dns_seconds": 0.008,
+      "doh": {
+        "Status": 0,
+        "TC": false,
+        "RD": true,
+        "RA": true,
+        "AD": false,
+        "CD": false,
+        "Question": [
+          {
+            "name": "www.overflix.download",
+            "type": 1
+          }
+        ],
+        "Answer": [
+          {
+            "name": "www.overflix.download",
+            "type": 1,
+            "TTL": 300,
+            "data": "172.67.143.194"
+          },
+          {
+            "name": "www.overflix.download",
+            "type": 1,
+            "TTL": 300,
+            "data": "104.21.55.3"
+          }
+        ]
+      }
+    },
+    "api.geekantenado.online": {
+      "system_dns": [
+        "104.21.43.92",
+        "172.67.177.150",
+        "2606:4700:3031::6815:2b5c",
+        "2606:4700:3031::ac43:b196"
+      ],
+      "dns_seconds": 0.022,
+      "doh": {
+        "Status": 0,
+        "TC": false,
+        "RD": true,
+        "RA": true,
+        "AD": false,
+        "CD": false,
+        "Question": [
+          {
+            "name": "api.geekantenado.online",
+            "type": 1
+          }
+        ],
+        "Answer": [
+          {
+            "name": "api.geekantenado.online",
+            "type": 1,
+            "TTL": 155,
+            "data": "104.21.43.92"
+          },
+          {
+            "name": "api.geekantenado.online",
+            "type": 1,
+            "TTL": 155,
+            "data": "172.67.177.150"
+          }
+        ]
+      }
+    },
+    "geekantenado.fly.dev": {
+      "system_dns": [
+        "2a09:8280:1::c1:f291:0",
+        "66.241.125.3"
+      ],
+      "dns_seconds": 0.006,
+      "doh": {
+        "Status": 0,
+        "TC": false,
+        "RD": true,
+        "RA": true,
+        "AD": false,
+        "CD": false,
+        "Question": [
+          {
+            "name": "geekantenado.fly.dev",
+            "type": 1
+          }
+        ],
+        "Answer": [
+          {
+            "name": "geekantenado.fly.dev",
+            "type": 1,
+            "TTL": 300,
+            "data": "66.241.125.3"
+          }
+        ]
+      }
+    }
+  },
+  "http": [
+    {
+      "url": "https://www.overflix.download/",
+      "kind": "configured-source",
+      "status": 200,
+      "final_url": "https://www.overflix.living/",
+      "elapsed": 1.261,
+      "content_type": "text/html;charset=UTF-8",
+      "bytes": 74530,
+      "body_prefix": "<!DOCTYPE html><html lang=\"pt-BR\" dir=\"ltr\"><head><meta charset=\"utf-8\"><title>Overflix - Filmes Online - Series Online - Animes Online</title> <script>\n\nwindow.ok = 1;\n\n\nwindow.ins = 2;\n\n\n\n\n\n\nwindow.",
+      "redirects": [
+        {
+          "status": 301,
+          "url": "https://www.overflix.download/"
+        }
+      ]
+    },
+    {
+      "url": "https://api.geekantenado.online/",
+      "kind": "configured-source",
+      "status": 403,
+      "final_url": "https://api.geekantenado.online/",
+      "elapsed": 0.208,
+      "content_type": "text/plain; charset=utf-8",
+      "bytes": 34,
+      "body_prefix": "{\"detail\":\"Token n\u00e3o fornecido\"}\n",
+      "redirects": []
+    },
+    {
+      "url": "https://geekantenado.fly.dev/",
+      "kind": "configured-source",
+      "status": 403,
+      "final_url": "https://geekantenado.fly.dev/",
+      "elapsed": 0.184,
+      "content_type": "text/plain; charset=utf-8",
+      "bytes": 34,
+      "body_prefix": "{\"detail\":\"Token n\u00e3o fornecido\"}\n",
+      "redirects": []
+    },
+    {
+      "url": "https://www.overflix.living/filmes/online/enfeiticadas-bem-vindos-a-hexe-dublado-90972/",
+      "kind": "existing-catalog-detail",
+      "status": 200,
+      "final_url": "https://www.overflix.living/filmes/online/enfeiticadas-bem-vindos-a-hexe-dublado-90972/",
+      "elapsed": 1.655,
+      "content_type": "text/html;charset=UTF-8",
+      "bytes": 40311,
+      "body_prefix": "<!DOCTYPE html><html lang=\"pt-BR\" dir=\"ltr\"><head><meta charset=\"utf-8\"><title>Assistir Enfeiti\u00e7adas: Bem-vindos a Hexe Online Gratis (Filme HD) - Overflix</title> <script>\n\nwindow.ok = 1;\n\n\nwindow.in",
+      "redirects": []
+    },
+    {
+      "url": "https://www.overflix.living/index.php?app=videobox&module=video&controller=view&do=playerData&id=90972",
+      "kind": "playerData-without-ajax-headers",
+      "status": 403,
+      "final_url": "https://www.overflix.living/filmes/online/enfeiticadas-bem-vindos-a-hexe-dublado-90972/?do=playerData",
+      "elapsed": 0.404,
+      "content_type": "text/html;charset=UTF-8",
+      "bytes": 19457,
+      "body_prefix": "<!DOCTYPE html><html lang=\"pt-BR\" dir=\"ltr\"><head><meta charset=\"utf-8\"><title>Sorry, you do not have permission for that!</title> <script>\n\nwindow.ok = 1;\n\n\nwindow.ins = 2;\n\n\n\n\n\n\nwindow.discord = 'ht",
+      "redirects": [
+        {
+          "status": 301,
+          "url": "https://www.overflix.living/index.php?app=videobox&module=video&controller=view&do=playerData&id=90972"
+        }
+      ]
+    },
+    {
+      "url": "https://www.overflix.download/index.php?app=videobox&module=video&controller=view&do=playerData&id=90972",
+      "kind": "original-configured-host-ajax",
+      "status": 200,
+      "final_url": "https://www.overflix.download/index.php?app=videobox&module=video&controller=view&do=playerData&id=90972",
+      "elapsed": 0.147,
+      "content_type": "application/json;charset=UTF-8",
+      "bytes": 133,
+      "body_prefix": "{\"redirect\":\"https:\\/\\/www.overflix.living\\/index.php?app=videobox&module=video&controller=view&do=playerData&id=90972\",\"message\":\"\"}",
+      "redirects": []
+    },
+    {
+      "url": "https://www.overflix.living/index.php?app=videobox&module=video&controller=view&do=playerData&id=90972",
+      "kind": "original-ajax-playerData",
+      "status": 200,
+      "final_url": "https://www.overflix.living/index.php?app=videobox&module=video&controller=view&do=playerData&id=90972",
+      "elapsed": 0.194,
+      "content_type": "application/json;charset=UTF-8",
+      "bytes": 636,
+      "body_prefix": "{\"players\":[{\"label\":\"Byse\",\"url\":\"https:\\/\\/bysebuho.com\\/e\\/\",\"downloadUrl\":\"https:\\/\\/bysebuho.com\\/d\\/\"},{\"label\":\"DoodStream\",\"url\":\"https:\\/\\/playmogo.com\\/e\\/\",\"downloadUrl\":\"https:\\/\\/playmogo",
+      "redirects": [],
+      "json_keys": [
+        "players",
+        "servers_dub",
+        "servers_leg",
+        "is_episode",
+        "navigation",
+        "current_audio"
+      ]
+    },
+    {
+      "kind": "detail-parser-hints",
+      "url": "https://www.overflix.living/filmes/online/enfeiticadas-bem-vindos-a-hexe-dublado-90972/",
+      "episode_links": []
+    },
+    {
+      "url": "https://www.overflix.living/series/online/o-senhor-dos-aneis-os-aneis-de-poder-dublado-13923/",
+      "kind": "existing-catalog-detail",
+      "status": 200,
+      "final_url": "https://www.overflix.living/series/online/o-senhor-dos-aneis-os-aneis-de-poder-dublado-13923/",
+      "elapsed": 1.2,
+      "content_type": "text/html;charset=UTF-8",
+      "bytes": 46832,
+      "body_prefix": "<!DOCTYPE html><html lang=\"pt-BR\" dir=\"ltr\"><head><meta charset=\"utf-8\"><title>Assistir O Senhor dos An\u00e9is: Os An\u00e9is de Poder Online Gratis (Serie HD) - Overflix</title> <script>\n\nwindow.ok = 1;\n\n\nwin",
+      "redirects": []
+    },
+    {
+      "url": "https://www.overflix.living/index.php?app=videobox&module=video&controller=view&do=playerData&id=13923",
+      "kind": "playerData-without-ajax-headers",
+      "status": 403,
+      "final_url": "https://www.overflix.living/series/online/o-senhor-dos-aneis-os-aneis-de-poder-dublado-13923/?do=playerData",
+      "elapsed": 0.467,
+      "content_type": "text/html;charset=UTF-8",
+      "bytes": 19457,
+      "body_prefix": "<!DOCTYPE html><html lang=\"pt-BR\" dir=\"ltr\"><head><meta charset=\"utf-8\"><title>Sorry, you do not have permission for that!</title> <script>\n\nwindow.ok = 1;\n\n\nwindow.ins = 2;\n\n\n\n\n\n\nwindow.discord = 'ht",
+      "redirects": [
+        {
+          "status": 301,
+          "url": "https://www.overflix.living/index.php?app=videobox&module=video&controller=view&do=playerData&id=13923"
+        }
+      ]
+    },
+    {
+      "url": "https://www.overflix.download/index.php?app=videobox&module=video&controller=view&do=playerData&id=13923",
+      "kind": "original-configured-host-ajax",
+      "status": 200,
+      "final_url": "https://www.overflix.download/index.php?app=videobox&module=video&controller=view&do=playerData&id=13923",
+      "elapsed": 0.187,
+      "content_type": "application/json;charset=UTF-8",
+      "bytes": 133,
+      "body_prefix": "{\"redirect\":\"https:\\/\\/www.overflix.living\\/index.php?app=videobox&module=video&controller=view&do=playerData&id=13923\",\"message\":\"\"}",
+      "redirects": []
+    },
+    {
+      "url": "https://www.overflix.living/index.php?app=videobox&module=video&controller=view&do=playerData&id=13923",
+      "kind": "original-ajax-playerData",
+      "status": 200,
+      "final_url": "https://www.overflix.living/index.php?app=videobox&module=video&controller=view&do=playerData&id=13923",
+      "elapsed": 0.213,
+      "content_type": "application/json;charset=UTF-8",
+      "bytes": 543,
+      "body_prefix": "{\"players\":[{\"label\":\"Byse\",\"url\":\"https:\\/\\/bysebuho.com\\/e\\/\",\"downloadUrl\":\"https:\\/\\/bysebuho.com\\/d\\/\"},{\"label\":\"DoodStream\",\"url\":\"https:\\/\\/playmogo.com\\/e\\/\",\"downloadUrl\":\"https:\\/\\/playmogo",
+      "redirects": [],
+      "json_keys": [
+        "players",
+        "servers_dub",
+        "servers_leg",
+        "is_episode",
+        "navigation",
+        "current_audio"
+      ]
+    },
+    {
+      "kind": "detail-parser-hints",
+      "url": "https://www.overflix.living/series/online/o-senhor-dos-aneis-os-aneis-de-poder-dublado-13923/",
+      "episode_links": [
+        "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x1-dublado-13924/",
+        "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x2-dublado-13925/",
+        "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x3-dublado-13926/",
+        "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x4-dublado-13927/",
+        "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x5-dublado-13928/"
+      ]
+    }
+  ],
+  "catalog_samples": [
+    "https://www.overflix.living/filmes/",
+    "https://www.overflix.living/series/",
+    "https://www.overflix.living/series/online/o-senhor-dos-aneis-os-aneis-de-poder-dublado-13923/",
+    "https://www.overflix.living/filmes/online/enfeiticadas-bem-vindos-a-hexe-dublado-90972/",
+    "https://www.overflix.living/filmes/online/street-fighter-dublado-86873/",
+    "https://www.overflix.living/filmes/online/a-queda-2-no-limite-dublado-84504/",
+    "https://www.overflix.living/filmes/online/jogos-vorazes-amanhecer-na-colheita-dublado-89595/",
+    "https://www.overflix.living/filmes/online/furia-incansavel-dublado-89501/",
+    "https://www.overflix.living/filmes/online/a-odisseia-dublado-73812/",
+    "https://www.overflix.living/filmes/online/ebenezer-e-os-fantasmas-do-natal-dublado-89105/",
+    "https://www.overflix.living/filmes/online/como-roubar-um-banco-dublado-89014/",
+    "https://www.overflix.living/filmes/online/vingadores-ultimato-dublado-89006/"
+  ],
+  "actual_addon_udp_dns": {
+    "host": "www.overflix.download",
+    "ip": "104.21.55.3",
+    "elapsed": 0.012,
+    "system_dns_still": [
+      "104.21.55.3",
+      "172.67.143.194",
+      "2606:4700:3034::ac43:8fc2",
+      "2606:4700:3037::6815:3703"
+    ]
+  },
+  "sanitized_note": "HTML prefixes truncated to 200 characters; unrelated guest-page scripts and anti-CSRF snippets omitted."
+}

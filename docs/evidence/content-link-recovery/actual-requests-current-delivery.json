@@ -1,0 +1,790 @@
+{
+  "kind": "real-HTTP-exact-function-extraction-not-Android-playback",
+  "native_plays": 0,
+  "versions": {
+    "before": {
+      "cases": [
+        {
+          "kind": "movie",
+          "catalog_url": "https://www.overflix.living/filmes/online/enfeiticadas-bem-vindos-a-hexe-dublado-90972/",
+          "resolver_selected": true,
+          "elapsed": 6.055,
+          "embed_host": "mixdrop.ps",
+          "embed_http_status": 200,
+          "embed_bytes": 78178,
+          "embed_final_host": "mxdrop.click"
+        },
+        {
+          "kind": "movie",
+          "catalog_url": "https://www.overflix.living/filmes/online/street-fighter-dublado-86873/",
+          "resolver_selected": true,
+          "elapsed": 4.551,
+          "embed_host": "mixdrop.ps",
+          "embed_http_status": 200,
+          "embed_bytes": 78335,
+          "embed_final_host": "mxdrop.click"
+        },
+        {
+          "kind": "episode",
+          "catalog_url": "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x1-dublado-13924/",
+          "resolver_selected": true,
+          "elapsed": 2.593,
+          "embed_host": "mixdrop.ps",
+          "embed_http_status": 200,
+          "embed_bytes": 78347,
+          "embed_final_host": "mxdrop.click"
+        },
+        {
+          "kind": "episode",
+          "catalog_url": "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x2-dublado-13925/",
+          "resolver_selected": true,
+          "elapsed": 2.851,
+          "embed_host": "mixdrop.ps",
+          "embed_http_status": 200,
+          "embed_bytes": 78315,
+          "embed_final_host": "mxdrop.click"
+        }
+      ],
+      "trace": [
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 6.943,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "eba4013d0c0a67a7d2eb77ff039a4b2c5ab4e06e10e6f42f7335141d6d74f1f3"
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/series/online/o-senhor-dos-aneis-os-aneis-de-poder-dublado-13923/",
+          "elapsed": 19.145,
+          "nonempty": true,
+          "bytes": 47641,
+          "sha256": "6043b03c9eb94ce0364593680acffce3147f2118d3b27abadbd964893dab48df"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 1.967,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "6251342b1dd650837af6683b34da22a9c98b985eb612dd33d3e3320bcee37c6c"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "/index.php",
+          "elapsed": 0.416,
+          "nonempty": true,
+          "bytes": 133,
+          "sha256": "4aad7cf318ba205b9e2e87abcea03c49599b894256a231a7fc96441faa76b588",
+          "json_keys": [
+            "redirect",
+            "message"
+          ],
+          "server_fields_present": false
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/index.php",
+          "elapsed": 3.671,
+          "nonempty": true,
+          "bytes": 636,
+          "sha256": "a3af45c7de567ed4706ad80a10aca09ade3626ce7a31498522650de891729941",
+          "json_keys": [
+            "players",
+            "servers_dub",
+            "servers_leg",
+            "is_episode",
+            "navigation",
+            "current_audio"
+          ],
+          "server_fields_present": true
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 3.097,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "10d74092b4be09c3c52292f2282a9485ab3c0389c6dbe75df54a956d5d0d0299"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "/index.php",
+          "elapsed": 0.589,
+          "nonempty": true,
+          "bytes": 133,
+          "sha256": "169c3d9d2ca605fea4fe02e984961c6f7ca2e0e3459adce6edc6d5b5c74377f9",
+          "json_keys": [
+            "redirect",
+            "message"
+          ],
+          "server_fields_present": false
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/index.php",
+          "elapsed": 0.865,
+          "nonempty": true,
+          "bytes": 715,
+          "sha256": "b1bbf0ef87025891e4dc9192d1950ad643560d98817600a94c8c15450a1a3add",
+          "json_keys": [
+            "players",
+            "servers_dub",
+            "servers_leg",
+            "is_episode",
+            "navigation",
+            "current_audio"
+          ],
+          "server_fields_present": true
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 1.728,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "feecc9623bec3e6e9b50de200df8de6c8d33d1bbea7146d28558f2a79baf8d3a"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "/index.php",
+          "elapsed": 0.458,
+          "nonempty": true,
+          "bytes": 133,
+          "sha256": "0e99e8f9789a3a96bc6e46247540bef1b1e10f8591a7a2b37b123389b23d3326",
+          "json_keys": [
+            "redirect",
+            "message"
+          ],
+          "server_fields_present": false
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/index.php",
+          "elapsed": 0.406,
+          "nonempty": true,
+          "bytes": 921,
+          "sha256": "747f8f2fe4d0c0e5779347639dc4dd50a825d9d4fc11bca31212e8ebc6d86952",
+          "json_keys": [
+            "players",
+            "servers_dub",
+            "servers_leg",
+            "is_episode",
+            "navigation",
+            "current_audio"
+          ],
+          "server_fields_present": true
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 1.859,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "8f3984a70820e2989d1eb6dff038a6ebc28d10a0668d5933b44abd772989d896"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "/index.php",
+          "elapsed": 0.446,
+          "nonempty": true,
+          "bytes": 133,
+          "sha256": "721052bc21aa08523ce200b392cfc171102eb07d20dbeb4203888b894a3a0f48",
+          "json_keys": [
+            "redirect",
+            "message"
+          ],
+          "server_fields_present": false
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/index.php",
+          "elapsed": 0.544,
+          "nonempty": true,
+          "bytes": 1027,
+          "sha256": "b8564f2424c79c127ac097efe00e768299c44295ad8dffe312b5d934d10a97b5",
+          "json_keys": [
+            "players",
+            "servers_dub",
+            "servers_leg",
+            "is_episode",
+            "navigation",
+            "current_audio"
+          ],
+          "server_fields_present": true
+        }
+      ],
+      "dialogs": [
+        {
+          "title": "ESCOLHA O SERVIDOR",
+          "options": [
+            "[B]MIXDROP - R\u00c1PIDO[/B]",
+            "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+            "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O IDIOMA",
+          "options": [
+            "[B]ASSISTIR DUBLADO[/B]",
+            "[B]ASSISTIR LEGENDADO[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O SERVIDOR",
+          "options": [
+            "[B]MIXDROP - R\u00c1PIDO[/B]",
+            "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+            "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O IDIOMA",
+          "options": [
+            "[B]ASSISTIR DUBLADO[/B]",
+            "[B]ASSISTIR LEGENDADO[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O SERVIDOR",
+          "options": [
+            "[B]MIXDROP - R\u00c1PIDO[/B]",
+            "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+            "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O IDIOMA",
+          "options": [
+            "[B]ASSISTIR DUBLADO[/B]",
+            "[B]ASSISTIR LEGENDADO[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O SERVIDOR",
+          "options": [
+            "[B]MIXDROP - R\u00c1PIDO[/B]",
+            "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+            "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+          ]
+        }
+      ],
+      "selected": 4
+    },
+    "after": {
+      "cases": [
+        {
+          "kind": "movie",
+          "catalog_url": "https://www.overflix.living/filmes/online/enfeiticadas-bem-vindos-a-hexe-dublado-90972/",
+          "resolver_selected": true,
+          "elapsed": 1.482,
+          "embed_host": "mixdrop.ps",
+          "embed_http_status": 200,
+          "embed_bytes": 78178,
+          "embed_final_host": "mxdrop.click"
+        },
+        {
+          "kind": "movie",
+          "catalog_url": "https://www.overflix.living/filmes/online/street-fighter-dublado-86873/",
+          "resolver_selected": true,
+          "elapsed": 1.693,
+          "embed_host": "mixdrop.ps",
+          "embed_http_status": 200,
+          "embed_bytes": 78332,
+          "embed_final_host": "mxdrop.click"
+        },
+        {
+          "kind": "episode",
+          "catalog_url": "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x1-dublado-13924/",
+          "resolver_selected": true,
+          "elapsed": 1.678,
+          "embed_host": "mixdrop.ps",
+          "embed_http_status": 200,
+          "embed_bytes": 78347,
+          "embed_final_host": "mxdrop.click"
+        },
+        {
+          "kind": "episode",
+          "catalog_url": "https://www.overflix.living/episodios/online/o-senhor-dos-aneis-os-aneis-de-poder-1x2-dublado-13925/",
+          "resolver_selected": true,
+          "elapsed": 1.437,
+          "embed_host": "mixdrop.ps",
+          "embed_http_status": 200,
+          "embed_bytes": 78315,
+          "embed_final_host": "mxdrop.click"
+        }
+      ],
+      "trace": [
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 0.986,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "0a4e669c90aeff4778c117e6ad98c20a029f5e3568cfdddcceae2c4d8c8d232f"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "/index.php",
+          "elapsed": 0.219,
+          "nonempty": true,
+          "bytes": 133,
+          "sha256": "4aad7cf318ba205b9e2e87abcea03c49599b894256a231a7fc96441faa76b588",
+          "json_keys": [
+            "redirect",
+            "message"
+          ],
+          "server_fields_present": false
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/index.php",
+          "elapsed": 0.275,
+          "nonempty": true,
+          "bytes": 636,
+          "sha256": "a3af45c7de567ed4706ad80a10aca09ade3626ce7a31498522650de891729941",
+          "json_keys": [
+            "players",
+            "servers_dub",
+            "servers_leg",
+            "is_episode",
+            "navigation",
+            "current_audio"
+          ],
+          "server_fields_present": true
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 1.049,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "08b51edc59e59b62bda0e7d1ad7b456b853f13a2b9a9daf31f3e03c9559133f6"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "/index.php",
+          "elapsed": 0.311,
+          "nonempty": true,
+          "bytes": 133,
+          "sha256": "169c3d9d2ca605fea4fe02e984961c6f7ca2e0e3459adce6edc6d5b5c74377f9",
+          "json_keys": [
+            "redirect",
+            "message"
+          ],
+          "server_fields_present": false
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/index.php",
+          "elapsed": 0.332,
+          "nonempty": true,
+          "bytes": 715,
+          "sha256": "b1bbf0ef87025891e4dc9192d1950ad643560d98817600a94c8c15450a1a3add",
+          "json_keys": [
+            "players",
+            "servers_dub",
+            "servers_leg",
+            "is_episode",
+            "navigation",
+            "current_audio"
+          ],
+          "server_fields_present": true
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 0.808,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "8b10af550c97bb154eea72bc4a306a05829dfc506e48256adf46ae6bc2f29890"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "/index.php",
+          "elapsed": 0.275,
+          "nonempty": true,
+          "bytes": 133,
+          "sha256": "0e99e8f9789a3a96bc6e46247540bef1b1e10f8591a7a2b37b123389b23d3326",
+          "json_keys": [
+            "redirect",
+            "message"
+          ],
+          "server_fields_present": false
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/index.php",
+          "elapsed": 0.594,
+          "nonempty": true,
+          "bytes": 921,
+          "sha256": "747f8f2fe4d0c0e5779347639dc4dd50a825d9d4fc11bca31212e8ebc6d86952",
+          "json_keys": [
+            "players",
+            "servers_dub",
+            "servers_leg",
+            "is_episode",
+            "navigation",
+            "current_audio"
+          ],
+          "server_fields_present": true
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "",
+          "elapsed": 0.905,
+          "nonempty": true,
+          "bytes": 74897,
+          "sha256": "cefe4d62e40d316ab340e7d032f49f133a84b7f1836042d386b4b5fb8898ba24"
+        },
+        {
+          "host": "www.overflix.download",
+          "path": "/index.php",
+          "elapsed": 0.258,
+          "nonempty": true,
+          "bytes": 133,
+          "sha256": "721052bc21aa08523ce200b392cfc171102eb07d20dbeb4203888b894a3a0f48",
+          "json_keys": [
+            "redirect",
+            "message"
+          ],
+          "server_fields_present": false
+        },
+        {
+          "host": "www.overflix.living",
+          "path": "/index.php",
+          "elapsed": 0.273,
+          "nonempty": true,
+          "bytes": 1027,
+          "sha256": "b8564f2424c79c127ac097efe00e768299c44295ad8dffe312b5d934d10a97b5",
+          "json_keys": [
+            "players",
+            "servers_dub",
+            "servers_leg",
+            "is_episode",
+            "navigation",
+            "current_audio"
+          ],
+          "server_fields_present": true
+        }
+      ],
+      "dialogs": [
+        {
+          "title": "ESCOLHA O SERVIDOR",
+          "options": [
+            "[B]MIXDROP - R\u00c1PIDO[/B]",
+            "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+            "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O IDIOMA",
+          "options": [
+            "[B]ASSISTIR DUBLADO[/B]",
+            "[B]ASSISTIR LEGENDADO[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O SERVIDOR",
+          "options": [
+            "[B]MIXDROP - R\u00c1PIDO[/B]",
+            "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+            "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O IDIOMA",
+          "options": [
+            "[B]ASSISTIR DUBLADO[/B]",
+            "[B]ASSISTIR LEGENDADO[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O SERVIDOR",
+          "options": [
+            "[B]MIXDROP - R\u00c1PIDO[/B]",
+            "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+            "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O IDIOMA",
+          "options": [
+            "[B]ASSISTIR DUBLADO[/B]",
+            "[B]ASSISTIR LEGENDADO[/B]"
+          ]
+        },
+        {
+          "title": "ESCOLHA O SERVIDOR",
+          "options": [
+            "[B]MIXDROP - R\u00c1PIDO[/B]",
+            "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+            "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+          ]
+        }
+      ],
+      "selected": 4
+    }
+  },
+  "after_forced_dns_failure": {
+    "cases": [
+      {
+        "kind": "movie",
+        "native_dns_failure_injected": true,
+        "real_https_dns_and_provider": true,
+        "selected": true,
+        "elapsed": 1.951
+      },
+      {
+        "kind": "movie",
+        "native_dns_failure_injected": true,
+        "real_https_dns_and_provider": true,
+        "selected": true,
+        "elapsed": 2.259
+      },
+      {
+        "kind": "episode",
+        "native_dns_failure_injected": true,
+        "real_https_dns_and_provider": true,
+        "selected": true,
+        "elapsed": 2.054
+      },
+      {
+        "kind": "episode",
+        "native_dns_failure_injected": true,
+        "real_https_dns_and_provider": true,
+        "selected": true,
+        "elapsed": 2.484
+      }
+    ],
+    "trace": [
+      {
+        "host": "www.overflix.download",
+        "path": "",
+        "elapsed": 1.309,
+        "nonempty": true,
+        "bytes": 74897,
+        "sha256": "a9c30f267a70b32c81b8052c93666020d16710e09a367c4d3263c7786b0ca84b"
+      },
+      {
+        "host": "www.overflix.download",
+        "path": "/index.php",
+        "elapsed": 0.261,
+        "nonempty": true,
+        "bytes": 133,
+        "sha256": "4aad7cf318ba205b9e2e87abcea03c49599b894256a231a7fc96441faa76b588",
+        "json_keys": [
+          "redirect",
+          "message"
+        ],
+        "server_fields_present": false
+      },
+      {
+        "host": "www.overflix.living",
+        "path": "/index.php",
+        "elapsed": 0.381,
+        "nonempty": true,
+        "bytes": 636,
+        "sha256": "a3af45c7de567ed4706ad80a10aca09ade3626ce7a31498522650de891729941",
+        "json_keys": [
+          "players",
+          "servers_dub",
+          "servers_leg",
+          "is_episode",
+          "navigation",
+          "current_audio"
+        ],
+        "server_fields_present": true
+      },
+      {
+        "host": "www.overflix.download",
+        "path": "",
+        "elapsed": 1.554,
+        "nonempty": true,
+        "bytes": 74897,
+        "sha256": "a5d1d8d107c52901068828318a549773aed0dbed48ac7c259b5dab4ba2fa150c"
+      },
+      {
+        "host": "www.overflix.download",
+        "path": "/index.php",
+        "elapsed": 0.293,
+        "nonempty": true,
+        "bytes": 133,
+        "sha256": "169c3d9d2ca605fea4fe02e984961c6f7ca2e0e3459adce6edc6d5b5c74377f9",
+        "json_keys": [
+          "redirect",
+          "message"
+        ],
+        "server_fields_present": false
+      },
+      {
+        "host": "www.overflix.living",
+        "path": "/index.php",
+        "elapsed": 0.412,
+        "nonempty": true,
+        "bytes": 715,
+        "sha256": "b1bbf0ef87025891e4dc9192d1950ad643560d98817600a94c8c15450a1a3add",
+        "json_keys": [
+          "players",
+          "servers_dub",
+          "servers_leg",
+          "is_episode",
+          "navigation",
+          "current_audio"
+        ],
+        "server_fields_present": true
+      },
+      {
+        "host": "www.overflix.download",
+        "path": "",
+        "elapsed": 1.433,
+        "nonempty": true,
+        "bytes": 74897,
+        "sha256": "a8254c22fe31ff2c97ed39c5a5b4c9de6880f49276ddb7b98c86cca07d718b81"
+      },
+      {
+        "host": "www.overflix.download",
+        "path": "/index.php",
+        "elapsed": 0.256,
+        "nonempty": true,
+        "bytes": 133,
+        "sha256": "0e99e8f9789a3a96bc6e46247540bef1b1e10f8591a7a2b37b123389b23d3326",
+        "json_keys": [
+          "redirect",
+          "message"
+        ],
+        "server_fields_present": false
+      },
+      {
+        "host": "www.overflix.living",
+        "path": "/index.php",
+        "elapsed": 0.363,
+        "nonempty": true,
+        "bytes": 921,
+        "sha256": "747f8f2fe4d0c0e5779347639dc4dd50a825d9d4fc11bca31212e8ebc6d86952",
+        "json_keys": [
+          "players",
+          "servers_dub",
+          "servers_leg",
+          "is_episode",
+          "navigation",
+          "current_audio"
+        ],
+        "server_fields_present": true
+      },
+      {
+        "host": "www.overflix.download",
+        "path": "",
+        "elapsed": 1.124,
+        "nonempty": true,
+        "bytes": 74897,
+        "sha256": "fadf7ba85939e94c17ea149e61e19eaa01ee65c50f1736dd2580ac81ba8a439c"
+      },
+      {
+        "host": "www.overflix.download",
+        "path": "/index.php",
+        "elapsed": 0.616,
+        "nonempty": true,
+        "bytes": 133,
+        "sha256": "721052bc21aa08523ce200b392cfc171102eb07d20dbeb4203888b894a3a0f48",
+        "json_keys": [
+          "redirect",
+          "message"
+        ],
+        "server_fields_present": false
+      },
+      {
+        "host": "www.overflix.living",
+        "path": "/index.php",
+        "elapsed": 0.742,
+        "nonempty": true,
+        "bytes": 1027,
+        "sha256": "b8564f2424c79c127ac097efe00e768299c44295ad8dffe312b5d934d10a97b5",
+        "json_keys": [
+          "players",
+          "servers_dub",
+          "servers_leg",
+          "is_episode",
+          "navigation",
+          "current_audio"
+        ],
+        "server_fields_present": true
+      }
+    ],
+    "dialogs": [
+      {
+        "title": "ESCOLHA O SERVIDOR",
+        "options": [
+          "[B]MIXDROP - R\u00c1PIDO[/B]",
+          "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+          "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+        ]
+      },
+      {
+        "title": "ESCOLHA O IDIOMA",
+        "options": [
+          "[B]ASSISTIR DUBLADO[/B]",
+          "[B]ASSISTIR LEGENDADO[/B]"
+        ]
+      },
+      {
+        "title": "ESCOLHA O SERVIDOR",
+        "options": [
+          "[B]MIXDROP - R\u00c1PIDO[/B]",
+          "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+          "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+        ]
+      },
+      {
+        "title": "ESCOLHA O IDIOMA",
+        "options": [
+          "[B]ASSISTIR DUBLADO[/B]",
+          "[B]ASSISTIR LEGENDADO[/B]"
+        ]
+      },
+      {
+        "title": "ESCOLHA O SERVIDOR",
+        "options": [
+          "[B]MIXDROP - R\u00c1PIDO[/B]",
+          "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+          "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+        ]
+      },
+      {
+        "title": "ESCOLHA O IDIOMA",
+        "options": [
+          "[B]ASSISTIR DUBLADO[/B]",
+          "[B]ASSISTIR LEGENDADO[/B]"
+        ]
+      },
+      {
+        "title": "ESCOLHA O SERVIDOR",
+        "options": [
+          "[B]MIXDROP - R\u00c1PIDO[/B]",
+          "[B]STREAMTAPE - A \u00daLTIMA ESPERAN\u00c7A[/B]",
+          "[B]DOODSTREAM - INDICADO PARA INTERNET LENTA[/B]"
+        ]
+      }
+    ],
+    "https_dns_calls": 16,
+    "hosts": [
+      "www.overflix.download",
+      "www.overflix.living",
+      "www.overflix.download",
+      "www.overflix.living",
+      "www.overflix.download",
+      "www.overflix.living",
+      "www.overflix.download",
+      "www.overflix.living",
+      "www.overflix.download",
+      "www.overflix.living",
+      "www.overflix.download",
+      "www.overflix.living",
+      "www.overflix.download",
+      "www.overflix.living",
+      "www.overflix.download",
+      "www.overflix.living"
+    ]
+  }
+}

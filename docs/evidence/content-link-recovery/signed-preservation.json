@@ -1,0 +1,21 @@
+{
+  "changed": [
+    "assets/addons/service.smarted.bootstrap/content_link_patch.py",
+    "assets/addons/service.smarted.bootstrap/content_network.py",
+    "assets/addons/service.smarted.bootstrap/repair.py"
+  ],
+  "preserved_entries": 8053,
+  "changed_existing_functions": [
+    "repair.repair_profile (content-only delivery call)"
+  ],
+  "changed_runtime_content_functions": [
+    "getMovieData",
+    "valide_v2"
+  ],
+  "base_sha256": "6510b917a159e2b8ab216289ada2e4b2015aa4b29fa81809caa120fc7fe8f0a2",
+  "vast_all_entries_byte_identical": true,
+  "welcome_all_entries_byte_identical": true,
+  "admob_vip_player_skin_navigation_all_entries_byte_identical": true,
+  "seeded_addon_and_all_user_settings_preserved": true,
+  "apk_sha256": "a54bd66daf8cf44e60aedb21868b3242020630144be958f877a01d06f399379b"
+}
