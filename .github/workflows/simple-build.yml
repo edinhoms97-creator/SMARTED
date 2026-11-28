@@ -115,21 +115,15 @@ jobs:
           unzip -p dist/SMARTEDTV-universal.apk assets/addons/script.smartedtv.welcome/vast.py 2>/dev/null | grep -i "VAST_TAG" | head -3
           unzip -p dist/SMARTEDTV-universal.apk assets/smartedtv/js/config.js 2>/dev/null | grep -i "vastTagUrl" | head -3
           echo ""
-          echo "=== Final HilltopAds check in APK ==="
-          FOUND=0
-          for f in $(unzip -l dist/SMARTEDTV-universal.apk | awk '{print $4}' | grep -E '\.(py|js|html|xml|json|txt)$'); do
-            if [ -n "$f" ]; then
-              CONTENT=$(unzip -p dist/SMARTEDTV-universal.apk "$f" 2>/dev/null)
-              if echo "$CONTENT" | grep -qi "hilltop"; then
-                echo "  HILLTOP IN: $f"
-                FOUND=$((FOUND+1))
-              fi
-            fi
-          done
-          if [ "$FOUND" -eq 0 ]; then
+          echo "=== Final HilltopAds check ==="
+          mkdir -p /tmp/apk_check && cd /tmp/apk_check
+          unzip -q -o $GITHUB_WORKSPACE/dist/SMARTEDTV-universal.apk
+          HILLTOP_FILES=$(grep -rli "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" --include="*.txt" . 2>/dev/null)
+          if [ -z "$HILLTOP_FILES" ]; then
             echo "SUCCESS: No HilltopAds references in APK text files"
           else
-            echo "FAILED: $FOUND files still contain HilltopAds"
+            echo "FAILED: HilltopAds still found in:"
+            echo "$HILLTOP_FILES"
             exit 1
           fi
 
