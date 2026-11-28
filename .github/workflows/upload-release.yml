@@ -10,6 +10,7 @@ on:
   push:
     paths:
       - '.github/workflows/upload-release.yml'
+      - 'tools/replace_vast.py'
 
 permissions:
   contents: write
@@ -31,179 +32,104 @@ jobs:
       - name: Download original APK from Dropbox
         run: |
           DROPBOX_URL="${{ github.event.inputs.dropbox_url }}"
-          if [ -z "$DROPBOX_URL" ]; then
-            echo "No Dropbox URL provided"
-            exit 0
-          fi
-          echo "Downloading APK from Dropbox..."
+          if [ -z "$DROPBOX_URL" ]; then echo "No Dropbox URL"; exit 0; fi
+          echo "Downloading APK..."
           curl -L --max-time 300 -o SMARTEDTV-original.apk "$DROPBOX_URL"
-          ORIG_SIZE=$(stat -c%s SMARTEDTV-original.apk)
-          ORIG_SHA=$(sha256sum SMARTEDTV-original.apk | awk '{print $1}')
-          echo "Original size: $ORIG_SIZE bytes"
-          echo "Original SHA256: $ORIG_SHA"
-          echo "$ORIG_SIZE" > /tmp/orig_size.txt
-          echo "$ORIG_SHA" > /tmp/orig_sha.txt
+          echo "Size: $(stat -c%s SMARTEDTV-original.apk) bytes"
+          echo "SHA256: $(sha256sum SMARTEDTV-original.apk | awk '{print $1}')"
 
       - name: Extract APK
         run: |
-          mkdir -p extracted
-          cd extracted
-          unzip -q -o ../SMARTEDTV-original.apk
+          mkdir -p extracted && cd extracted && unzip -q -o ../SMARTEDTV-original.apk
           echo "Extracted $(find . -type f | wc -l) files"
 
-      - name: Find and log ALL HilltopAds references
+      - name: Generate hilltop report
         run: |
           cd extracted
-          echo "=== HILLTOP REFERENCES (all files) ===" > /tmp/hilltop_report.txt
-          echo "" >> /tmp/hilltop_report.txt
+          mkdir -p ../hilltop-report
+          echo "# HilltopAds References Report" > ../hilltop-report/report.md
+          echo "" >> ../hilltop-report/report.md
+          echo "Before replacement:" >> ../hilltop-report/report.md
+          echo "" >> ../hilltop-report/report.md
           BINARY_EXTS="so dex class png jpg jpeg gif webp mp4 mp3 ogg wav ttf otf woff woff2 arsc"
           for f in $(grep -rli "hilltop" . 2>/dev/null); do
-            # Get file extension
-            EXT="${f##*.}"
-            EXT_LOWER=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
+            EXT="${f##*.}"; EXT_LOWER=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
             IS_BINARY=0
-            for be in $BINARY_EXTS; do
-              if [ "$EXT_LOWER" = "$be" ]; then IS_BINARY=1; break; fi
-            done
+            for be in $BINARY_EXTS; do [ "$EXT_LOWER" = "$be" ] && IS_BINARY=1 && break; done
             FSIZE=$(stat -c%s "$f" 2>/dev/null || echo 0)
-            echo "FILE: $f (size: $FSIZE, binary: $IS_BINARY)" >> /tmp/hilltop_report.txt
+            echo "## $f" >> ../hilltop-report/report.md
+            echo "- Size: $FSIZE, Binary: $IS_BINARY" >> ../hilltop-report/report.md
+            echo '```' >> ../hilltop-report/report.md
             if [ "$IS_BINARY" = "0" ] && [ "$FSIZE" -lt 10485760 ]; then
-              # Text file - show content
-              grep -in "hilltop" "$f" 2>/dev/null | head -10 >> /tmp/hilltop_report.txt
-              echo "URLs near hilltop:" >> /tmp/hilltop_report.txt
-              grep -in "https\?://" "$f" 2>/dev/null | grep -i "hilltop\|vast\|ad" | head -5 >> /tmp/hilltop_report.txt
+              grep -in "hilltop\|https\?://" "$f" 2>/dev/null | grep -i "hilltop" | head -5 >> ../hilltop-report/report.md
             else
-              # Binary file - use strings
-              echo "(binary file - strings output)" >> /tmp/hilltop_report.txt
-              strings "$f" | grep -i "hilltop" | head -5 >> /tmp/hilltop_report.txt
+              strings "$f" 2>/dev/null | grep -i "hilltop" | head -5 >> ../hilltop-report/report.md
             fi
-            echo "" >> /tmp/hilltop_report.txt
+            echo '```' >> ../hilltop-report/report.md
+            echo "" >> ../hilltop-report/report.md
           done
-          cat /tmp/hilltop_report.txt
+          cat ../hilltop-report/report.md
 
-      - name: Upload inspection report as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hilltop-report
-          path: /tmp/hilltop_report.txt
-
-      - name: Replace HilltopAds URLs in text files
+      - name: Replace HilltopAds URLs using Python script
         run: |
           cd extracted
-          CLICKADILLA_URL="https://vast.yomeno.xyz/vast?spot_id=1508180"
-          REPLACED=0
-          
-          # Replace in ALL text files (not binary)
-          BINARY_EXTS="so dex class png jpg jpeg gif webp mp4 mp3 ogg wav ttf otf woff woff2 arsc"
-          for f in $(grep -rli "hilltop" . 2>/dev/null); do
-            EXT="${f##*.}"
-            EXT_LOWER=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
-            IS_BINARY=0
-            for be in $BINARY_EXTS; do
-              if [ "$EXT_LOWER" = "$be" ]; then IS_BINARY=1; break; fi
-            done
-            FSIZE=$(stat -c%s "$f" 2>/dev/null || echo 0)
-            if [ "$IS_BINARY" = "1" ] || [ "$FSIZE" -gt 10485760 ]; then
-              echo "SKIPPING (binary/large): $f"
-              continue
-            fi
-            echo "Replacing in: $f"
-            # Replace full URLs containing hilltop
-            sed -i 's|https\?://[^"'"'"' <>\\]*[Hh][Ii][Ll][Ll][Tt][Oo][Pp][^"'"'"' <>\\]*|'"$CLICKADILLA_URL"'|g' "$f"
-            # Replace domain references containing hilltopads
-            sed -i 's|[A-Za-z0-9._-]*hilltopads[A-Za-z0-9._-]*\.[A-Za-z]\{2,\}[^"'"'"' <>\\]*|'"$CLICKADILLA_URL"'|gI' "$f"
-            REPLACED=$((REPLACED+1))
-          done
-          
-          # Also fix any VAST_TAG/vastTagUrl that points elsewhere
-          for f in $(grep -rli "VAST_TAG\|vastTagUrl" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null); do
-            while IFS= read -r line; do
-              VAST_URL=$(echo "$line" | grep -oP 'https?://[^"'"'"' ]+' | head -1)
-              if [ -n "$VAST_URL" ] && ! echo "$VAST_URL" | grep -qi "yomeno\|clickadilla"; then
-                echo "Replacing VAST URL in: $f"
-                echo "  Old: $VAST_URL"
-                ESCAPED_URL=$(echo "$VAST_URL" | sed 's|[.[\*^$()+?{|]|\\&|g')
-                sed -i "s|$ESCAPED_URL|$CLICKADILLA_URL|g" "$f"
-                REPLACED=$((REPLACED+1))
-              fi
-            done < <(grep -n "VAST_TAG\|vastTagUrl" "$f" 2>/dev/null)
-          done
-          
-          echo "Files modified: $REPLACED"
+          python3 $GITHUB_WORKSPACE/tools/replace_vast.py .
 
-      - name: Verify - check text files
+      - name: Verify replacement
         run: |
           cd extracted
-          echo "=== Final check for HilltopAds in text files ==="
           BINARY_EXTS="so dex class png jpg jpeg gif webp mp4 mp3 ogg wav ttf otf woff woff2 arsc"
           REMAINING=0
           for f in $(grep -rli "hilltop" . 2>/dev/null); do
-            EXT="${f##*.}"
-            EXT_LOWER=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
+            EXT="${f##*.}"; EXT_LOWER=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
             IS_BINARY=0
-            for be in $BINARY_EXTS; do
-              if [ "$EXT_LOWER" = "$be" ]; then IS_BINARY=1; break; fi
-            done
+            for be in $BINARY_EXTS; do [ "$EXT_LOWER" = "$be" ] && IS_BINARY=1 && break; done
             FSIZE=$(stat -c%s "$f" 2>/dev/null || echo 0)
             if [ "$IS_BINARY" = "0" ] && [ "$FSIZE" -lt 10485760 ]; then
-              echo "STILL IN TEXT FILE: $f"
-              grep -in "hilltop" "$f" 2>/dev/null | head -5
+              echo "STILL IN TEXT: $f"
+              grep -in "hilltop" "$f" | head -3
               REMAINING=$((REMAINING+1))
             else
-              echo "In binary file (OK to ignore): $f"
+              echo "Binary file (ignored): $f"
             fi
           done
+          echo ""
+          echo "=== ClickAdilla URLs present ==="
+          grep -rli "vast.yomeno.xyz" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" . 2>/dev/null | head -10
           if [ "$REMAINING" -gt 0 ]; then
-            echo "ERROR: HilltopAds still in $REMAINING text file(s)!"
+            echo "FAILED: $REMAINING text files still contain hilltop"
             exit 1
           fi
-          echo "All text files clean - ClickAdilla URL verified."
-          echo "ClickAdilla found in:"
-          grep -rli "vast.yomeno.xyz" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" . 2>/dev/null | head -10
+          echo "All text files verified clean."
 
       - name: Repackage APK
         run: |
           cd extracted
-          echo "=== Creating new APK (storing .so uncompressed) ==="
           zip -r -q -n ".so:.dex" ../SMARTEDTV-new-unsigned.apk .
           cd ..
-          echo "Unsigned size: $(stat -c%s SMARTEDTV-new-unsigned.apk) bytes"
+          echo "Unsigned: $(stat -c%s SMARTEDTV-new-unsigned.apk) bytes"
 
       - name: Zipalign and sign
         run: |
-          echo "=== Signing APK ==="
           keytool -genkey -v -keystore /tmp/debug.keystore -alias debug \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass android -keypass android \
             -dname "CN=SMARTEDTV, OU=SMARTEDTV, O=SMARTEDTV, L=SP, S=SP, C=BR" 2>&1 | tail -1
-          # Try apksigner first, then jarsigner
+          if command -v zipalign &>/dev/null; then
+            zipalign -f -p 4 SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
+          else
+            cp SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
+          fi
           if command -v apksigner &>/dev/null; then
-            zipalign -f -p 4 SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk 2>/dev/null || cp SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
             apksigner sign --ks /tmp/debug.keystore --ks-pass pass:android \
               --key-pass pass:android --ks-key-alias debug \
               --out SMARTEDTV-universal.apk SMARTEDTV-aligned.apk
           else
-            # Install build tools
-            yes | sudo "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --install "build-tools;34.0.0" 2>&1 | tail -3 || true
-            if command -v zipalign &>/dev/null; then
-              zipalign -f -p 4 SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
-            else
-              cp SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
-            fi
-            if command -v apksigner &>/dev/null; then
-              apksigner sign --ks /tmp/debug.keystore --ks-pass pass:android \
-                --key-pass pass:android --ks-key-alias debug \
-                --out SMARTEDTV-universal.apk SMARTEDTV-aligned.apk
-            else
-              jarsigner -keystore /tmp/debug.keystore -storepass android -keypass android \
-                -signedjar SMARTEDTV-universal.apk SMARTEDTV-aligned.apk debug 2>&1 | tail -3
-            fi
+            jarsigner -keystore /tmp/debug.keystore -storepass android -keypass android \
+              -signedjar SMARTEDTV-universal.apk SMARTEDTV-aligned.apk debug 2>&1 | tail -3
           fi
-          FINAL_SIZE=$(stat -c%s SMARTEDTV-universal.apk 2>/dev/null)
-          FINAL_SHA=$(sha256sum SMARTEDTV-universal.apk | awk '{print $1}')
-          echo "=== Final APK ==="
-          echo "Size: $FINAL_SIZE bytes"
-          echo "SHA256: $FINAL_SHA"
+          echo "Final: $(stat -c%s SMARTEDTV-universal.apk) bytes"
+          echo "SHA256: $(sha256sum SMARTEDTV-universal.apk | awk '{print $1}')"
 
       - name: Upload to Release
         run: |
