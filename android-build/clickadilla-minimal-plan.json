@@ -1,0 +1,19 @@
+{
+  "reviewed": true,
+  "base_dropbox_content_hash": "03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277",
+  "package": "smartedtv.full",
+  "version_name": "1.0.161",
+  "policy": "Original Dropbox APK; only Clickadilla tag/network selection, VAST transport and truthful tracking. Remove the premature near-end cutoff only; no native player command, monitor, resume, frequency, VIP, skin or link changes.",
+  "changes": {
+    "assets/addons/service.smarted.bootstrap/ads_vast.py": {
+      "original_sha256": "946b8b08169789c0a7f9c5f5701672484eef86b6ebcd5b564e80b3e718398c41"
+    },
+    "assets/addons/service.smarted.bootstrap/smart_ads.py": {
+      "original_sha256": "cf6315c22a2bd74304085b28bd96ede2379c1f867d2e5057acb2bdd91c79444a"
+    },
+    "assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+      "new_file": true,
+      "original_sha256": null
+    }
+  }
+}

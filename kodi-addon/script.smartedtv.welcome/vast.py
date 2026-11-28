@@ -2,7 +2,7 @@
 """SMARTEDTV — VAST client for Kodi (Clickadilla, Spot #1508180).
 
 Python twin of smartedtv/js/vast.js. Fetches the VAST tag over TLS
-(minimum TLS 1.2, verified) with Chrome/Android-compatible headers,
+(minimum TLS 1.2, verified) with the real Kodi/platform User-Agent,
 parses the XML and fires tracking beacons.
 
 Guarantees (same contract as the web client):
@@ -25,16 +25,9 @@ import xml.etree.ElementTree as ET
 VAST_TAG = "https://vast.yomeno.xyz/vast?spot_id=1508180"
 DEFAULT_TIMEOUT = 8
 
-# Chrome for Android (Pixel 7) — avoids handshake/EOF blocks on
-# ad servers that reject non-browser user agents.
-CHROME_UA = (
-    "Mozilla/5.0 (Linux; Android 13; Pixel 7 Build/TQ3A.230805.001) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 "
-    "Mobile Safari/537.36"
-)
+from ads_tracking import device_user_agent, expand
 
 HEADERS = {
-    "User-Agent": CHROME_UA,
     "Accept": "application/xml,text/xml,*/*;q=0.8",
     "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
     "Accept-Encoding": "identity",
@@ -55,7 +48,7 @@ def _tls_context():
 
 def fetch_vast(tag_url=VAST_TAG, timeout=DEFAULT_TIMEOUT):
     """Fetch the VAST XML. Returns text, or raises on network error."""
-    req = urllib.request.Request(tag_url, headers=HEADERS)
+    req = urllib.request.Request(tag_url, headers=dict(HEADERS, **{"User-Agent": device_user_agent()}))
     with urllib.request.urlopen(req, timeout=timeout, context=_tls_context()) as resp:
         return resp.read().decode("utf-8", errors="replace")
 
@@ -130,6 +123,8 @@ def parse_vast(xml_text):
     except ET.ParseError:
         return {"ads": [], "nofill": True, "reason": "malformed", "error_code": None}
 
+    for node in root.iter():
+        node.tag = node.tag.rsplit('}', 1)[-1]
     ad_els = root.findall(".//Ad")
     err = root.find(".//Error")
     if not ad_els and err is not None:
@@ -162,6 +157,7 @@ def parse_vast(xml_text):
         linear = ad_el.find(".//Linear")
         ads.append({
             "id": ad_el.get("id") or "",
+            "wrapper_url": _text(ad_el, "VASTAdTagURI") or _text(ad_el, "VASTAdTagURL"),
             "ad_system": _text(ad_el, "AdSystem"),
             "ad_title": _text(ad_el, "AdTitle"),
             "duration": _parse_clock(_text(ad_el, "Duration")),
@@ -179,15 +175,9 @@ def fire(url, error_code=None):
     """Fire-and-forget tracking beacon. Never raises."""
     if not url:
         return
-    if error_code is not None:
-        url = url.replace("[ERRORCODE]", str(error_code))
-    import random
-    import datetime
-    url = url.replace("[CACHEBUSTER]", str(random.randint(10000000, 99999999)))
-    url = url.replace("[TIMESTAMP]", urllib.parse.quote(
-        datetime.datetime.now(datetime.timezone.utc).isoformat()))
+    url = expand(url, error_code=error_code, user_agent=device_user_agent())
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": CHROME_UA})
+        req = urllib.request.Request(url, headers={"User-Agent": device_user_agent()})
         urllib.request.urlopen(req, timeout=5, context=_tls_context()).close()
     except Exception:
         pass  # tracking must never break playback
@@ -210,20 +200,37 @@ def play_preroll_or_fallback(tag_url=VAST_TAG, timeout=DEFAULT_TIMEOUT, on_event
     NEVER raises: any failure resolves as nofill/error so the caller
     can fall back immediately to the main channel/VOD.
     """
-    try:
-        xml_text = fetch_vast(tag_url, timeout=timeout)
-    except Exception as exc:
-        return {"outcome": "error", "reason": str(exc), "ad": None}
-    try:
-        parsed = parse_vast(xml_text)
-    except Exception as exc:  # defensive: parse_vast should not raise
-        return {"outcome": "error", "reason": str(exc), "ad": None}
-    if not parsed["ads"]:
-        return {"outcome": "nofill", "reason": parsed["reason"],
-                "error_code": parsed["error_code"], "ad": None}
-    ad = parsed["ads"][0]
-    if not ad["media_file"] or not ad["media_file"]["url"]:
-        return {"outcome": "nofill", "reason": "no-mediafile", "ad": None}
-    # Selection only. Playback callbacks must emit impression/start,
-    # never the tag fetch (which can succeed while playback fails).
-    return {"outcome": "ad", "ad": ad}
+    import time
+    deadline = time.monotonic() + min(float(timeout), DEFAULT_TIMEOUT)
+    current, visited = tag_url, set()
+    inherited_impressions, inherited_tracking = [], {}
+    def failure(outcome, reason, code):
+        fire_all(inherited_tracking.get('error') or [], error_code=code)
+        return {'outcome': outcome, 'reason': reason, 'ad': None, 'error_code': code}
+    for _ in range(6):
+        if current in visited:
+            return failure('error', 'wrapper-cycle', 302)
+        visited.add(current)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return failure('error', 'vast-timeout', 301)
+        try:
+            parsed = parse_vast(fetch_vast(expand(current, user_agent=device_user_agent()), timeout=remaining))
+        except Exception:
+            return failure('error', 'network-failed', 301)
+        if not parsed['ads']:
+            return failure('nofill', parsed['reason'], 303)
+        ad = parsed['ads'][0]
+        if ad.get('wrapper_url') and not ad.get('media_file'):
+            inherited_impressions.extend(ad['impressions'])
+            for event, urls in ad['tracking'].items():
+                inherited_tracking.setdefault(event, []).extend(urls)
+            current = ad['wrapper_url']
+            continue
+        if not ad['media_file'] or not ad['media_file']['url']:
+            return failure('nofill', 'no-mediafile', 403)
+        ad['impressions'] = inherited_impressions + ad['impressions']
+        for event, urls in inherited_tracking.items():
+            ad['tracking'][event] = urls + ad['tracking'].get(event, [])
+        return {'outcome': 'ad', 'ad': ad}
+    return failure('error', 'wrapper-limit', 302)

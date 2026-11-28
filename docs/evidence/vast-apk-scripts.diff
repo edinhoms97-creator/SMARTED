@@ -1,0 +1,802 @@
+--- tracking_restored/assets/addons/service.smarted.bootstrap/ads_openings.py
++++ current/assets/addons/service.smarted.bootstrap/ads_openings.py
+@@ -0,0 +1,182 @@
++"""In-memory opening generations and URL-free stage diagnostics; no ad transport."""
++import json
++import threading
++import time
++
++_LOCAL = threading.local()
++_BATCH_LOCK = threading.Lock()
++_BATCH = 0
++
++
++def emit(kodi, stage, **fields):
++    message = dict(stage=stage, opening=getattr(_LOCAL, 'opening', None),
++                   monotonic_ms=round(time.monotonic() * 1000), **fields)
++    try:
++        kodi.log('[SmartAdsOpening] ' + json.dumps(message, ensure_ascii=True), getattr(kodi, 'LOGINFO', 1))
++    except Exception:
++        pass
++
++
++def context(opening):
++    _LOCAL.opening = opening
++
++
++def batch_id():
++    global _BATCH
++    with _BATCH_LOCK:
++        _BATCH += 1
++        return _BATCH
++
++
++class Opening:
++    def __init__(self):
++        self.lock = threading.RLock()
++        self.generation = 0
++        self.aliases = set()
++        self.channel = ''
++        self.attempted = False
++        self.closed = True
++        self.in_ad = False
++        self.saw_fullscreen = False
++        self.home_boundary = False
++
++    def claim(self, path, channel=''):
++        with self.lock:
++            if self.in_ad:
++                return None
++            same = path in self.aliases and (not channel or not self.channel or channel == self.channel)
++            if channel and self.channel and channel == self.channel:
++                same = True  # native channel identity survives proxy/token refresh
++            if self.closed or not same:
++                self.generation += 1
++                self.aliases, self.channel = {path}, channel
++                self.attempted, self.closed = False, False
++            if same:
++                self.aliases.add(path)
++            if same and channel and not self.channel:
++                self.channel = channel
++            if self.attempted:
++                return None
++            self.attempted, self.in_ad = True, True
++            self.home_boundary = False
++            return self.generation
++
++    def finish(self, generation, returned=''):
++        with self.lock:
++            if generation != self.generation:
++                return
++            if returned:
++                self.aliases.add(returned)
++            self.in_ad = False
++
++    def close(self):
++        with self.lock:
++            if self.in_ad or self.closed:
++                return False
++            self.closed, self.attempted = True, False
++            return True
++
++    def observe_ui(self, home, fullscreen):
++        """Home is an explicit UI boundary even when Kodi keeps video behind it.
++
++        Never interpret OSD/pause/seek or loss of Android focus as a close.
++        Initial Home and temporary ad transitions do not create boundaries.
++        """
++        with self.lock:
++            if self.in_ad:
++                return False
++            if home and self.saw_fullscreen:
++                self.closed, self.attempted = True, False
++                self.home_boundary, self.saw_fullscreen = True, False
++            elif fullscreen:
++                self.saw_fullscreen = True
++                if self.home_boundary:
++                    self.home_boundary = False
++                    return True
++            return False
++
++
++def state(monitor):
++    # Installation/AV callbacks can race. Publish exactly one ledger per observer.
++    with _BATCH_LOCK:
++        found = getattr(monitor, '_smarted_openings', None)
++        if found is None:
++            found = Opening()
++            monitor._smarted_openings = found
++        return found
++
++
++def observe(monitor, kodi, previous=(False, '', '')):
++    """Passive fallback for native callbacks not delivered on cold bootstrap.
++
++    Only video edges/path/channel changes or explicit Home return call the
++    existing eligibility gate. Never issue play/seek/pause/menu commands here.
++    Player.HasMedia keeps buffering/pause from being mistaken for a close.
++    """
++    if getattr(monitor, '_em_vast', False):
++        return previous
++    ledger = state(monitor)
++    home = bool(kodi.getCondVisibility('Window.IsActive(home)'))
++    full = bool(kodi.getCondVisibility('Window.IsActive(fullscreenvideo)'))
++    playing = bool(monitor.isPlayingVideo())
++    media = bool(kodi.getCondVisibility('Player.HasMedia'))
++    path = (monitor._caminho() or '') if playing else ''
++    channel = (kodi.getInfoLabel('VideoPlayer.ChannelName') or '') if playing else ''
++    was_video, old_path, old_channel = previous
++    live = False
++    if was_video and not playing and not media:
++        try:
++            import ao_vivo
++            live = bool(ao_vivo.eh_ao_vivo(old_path))
++        except Exception:
++            pass
++    # Kodi can show Home automatically at a live EOF. That is not a user
++    # navigation boundary; explicit Stop or Home while media is active still is.
++    suppress_auto_home = live and not media and not playing and not ledger.closed
++    home_return = ledger.observe_ui(home and not suppress_auto_home, full)
++    if playing:
++        edge = not was_video or path != old_path or channel != old_channel
++        waiting = getattr(monitor, '_smarted_wait_for_video_boundary', False)
++        if home_return or (edge and not waiting):
++            emit(kodi, 'native-playback-observed', home_return=home_return)
++            monitor._talvez_mostrar()
++        return (True, path, channel)
++    if media:
++        return previous  # paused/buffering is not a new opening
++    if was_video:
++        # Live's existing reconnect helper may temporarily release media.
++        # An explicit Stop closes it; EOF alone must not repeat ads.
++        if not live and ledger.close():
++            try:
++                monitor._limpar_retomada()
++            except Exception as exc:
++                emit(kodi, 'close-cleanup-failed', error=type(exc).__name__)
++            emit(kodi, 'opening-closed', boundary='observed-no-media')
++    monitor._smarted_wait_for_video_boundary = False
++    if suppress_auto_home:
++        return previous  # retain live identity across every reconnect poll
++    return (False, '', '')
++
++
++def watch_home(monitor, kodi):
++    """Abortable state observer; fallback eligibility, not a player watchdog."""
++    with _BATCH_LOCK:
++        if getattr(monitor, '_smarted_home_observer', False):
++            return
++        monitor._smarted_home_observer = True
++    emit(kodi, 'state-observer-installed')
++    def run():
++        try:
++            abort = kodi.Monitor()
++            previous = (False, '', '')
++            while not abort.abortRequested():
++                previous = observe(monitor, kodi, previous)
++                if abort.waitForAbort(.25):
++                    break
++        except Exception as exc:
++            emit(kodi, 'home-observer-unavailable', error=type(exc).__name__)
++    threading.Thread(target=run, name='smarted-opening-state-observer', daemon=True).start()
++
++
++def current():
++    return getattr(_LOCAL, 'opening', None)
+--- tracking_restored/assets/addons/service.smarted.bootstrap/ads_vast.py
++++ current/assets/addons/service.smarted.bootstrap/ads_vast.py
+@@ -405,6 +405,9 @@
+ 
+ def disparar(urls):
+     """Pixel GETs with expanded macros and actual Kodi UA, not tag headers."""
++    from ads_openings import emit, batch_id
++    batch = batch_id()
++    emit(xbmc, 'tracking-http-batch', batch=batch, pixels=len(urls or []))
+     import ssl
+     from urllib.request import Request, urlopen
+     from ads_tracking import expand, device_user_agent
+@@ -416,9 +419,11 @@
+             context.minimum_version = ssl.TLSVersion.TLSv1_2
+             request = Request(expand(url, user_agent=ua), headers={'User-Agent': ua})
+             response = urlopen(request, timeout=6, context=context)
++            emit(xbmc, 'tracking-http-response', batch=batch, status=response.getcode())
+             response.close()
+             sent += 1
+-        except Exception:
++        except Exception as exc:
++            emit(xbmc, 'tracking-http-failure', batch=batch, error=type(exc).__name__)
+             pass  # best-effort pixels must not block the native playback loop
+     return sent
+ 
+@@ -427,17 +432,18 @@
+ 
+ 
+ def _disparar_eventos(urls):
+-    """Em producao dispara em background para nunca travar o loop do player;
+-    nos testes (quando ``disparar`` foi substituida) mantem ordem sincrona.
+-    """
+     if not urls:
+         return 0
+     if disparar is not _DISPARAR_PADRAO:
+         return disparar(urls)
+-    copia = list(urls)
+-    threading.Thread(target=disparar, args=(copia,),
+-                     name='vast-tracking', daemon=True).start()
+-    return len(copia)
++    from ads_openings import current, context
++    opening = current()
++    copy_urls = list(urls)
++    def send():
++        context(opening)
++        disparar(copy_urls)
++    threading.Thread(target=send, name='vast-tracking', daemon=True).start()
++    return len(copy_urls)
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -601,6 +607,7 @@
+     """Confirm progress, own callbacks and release failed ads before fallback."""
+     if not anuncio or not anuncio.get('url'):
+         return {'exibido': False, 'motivo': 'sem-anuncio'}
++    from ads_openings import emit
+     tocar = tocar or _tocar
+     dormir = dormir or time.sleep
+     anterior = anterior or _arquivo_atual()
+@@ -685,9 +692,12 @@
+                             last_position, progress_at = position, now
+                             if not started and not no_frame:
+                                 started = True
++                                emit(xbmc, 'ad-start-observed', position=position)
++                                emit(xbmc, 'impression-queued', pixels=len(anuncio.get('impressao') or []))
+                                 _disparar_eventos(anuncio.get('impressao') or [])
+                                 _disparar_eventos(events.get('start') or [])
+                                 fired.add('start')
++                                emit(xbmc, 'tracking-event-queued', event='start')
+                         elif now - progress_at >= min(float(TEMPO_TRAVAMENTO_ANUNCIO), 8.0):
+                             reason = 'travamento'
+                             break
+@@ -699,6 +709,7 @@
+                                     if position / duration >= threshold and name not in fired:
+                                         _disparar_eventos(events.get(name) or [])
+                                         fired.add(name)
++                                        emit(xbmc, 'tracking-event-queued', event=name)
+                         dormir(.1)
+                     else:
+                         reason = 'timeout-anuncio'
+@@ -718,12 +729,14 @@
+                     xbmc.Player().stop()
+                 except Exception:
+                     pass
++    emit(xbmc, 'ad-player-released', reason=reason, started=started)
+     eligible = started and reason in ('concluido', 'pulado')
+     if reason == 'concluido' and started:
+         for name in ('firstQuartile', 'midpoint', 'thirdQuartile', 'complete'):
+             if name not in fired:
+                 _disparar_eventos(events.get(name) or [])
+                 fired.add(name)
++                emit(xbmc, 'tracking-event-queued', event=name)
+     elif reason == 'pulado' and started:
+         _disparar_eventos(events.get('skip') or [])
+         fired.add('skip')
+@@ -737,11 +750,13 @@
+ def exibir(log=None, tag='', altura_tela=0, tempo_maximo=TEMPO_MAXIMO_ANUNCIO,
+            baixar_tag=None, tocar=None, dormir=None):
+     """Reference request/selection flow with selected Wrapper pixel inheritance."""
++    from ads_openings import emit
+     import xml.etree.ElementTree as _ET
+     if not tag:
+         return {'exibido': False, 'motivo': 'sem-tag'}
+     impressions, errors, inherited = [], [], {}
+     def failure(reason, code):
++        emit(xbmc, 'vast-result', reason=reason)
+         from ads_tracking import expand, device_user_agent
+         _disparar_eventos([expand(url, error_code=code, user_agent=device_user_agent(xbmc)) for url in errors])
+         return {'exibido': False, 'motivo': reason}
+@@ -755,11 +770,13 @@
+         if current in visited:
+             return failure('wrapper-ciclico', 302)
+         visited.add(current)
++        emit(xbmc, 'vast-request', hop=len(visited), wrapper=current != tag)
+         try:
+             # Exact reference URLs, headers, request budget and native selector.
+             data = baixar_tag(current) if baixar_tag else baixar(current, timeout=remaining)
+         except Exception:
+             data = None
++        emit(xbmc, 'vast-response', received=data is not None, size=len(data or b''))
+         if data is None:
+             return failure('falha-rede-vast', 301)
+         if not data or not data.strip():
+@@ -770,6 +787,7 @@
+             return failure('xml-invalido', 100)
+         ad = escolher_anuncio(data, altura_tela)
+         if ad:
++            emit(xbmc, 'creative-selected')
+             ad = dict(ad)
+             ad['impressao'] = impressions + list(ad.get('impressao') or [])
+             ad['errors'] = errors + list(ad.get('errors') or [])
+@@ -1009,6 +1027,8 @@
+ 
+ def restaurar(estado, log=None, espera=20, dormir=None, agora=None, url_anuncio=''):
+     """Reuse original reconnect candidates; never mistake the ad for the VOD."""
++    from ads_openings import emit
++    emit(xbmc, 'resume-begin')
+     if not estado or not estado.get('caminho'):
+         return False
+     dormir = dormir or time.sleep
+@@ -1017,7 +1037,10 @@
+     live = bool(estado.get('ao_vivo'))
+     deadline = agora() + min(float(espera), 12.0)
+     candidates = _candidatos_restauracao(estado)
+-    for route in candidates:
++    for route_index, route in enumerate(candidates):
++        if agora() >= deadline:
++            break
++        emit(xbmc, 'resume-route', index=route_index, plugin=route.startswith('plugin://'))
+         try:
+             opened = False
+             if live:
+@@ -1043,14 +1066,17 @@
+             if not ready:
+                 continue
+             player = xbmc.Player()
+-            if not live:
++            if not live and target > 0 and abs(float(player.getTime()) - target) > .25:
++                seek_started = agora()
+                 player.seekTime(target)
+                 seek_deadline = min(deadline, agora() + 3.0)
+                 confirmed = False
+                 for _ in range(60):
+                     if not player.isPlayingVideo() or (url_anuncio and player.getPlayingFile() == url_anuncio):
+                         break
+-                    if abs(float(player.getTime()) - target) <= .25:
++                    observed = float(player.getTime())
++                    elapsed = max(0.0, agora() - seek_started)
++                    if target - .25 <= observed <= target + elapsed + .25:
+                         confirmed = True
+                         break
+                     if agora() >= seek_deadline:
+@@ -1061,6 +1087,7 @@
+             _garantir_tela_cheia()
+             if estado.get('smarted_estava_pausado') and not xbmc.getCondVisibility('Player.Paused'):
+                 player.pause()
++            emit(xbmc, 'content-released', live=live)
+             return True
+         except Exception:
+             continue
+@@ -1080,8 +1107,10 @@
+             estado.setdefault('smarted_estava_pausado', bool(xbmc.getCondVisibility('Player.Paused')))
+         except Exception:
+             estado.setdefault('smarted_estava_pausado', False)
++    changed = [False]
+     def start_ad(url, logger):
+         if estado and _player_tocando_video() and _arquivo_atual() != estado['caminho']:
++            changed[0] = True
+             return False  # user changed the film while the tag was loading
+         return (tocar or _tocar)(url, logger)
+     try:
+@@ -1090,6 +1119,8 @@
+     except Exception:
+         receipt = {'exibido': False, 'motivo': 'excecao-fluxo',
+                    'precisa_restaurar': bool(estado and (_arquivo_atual() != estado['caminho'] or not _player_tocando_video()))}
++    if changed[0]:
++        receipt['motivo'] = 'conteudo-alterado'
+     # A user selecting another film during the ad must not be sent back.
+     restore = receipt.get('motivo') != 'conteudo-alterado' and estado and (
+         receipt.get('exibido') or receipt.get('precisa_restaurar') or not _player_tocando_video())
+--- tracking_restored/assets/addons/service.smarted.bootstrap/smart_ads.py
++++ current/assets/addons/service.smarted.bootstrap/smart_ads.py
+@@ -679,6 +679,7 @@
+         if log:
+             log('[SmartAdsDiag] solicitacao-vast-iniciada')
+         receipt = module.exibir_e_devolver(log=log, tag=tag, altura_tela=height)
++        globals()['_smarted_last_receipt'] = receipt
+         success = bool(receipt.get('exibido')) and receipt.get('retomada_confirmada') is not False
+         if log:
+             # No film URLs, tracking tokens, account IDs or personal settings.
+@@ -837,15 +838,14 @@
+ 
+ 
+ def abrir_anuncio(atividade, log=None, uri=''):
+-    """Dispara a tela e espera o Kodi voltar a frente antes de liberar o video."""
++    """Native VAST never left Kodi: no external-activity focus wait on return."""
+     disparou = tocar_anuncio(atividade, log, uri)
+     if disparou:
+-        _kodi_em_foco()
++        if not usar_vast():
++            _kodi_em_foco()  # preserve the original external-ad contract
+         if atividade == ATIVIDADE_PREROLL:
+             try:
+-                if (xbmc.Player().isPlayingVideo()
+-                        and not xbmc.getCondVisibility(
+-                            'Window.IsActive(fullscreenvideo)')):
++                if xbmc.Player().isPlayingVideo() and not xbmc.getCondVisibility('Window.IsActive(fullscreenvideo)'):
+                     xbmc.executebuiltin('ActivateWindow(fullscreenvideo)')
+             except Exception:
+                 pass
+@@ -1152,35 +1152,48 @@
+             pass
+ 
+     def _ciclo_vast(self, atividade, log, caminho_inicial=''):
+-        success = False
+-        with _LOCK_OPORTUNIDADE:
++            from ads_openings import state, context, emit
++            ledger = state(self)
++            generation = ledger.generation
++            context(generation)
++            success = False
++            changed = False
+             with self._vast_lock:
+                 self._em_vast = True
+-                key = caminho_inicial
+                 try:
+-                    key = _chave_conteudo(caminho_inicial)
++                    # Only synchronize dispatch bookkeeping, NOT network/media/tracking.
++                    # Callback threads must never wait for the duration of an ad.
++                    with _LOCK_OPORTUNIDADE:
++                        key = _chave_conteudo(caminho_inicial)
++                    globals()['_smarted_last_receipt'] = {}
+                     success = bool(abrir_anuncio(atividade, log))
+-                    if success:
+-                        ads_regra.registrar_anuncio(key, time.time())
+-                        ads_regra.concluir_anuncio(time.time())
+-                    else:
+-                        ads_regra.cancelar_anuncio(key)
++                    receipt = globals().get('_smarted_last_receipt') or {}
++                    changed = receipt.get('motivo') == 'conteudo-alterado'
++                    with _LOCK_OPORTUNIDADE:
++                        if success:
++                            ads_regra.registrar_anuncio(key, time.time())
++                            ads_regra.concluir_anuncio(time.time())
++                        else:
++                            ads_regra.cancelar_anuncio(key)
+                 except Exception as exc:
+-                    success = False
+-                    ads_regra.cancelar_anuncio(key)
+-                    if log:
+-                        log('[SmartAdsDiag] ciclo-vast:%s' % type(exc).__name__)
++                    with _LOCK_OPORTUNIDADE:
++                        ads_regra.cancelar_anuncio(caminho_inicial)
++                    emit(xbmc, 'cycle-failed-open', error=type(exc).__name__)
+                 finally:
+-                    try:
+-                        self._volta_vast_chave = _normalizar_caminho_chave(caminho_inicial)
+-                        self._ate_ignorar_volta_vast = time.monotonic() + 18.0
+-                    finally:
+-                        self._em_vast = False
+-                self._garantir_player_tela_cheia()
+-                path = self._caminho() or caminho_inicial
+-                if path:
+-                    self._vigiar_imagem(path)
+-        return success
++                    returned = self._caminho() or caminho_inicial
++                    # Alternate resolved URLs from the native resume belong to this
++                    # opening too; no eighteen-second wall-clock suppression needed.
++                    ledger.finish(generation, '' if changed else _normalizar_caminho_chave(returned))
++                    self._em_vast = False
++                    emit(xbmc, 'cycle-finished', ad_and_resume_confirmed=success)
++                if not changed:
++                    self._garantir_player_tela_cheia()
++                    if returned:
++                        self._vigiar_imagem(returned)  # reference helper, live only
++            if changed:
++                ledger.close()
++                self._talvez_mostrar()  # genuinely new selection, never the old VOD
++            return success
+ 
+     def _smarted_disparar_original(self, atividade, log):
+         if usar_vast():
+@@ -1223,19 +1236,20 @@
+         return True
+ 
+     def _disparar(self, atividade, log):
+-        if not usar_vast():
+-            return self._smarted_disparar_original(atividade, log)
+-        if self._em_vast:
++            if not usar_vast():
++                return self._smarted_disparar_original(atividade, log)
++            if self._em_vast:
++                return False
++            path = self._caminho() or self.ultimo_caminho or ''
++            self._em_vast = True
++            try:
++                threading.Thread(target=self._ciclo_vast, args=(atividade, log, path),
++                                 name='smarted-vast-preroll', daemon=True).start()
++            except Exception:
++                self._em_vast = False
++                if log:
++                    log('[SmartAdsDiag] falha-agendamento-vast')
+             return False
+-        path = self._caminho() or self.ultimo_caminho or ''
+-        self._em_vast = True
+-        try:
+-            threading.Thread(target=self._ciclo_vast, args=(atividade, log, path), name='smarted-vast-preroll', daemon=True).start()
+-        except Exception:
+-            self._em_vast = False
+-            if log:
+-                log('[SmartAdsDiag] falha-agendamento-vast')
+-        return False
+ 
+     def _caminho(self):
+         try:
+@@ -1253,7 +1267,7 @@
+                     break
+         return caminho or None
+ 
+-    def _talvez_mostrar(self):
++    def _smarted_talvez_mostrar_original(self):
+         if self._em_vast:
+             return
+         try:
+@@ -1311,6 +1325,41 @@
+             if self.log:
+                 self.log('[SmartAds] pre-roll falhou (%s)' % erro, xbmc.LOGWARNING)
+ 
++    def _talvez_mostrar(self):
++            if not usar_vast():
++                return self._smarted_talvez_mostrar_original()
++            from ads_openings import state, context, emit
++            ledger = state(self)
++            if self._em_vast or not _e_video(self):
++                return
++            path = self._caminho()
++            if not path:
++                return
++            channel = xbmc.getInfoLabel('VideoPlayer.ChannelName') or ''
++            generation = ledger.claim(_normalizar_caminho_chave(path), channel)
++            if generation is None:
++                return
++            self._smarted_wait_for_video_boundary = False
++            context(generation)
++            emit(xbmc, 'opening-claimed')
++            self.sessao = generation
++            self.ultimo_caminho = path
++            self._ate_ignorar_volta_vast = 0.0
++            self._volta_vast_chave = ''
++            try:
++                # Only an accepted new opening clears persisted eligibility. Repeated
++                # AV/Started, pause, seek and native ad-return never enter this branch.
++                with _LOCK_OPORTUNIDADE:
++                    esquecer()
++                    mostrar_preroll(self.log, self.intervalo, caminho=path,
++                                    chave=_chave_conteudo(path), sessao=generation,
++                                    disparar=self._disparar)
++            except Exception as exc:
++                emit(xbmc, 'opening-failed-open', error=type(exc).__name__)
++            finally:
++                if not self._em_vast:  # VIP, scheduling failure or ineligible metadata
++                    ledger.finish(generation, _normalizar_caminho_chave(path))
++
+     def _vigiar_imagem(self, caminho):
+         """So para canal continuo, e sem tocar em filme/serie."""
+         try:
+@@ -1347,7 +1396,7 @@
+             return
+         self._talvez_mostrar()
+ 
+-    def onPlayBackStopped(self):
++    def _smarted_stop_original(self):
+         if self._em_vast or _e_video(self):
+             return
+         self._ate_ignorar_volta_vast = 0.0
+@@ -1357,7 +1406,21 @@
+         self.sessao += 1
+         esquecer()
+ 
+-    def onPlayBackEnded(self):
++    def onPlayBackStopped(self):
++            if not usar_vast():
++                return self._smarted_stop_original()
++            from ads_openings import state, emit
++            if self._em_vast or not state(self).close():
++                return
++            # A stop notification is the boundary. isPlayingVideo may still expose
++            # the old frame/file here; it must not veto closing the old opening.
++            self._ate_ignorar_volta_vast = 0.0
++            self._volta_vast_chave = ''
++            self._smarted_wait_for_video_boundary = True
++            self._limpar_retomada()
++            emit(xbmc, 'opening-closed', boundary='stop')
++
++    def _smarted_end_original(self):
+         if self._em_vast:
+             return
+         retomada = self._retomada()
+@@ -1378,6 +1441,27 @@
+             pass
+         self._limpar_retomada()
+ 
++    def onPlayBackEnded(self):
++            if not usar_vast():
++                return self._smarted_end_original()
++            from ads_openings import state, emit
++            if self._em_vast:
++                return
++            # Continuous live reconnect is not a user opening. VOD/episode end is,
++            # even if the content ended inside the former 18-second suppression.
++            try:
++                import ao_vivo
++                if self.ultimo_caminho and ao_vivo.eh_ao_vivo(self.ultimo_caminho):
++                    return
++            except Exception:
++                pass
++            if state(self).close():
++                self._ate_ignorar_volta_vast = 0.0
++                self._volta_vast_chave = ''
++                self._smarted_wait_for_video_boundary = True
++                self._limpar_retomada()
++                emit(xbmc, 'opening-closed', boundary='end')
++
+     def _limpar_retomada(self):
+         # Stop/troca de conteudo: nada de ressuscitar player nem posicao.
+         retomada = self._retomada()
+@@ -1391,7 +1475,7 @@
+ _monitor = None
+ 
+ 
+-def iniciar_monitor(log=None, intervalo=None):
++def _smarted_iniciar_monitor_original(log=None, intervalo=None):
+     """Liga o gancho de reproducao uma vez por sessao."""
+     global _monitor
+     if _monitor is not None or not android():
+@@ -1409,6 +1493,13 @@
+         _monitor = None
+     return _monitor
+ 
++def iniciar_monitor(log=None, intervalo=None):
++    from ads_openings import watch_home
++    monitor = _smarted_iniciar_monitor_original(log, intervalo)
++    if monitor is not None:
++        watch_home(monitor, xbmc)
++    return monitor
++
+ 
+ def monitor():
+     return _monitor
+--- previous_candidate/assets/addons/service.smarted.bootstrap/ads_openings.py
++++ current/assets/addons/service.smarted.bootstrap/ads_openings.py
+@@ -45,10 +45,14 @@
+             if self.in_ad:
+                 return None
+             same = path in self.aliases and (not channel or not self.channel or channel == self.channel)
++            if channel and self.channel and channel == self.channel:
++                same = True  # native channel identity survives proxy/token refresh
+             if self.closed or not same:
+                 self.generation += 1
+                 self.aliases, self.channel = {path}, channel
+                 self.attempted, self.closed = False, False
++            if same:
++                self.aliases.add(path)
+             if same and channel and not self.channel:
+                 self.channel = channel
+             if self.attempted:
+@@ -67,7 +71,7 @@
+ 
+     def close(self):
+         with self.lock:
+-            if self.in_ad:
++            if self.in_ad or self.closed:
+                 return False
+             self.closed, self.attempted = True, False
+             return True
+@@ -102,27 +106,76 @@
+         return found
+ 
+ 
++def observe(monitor, kodi, previous=(False, '', '')):
++    """Passive fallback for native callbacks not delivered on cold bootstrap.
++
++    Only video edges/path/channel changes or explicit Home return call the
++    existing eligibility gate. Never issue play/seek/pause/menu commands here.
++    Player.HasMedia keeps buffering/pause from being mistaken for a close.
++    """
++    if getattr(monitor, '_em_vast', False):
++        return previous
++    ledger = state(monitor)
++    home = bool(kodi.getCondVisibility('Window.IsActive(home)'))
++    full = bool(kodi.getCondVisibility('Window.IsActive(fullscreenvideo)'))
++    playing = bool(monitor.isPlayingVideo())
++    media = bool(kodi.getCondVisibility('Player.HasMedia'))
++    path = (monitor._caminho() or '') if playing else ''
++    channel = (kodi.getInfoLabel('VideoPlayer.ChannelName') or '') if playing else ''
++    was_video, old_path, old_channel = previous
++    live = False
++    if was_video and not playing and not media:
++        try:
++            import ao_vivo
++            live = bool(ao_vivo.eh_ao_vivo(old_path))
++        except Exception:
++            pass
++    # Kodi can show Home automatically at a live EOF. That is not a user
++    # navigation boundary; explicit Stop or Home while media is active still is.
++    suppress_auto_home = live and not media and not playing and not ledger.closed
++    home_return = ledger.observe_ui(home and not suppress_auto_home, full)
++    if playing:
++        edge = not was_video or path != old_path or channel != old_channel
++        waiting = getattr(monitor, '_smarted_wait_for_video_boundary', False)
++        if home_return or (edge and not waiting):
++            emit(kodi, 'native-playback-observed', home_return=home_return)
++            monitor._talvez_mostrar()
++        return (True, path, channel)
++    if media:
++        return previous  # paused/buffering is not a new opening
++    if was_video:
++        # Live's existing reconnect helper may temporarily release media.
++        # An explicit Stop closes it; EOF alone must not repeat ads.
++        if not live and ledger.close():
++            try:
++                monitor._limpar_retomada()
++            except Exception as exc:
++                emit(kodi, 'close-cleanup-failed', error=type(exc).__name__)
++            emit(kodi, 'opening-closed', boundary='observed-no-media')
++    monitor._smarted_wait_for_video_boundary = False
++    if suppress_auto_home:
++        return previous  # retain live identity across every reconnect poll
++    return (False, '', '')
++
++
+ def watch_home(monitor, kodi):
+-    """Observe navigation only, using Kodi's abortable wait; no UI/player commands."""
++    """Abortable state observer; fallback eligibility, not a player watchdog."""
+     with _BATCH_LOCK:
+         if getattr(monitor, '_smarted_home_observer', False):
+             return
+         monitor._smarted_home_observer = True
++    emit(kodi, 'state-observer-installed')
+     def run():
+         try:
+             abort = kodi.Monitor()
++            previous = (False, '', '')
+             while not abort.abortRequested():
+-                if not getattr(monitor, '_em_vast', False):
+-                    home = bool(kodi.getCondVisibility('Window.IsActive(home)'))
+-                    full = bool(kodi.getCondVisibility('Window.IsActive(fullscreenvideo)'))
+-                    if state(monitor).observe_ui(home, full):
+-                        emit(kodi, 'home-return')
+-                        monitor._talvez_mostrar()
++                previous = observe(monitor, kodi, previous)
+                 if abort.waitForAbort(.25):
+                     break
+         except Exception as exc:
+             emit(kodi, 'home-observer-unavailable', error=type(exc).__name__)
+-    threading.Thread(target=run, name='smarted-opening-home-observer', daemon=True).start()
++    threading.Thread(target=run, name='smarted-opening-state-observer', daemon=True).start()
+ 
+ 
+ def current():
+--- previous_candidate/assets/addons/service.smarted.bootstrap/smart_ads.py
++++ current/assets/addons/service.smarted.bootstrap/smart_ads.py
+@@ -1339,6 +1339,7 @@
+             generation = ledger.claim(_normalizar_caminho_chave(path), channel)
+             if generation is None:
+                 return
++            self._smarted_wait_for_video_boundary = False
+             context(generation)
+             emit(xbmc, 'opening-claimed')
+             self.sessao = generation
+@@ -1415,6 +1416,7 @@
+             # the old frame/file here; it must not veto closing the old opening.
+             self._ate_ignorar_volta_vast = 0.0
+             self._volta_vast_chave = ''
++            self._smarted_wait_for_video_boundary = True
+             self._limpar_retomada()
+             emit(xbmc, 'opening-closed', boundary='stop')
+ 
+@@ -1456,6 +1458,7 @@
+             if state(self).close():
+                 self._ate_ignorar_volta_vast = 0.0
+                 self._volta_vast_chave = ''
++                self._smarted_wait_for_video_boundary = True
+                 self._limpar_retomada()
+                 emit(xbmc, 'opening-closed', boundary='end')
+ 
+--- immediate_intermediate/assets/addons/service.smarted.bootstrap/ads_openings.py
++++ current/assets/addons/service.smarted.bootstrap/ads_openings.py
+@@ -153,6 +153,8 @@
+                 emit(kodi, 'close-cleanup-failed', error=type(exc).__name__)
+             emit(kodi, 'opening-closed', boundary='observed-no-media')
+     monitor._smarted_wait_for_video_boundary = False
++    if suppress_auto_home:
++        return previous  # retain live identity across every reconnect poll
+     return (False, '', '')
+ 
+ 

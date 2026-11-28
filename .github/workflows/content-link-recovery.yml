@@ -1,0 +1,27 @@
+name: Content link recovery — exact APK only
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Download exact physically tested base, read only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/content-links/base
+          gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-links/base
+      - name: Locate exact error and content resolver code
+        run: python3 tools/inspect_content_links.py .cache/content-links/base/SMARTEDTV-universal.apk --out .cache/content-links/inspection
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: content-links-readonly-inspection
+          path: .cache/content-links/inspection/
+          retention-days: 30

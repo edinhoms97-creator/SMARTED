@@ -1,0 +1,15 @@
+{
+  "changed": [
+    "assets/addons/service.smarted.bootstrap/ads_vast.py"
+  ],
+  "preserved_entries": 8053,
+  "skin_manifest_resources_startup_unchanged": true,
+  "base_build": 46074593488,
+  "base_sha256": "2b64c443f42902cb07031db1106137a59d852ae39bb8fbd8b9379b8a6d2682bc",
+  "allowed_scope": "ads_vast.exibir",
+  "unchanged_outside_function_bytes": true,
+  "tag": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+  "old_tag_fallback": false,
+  "source_before_sha256": "4b92bbf4006d3eb98e0551fc0d2547479aa92d25f6a2986d18ab42c83e62f158",
+  "source_after_sha256": "5f96db7ad57a48b893adf178578d7153b4c0209e25d220738a0e56a628f7c0e7"
+}

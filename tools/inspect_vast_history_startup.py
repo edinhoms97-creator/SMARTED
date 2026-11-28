@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""Read-only exact-APK forensics: historical 120s build versus current delivery."""
+import ast,base64,copy,difflib,gzip,hashlib,json
+from pathlib import Path
+import re,sys,zipfile
+from inspect_ad_contract import Redact
+from report_vast_apk_diff import inspect,scopes,PREFIX
+ROOT=Path('.cache/history-startup');ROOT.mkdir(parents=True,exist_ok=True)
+VERSIONS={'historical':('smarted-original-ads-45992589750-1','f6ecfb6059bd1afbfadb9bd81065f45887781c1223e2d85b3bf19f748c7f44c6'),
+          'current':('smarted-vast-only-46079704676-1','919e97db0929ab90f189c9503722f4a5139feda573a28c96d79973a8e70e6087')}
+
+def transfer(title,data):
+    text=base64.b64encode(gzip.compress(json.dumps(data).encode())).decode()
+    if len(text)>9*3500:raise ValueError('Split evidence into separate steps: '+title)
+    for i in range(0,len(text),3500):
+        print('::notice title='+title+'::'+json.dumps(dict(part=i//3500,total=(len(text)+3499)//3500,data=text[i:i+3500])))
+
+def sanitized(text):return ast.unparse(Redact().visit(ast.parse(text)))
+
+def compare():
+    data={};payload={}
+    for label,(tag,expected) in VERSIONS.items():
+        apk=ROOT/label/'SMARTEDTV-universal.apk'
+        if hashlib.sha256(apk.read_bytes()).hexdigest()!=expected:raise ValueError('APK hash mismatch')
+        data[label]=inspect(apk)
+        payload[label]={'release':tag,'sha256':expected,'bytes':apk.stat().st_size,'selected_sources':{}}
+        for name in ('ads_vast.py','smart_ads.py','ads_regra.py'):
+            s=data[label][2][PREFIX+name];tree=ast.parse(s)
+            wanted={'exibir','baixar','tag_configurada','escolher_anuncio','_media_escolhido','tag_do_wrapper','tag_do_vmap','mostrar_preroll','tocar_anuncio_de_video','intervalo_configurado','pode_anunciar','MonitorPreRoll'}
+            selected=[n for n in tree.body if isinstance(n,(ast.FunctionDef,ast.ClassDef)) and n.name in wanted]
+            payload[label]['selected_sources'][name]=ast.unparse(Redact().visit(ast.Module(body=selected,type_ignores=[])))
+        payload[label]['rule_constants']=[ast.unparse(n) for n in ast.parse(data[label][2][PREFIX+'ads_regra.py']).body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='INTERVALO' for t in n.targets)]
+    old,now=data['historical'],data['current']
+    changed=sorted(p for p in old[0].keys()|now[0].keys() if old[0].get(p)!=now[0].get(p))
+    payload['comparison']={'changed_entries':changed,'unchanged_entries':sum(old[0].get(p)==now[0].get(p) for p in old[0].keys()&now[0].keys()),'scopes':{}}
+    for p in changed:
+        if p in old[2] and p in now[2]:
+            a,b=scopes(old[2][p]),scopes(now[2][p])
+            payload['comparison']['scopes'][p]=[n for n in a.keys()|b.keys() if a.get(n)!=b.get(n)]
+    (ROOT/'history-comparison.json').write_text(json.dumps(payload,indent=2)+'\n')
+    transfer('VAST historical comparison',payload)
+
+def startup():
+    apk=ROOT/'current/SMARTEDTV-universal.apk';result={}
+    names=[PREFIX+n for n in ('service.py','default.py','skin_setup.py','check.py')]+['assets/addons/script.smartedtv.welcome/default.py']
+    with zipfile.ZipFile(apk) as z:
+        for name in names:
+            if name not in z.namelist():continue
+            source=z.read(name).decode('utf-8-sig')
+            clean=sanitized(source);lines=clean.splitlines();indices=set()
+            for i,line in enumerate(lines):
+                if re.search(r'welcome|splash|home|startup|boot|once|ready|skip|RunScript|ActivateWindow|__main__',line,re.I):
+                    indices.update(range(max(0,i-4),min(len(lines),i+5)))
+            result[name]={'sha256':hashlib.sha256(z.read(name)).hexdigest(),
+                'functions':list(scopes(source)),
+                'startup_excerpts':'\n'.join(f'{i+1}: {lines[i]}' for i in sorted(indices))}
+
+    (ROOT/'startup-python.json').write_text(json.dumps(result,indent=2)+'\n')
+    transfer('SMARTED startup Python',result)
+
+def dex():
+    from loguru import logger
+    logger.disable('androguard')
+    from androguard.core.apk import APK
+    from androguard.core.dex import DEX
+    apk=APK(str(ROOT/'current/SMARTEDTV-universal.apk'))
+    from lxml import etree
+    manifest=etree.tostring(apk.get_android_manifest_xml(),pretty_print=True).decode()
+    result={'manifest':manifest,'classes':{}}
+    for raw in apk.get_all_dex():
+        for cls in DEX(raw).get_classes():
+            if cls.get_name() in ('Lsmartedtv/full/Splash;','Lsmartedtv/full/MainActivity;'):
+                methods={}
+                for m in cls.get_methods():
+                    methods[m.get_name()+m.get_descriptor()]=[i.get_name()+' '+i.get_output() for i in m.get_instructions()]
+                result['classes'][cls.get_name()]=methods
+    (ROOT/'startup-native.json').write_text(json.dumps(result,indent=2)+'\n')
+    transfer('SMARTED startup native',result)
+
+def limits():
+    result={}
+    for label in ('historical','current'):
+        with zipfile.ZipFile(ROOT/label/'SMARTEDTV-universal.apk') as z:
+            source=z.read(PREFIX+'ads_vast.py').decode();tree=ast.parse(source)
+        constants={}
+        for n in tree.body:
+            if isinstance(n,ast.Assign):
+                for t in n.targets:
+                    if isinstance(t,ast.Name) and any(k in t.id for k in ('TEMPO','FOLGA','WRAPPER','TIMEOUT')):
+                        try:constants[t.id]=ast.literal_eval(n.value)
+                        except (ValueError,TypeError):pass
+        excerpts={}
+        for fn in tree.body:
+            if isinstance(fn,ast.FunctionDef) and fn.name in ('baixar','exibir','reproduzir','_aguardar_anuncio_tocar','restaurar'):
+                code=ast.get_source_segment(source,fn);lines=code.splitlines();idx=set()
+                for i,line in enumerate(lines):
+                    if any(k in line for k in ('deadline','tempo_maximo','TEMPO_','FOLGA','3.0','5.0','35.0','8.0','duration +','duracao +')):
+                        idx.update(range(max(0,i-1),min(len(lines),i+2)))
+                excerpts[fn.name]='\n'.join(f'{i+1}: {lines[i]}' for i in sorted(idx))
+        result[label]=dict(constants=constants,scoped_excerpts=excerpts)
+    (ROOT/'timeout-limits.json').write_text(json.dumps(result,indent=2)+'\n')
+    transfer('VAST actual timeout scopes',result)
+
+if __name__=='__main__':
+    try:{'compare':compare,'startup':startup,'dex':dex,'limits':limits}[sys.argv[1]]()
+    except Exception as exc:
+        import traceback
+        print('::error title=Historical startup inspection::'+str(exc).replace('\n','%0A'))
+        traceback.print_exc()
+        raise
+

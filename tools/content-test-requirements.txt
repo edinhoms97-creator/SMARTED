@@ -1,0 +1,2 @@
+# Test/build tools only. Android uses the unchanged requests/urllib3 already bundled.
+requests==2.32.5

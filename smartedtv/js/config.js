@@ -9,10 +9,10 @@ window.SMARTEDTV_CONFIG = {
   /* Payment — official checkout link provided for this build (Cakto). */
   checkoutUrl: "https://pay.cakto.com.br/nkvbegd_1323120",
 
-  /* Android APK — EXACT share link provided for this build (Dropbox, dl=0).
+  /* Android APK — EXACT share link provided for this build (Dropbox, dl=1).
      Updated 2026-11-27: SMARTEDTV.apk (263 MB, /SMARTEDTV UNIVERSAL/).
      Previous file was SMARTEDTV-atual.apk (adn9elzkjzxof741bbui2). */
-  apkShareUrl: "https://www.dropbox.com/scl/fi/ixfw289m0sibcyfyrxf9g/SMARTEDTV.apk?rlkey=z59708sngkysw0c1ntmmur6lv&st=okcfec6i&dl=0",
+  apkShareUrl: "https://www.dropbox.com/scl/fi/ixfw289m0sibcyfyrxf9g/SMARTEDTV.apk?rlkey=z59708sngkysw0c1ntmmur6lv&st=okcfec6i&dl=1",
 
   /* Same Dropbox link in its direct-download form (Dropbox's documented
      dl=1 parameter) so the "Baixar APK" button starts the download.

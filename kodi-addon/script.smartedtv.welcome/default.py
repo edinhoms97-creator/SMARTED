@@ -42,10 +42,26 @@ class WelcomeDialog(xbmcgui.WindowXMLDialog):
             # falha (no-fill, rede, timeout) cai no fallback limpo:
             # a janela fecha e o addon principal assume o canal/VOD.
             self._play_preroll_or_close()
-        elif control_id in (120, 121, 311):
+        elif control_id == 121:
+            self._apk_action(share=True)
+        elif control_id in (122, 123):
+            # Same IDs as the original welcome: download / update.
+            self._apk_action()
+        elif control_id in (120, 311):
             # Sem integração com checkout, share ou API VIP nesta janela isolada:
             # não simula sucesso nem validações.
             return
+
+    def _apk_action(self, share=False):
+        """Delegate to original link handlers; no alternate skin or installer."""
+        try:
+            import vip
+            return vip.compartilhar() if share else vip.open_apk_download()
+        except ImportError:
+            # This standalone reference is not bundled into the original APK.
+            # Keep its link action useful without inventing a backend.
+            from apk_link import open_or_share
+            return open_or_share(share=share)
 
     def _play_preroll_or_close(self):
         """Keep dialog alive until ad + restoration finish; never block UI."""

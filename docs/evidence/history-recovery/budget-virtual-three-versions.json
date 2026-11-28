@@ -1,0 +1,328 @@
+{
+  "historical": {
+    "chain-fast": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 0.1
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 0.2
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 0.30000000000000004
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "anuncio": "chosen"
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 0.30000000000000004
+    },
+    "chain-6s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 2.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 4.0
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 6.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "anuncio": "chosen"
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 6.0
+    },
+    "chain-9s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 3.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 6.0
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 9.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "anuncio": "chosen"
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 9.0
+    },
+    "chain-12s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 4.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 8.0
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 12.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "anuncio": "chosen"
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 12.0
+    }
+  },
+  "current": {
+    "chain-fast": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 0.1
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 0.2
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 0.30000000000000004
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "vast_attempt_id": "59e7aa54aea24d60a5f33b57e31e75bc",
+        "tipo_midia": "video/mp4",
+        "duracao_anuncio": 5.0
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 0.30000000000000004
+    },
+    "chain-6s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 2.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 4.0
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 6.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "vast_attempt_id": "7b600519a4ba44e4b6cd9b362da7e229",
+        "tipo_midia": "video/mp4",
+        "duracao_anuncio": 5.0
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 6.0
+    },
+    "chain-9s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 3.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 6.0
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 9.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": false,
+      "receipt": {
+        "exibido": false,
+        "motivo": "timeout-vast",
+        "vast_attempt_id": "d9d17b7b3afe42d2bffc6f23a1a4fef5"
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 9.0
+    },
+    "chain-12s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 4.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 8.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": false,
+      "receipt": {
+        "exibido": false,
+        "motivo": "timeout-vast",
+        "vast_attempt_id": "74ed86e41953468f948b0fcf1db81145"
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 8.0
+    }
+  },
+  "after": {
+    "chain-fast": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 0.1
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 0.2
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 0.30000000000000004
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "vast_attempt_id": "71cc6a872b0a4e15831ecbb0a46c5a0e",
+        "tipo_midia": "video/mp4",
+        "duracao_anuncio": 5.0
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 0.30000000000000004
+    },
+    "chain-6s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 2.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 4.0
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 6.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "vast_attempt_id": "161abf01eaf945449a6ee06feb39b01b",
+        "tipo_midia": "video/mp4",
+        "duracao_anuncio": 5.0
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 6.0
+    },
+    "chain-9s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 3.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 6.0
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 9.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "vast_attempt_id": "bc120841273c40f99bf5ba79ef5dcf6f",
+        "tipo_midia": "video/mp4",
+        "duracao_anuncio": 5.0
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 9.0
+    },
+    "chain-12s-valid": {
+      "virtual_clock_not_real_network": true,
+      "requests": [
+        {
+          "url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+          "virtual_elapsed_seconds": 4.0
+        },
+        {
+          "url": "https://fixture.invalid/next",
+          "virtual_elapsed_seconds": 8.0
+        },
+        {
+          "url": "https://fixture.invalid/next2",
+          "virtual_elapsed_seconds": 12.0
+        }
+      ],
+      "root_requests": 1,
+      "selected": true,
+      "receipt": {
+        "exibido": false,
+        "motivo": "controlled-handoff-native-player-not-run",
+        "vast_attempt_id": "37325bef68d546d2bc4264b85b8524e2",
+        "tipo_midia": "video/mp4",
+        "duracao_anuncio": 5.0
+      },
+      "native_ads_played": 0,
+      "virtual_elapsed_seconds": 12.0
+    }
+  }
+}

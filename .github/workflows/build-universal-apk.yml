@@ -1,193 +1,825 @@
-name: Build SMARTEDTV universal APK (manual)
-run-name: SMARTEDTV universal · ${{ github.ref_name }} · teste #${{ github.run_number }}
+name: SMARTED original — somente anuncios, skin intacta
+run-name: SMARTED original · anuncios apenas · ${{ github.ref_name }}
 
-# Deliberately no push, pull_request, workflow_run or schedule triggers.
 on:
   workflow_dispatch:
     inputs:
+      vast_function_lab:
+        description: 'Laboratorio isolado, baseline ou release de uma unica funcao VAST'
+        type: string
+        default: ''
+      publish_existing_run:
+        description: 'Anexar artefato ja auditado a prerelease existente; nao recompila'
+        type: string
+        default: ''
+      read_publish_log:
+        description: 'Diagnostico somente leitura de falha de publicacao existente'
+        type: string
+        default: ''
+      vast_comparison:
+        description: 'Somente relatorio dos scripts em APKs ja publicados; nao gera APK nem consulta anuncios'
+        type: boolean
+        default: false
+      android_probe:
+        description: 'Preparar emulador real e testar compatibilidade de instalacao, sem gerar APK'
+        type: boolean
+        default: false
+      android_log_run:
+        description: 'Ler somente logs de um run Android anterior, sem SDK ou novas requisicoes de anuncios'
+        type: string
+        default: ''
+      android_cycles:
+        description: 'Tentar 3 aberturas Android reais com amostras publicas, sem simular anuncios/pixels'
+        type: boolean
+        default: false
+      android_release:
+        description: 'Prerelease exata para validar no Android'
+        type: string
+        default: smarted-original-ads-46035861727-1
+      stabilize_openings:
+        description: '9436b5e + tracking preservado + estabilizacao restrita de aberturas/transicao'
+        type: boolean
+        default: false
+      confirmed_reference:
+        description: 'Restaurar base confirmada 9436b5e e alterar SOMENTE tracking; tem prioridade sobre outros perfis'
+        type: boolean
+        default: true
+      vast_source:
+        description: 'Fonte VAST do perfil minimo; original restaura URL e spot exatos do APK'
+        type: choice
+        options:
+          - original
+          - clickadilla
+        default: original
+      delivery_probe:
+        description: 'Inspecao: duas tentativas sem pixels, fonte original e Clickadilla; decode CPU se houver criativo'
+        type: boolean
+        default: false
+      minimal_clickadilla:
+        description: 'Original Dropbox: fonte VAST selecionada + tracking, sem os patches anteriores de player'
+        type: boolean
+        default: true
+      inspect_only:
+        description: 'Somente inspecao de contratos originais, sem gerar/publicar APK'
+        type: boolean
+        default: false
       base_url:
-        description: 'Opcional: URL HTTPS de outra base Kodi genuinamente multi-ABI (exige SHA256)'
+        description: 'Desativado: somente o APK original fixado e permitido'
         type: string
         default: ''
       base_sha256:
-        description: 'SHA256 da base alternativa; deixar ambos vazios usa o Dropbox fixado no repositorio'
+        description: 'Desativado: a identidade original e validada pelo hash Dropbox'
         type: string
         default: ''
       publish_release:
-        description: 'Publicar pre-release de teste com link direto para o APK verificado'
+        description: 'Publicar APK de teste somente apos conferir preservacao integral da skin'
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
-
-# Repeated manual clicks never start builds concurrently on the same ref.
 concurrency:
-  group: smartedtv-apk-${{ github.ref }}
+  group: smartedtv-apk-${{ github.ref }}-${{ inputs.android_probe }}
   cancel-in-progress: false
 
 env:
+  STABILIZE_OPENINGS: ${{ inputs.stabilize_openings }}
+  CONFIRMED_REFERENCE: ${{ inputs.confirmed_reference }}
+  VAST_SOURCE: ${{ inputs.vast_source }}
+  MINIMAL_CLICKADILLA: ${{ inputs.minimal_clickadilla }}
   ANDROID_HOME: /usr/local/lib/android/sdk
-  APKTOOL_VERSION: '2.12.1'
-  BUILD_TOOLS_VERSION: '35.0.0'
   INPUT_BASE_URL: ${{ inputs.base_url }}
   INPUT_BASE_SHA256: ${{ inputs.base_sha256 }}
 
 jobs:
   build:
-    name: Testar, reempacotar e verificar
+    if: ${{ inputs.vast_function_lab == '' && inputs.publish_existing_run == '' && inputs.read_publish_log == '' && !inputs.vast_comparison && !inputs.android_probe && inputs.android_log_run == '' }}
+    name: Original SMARTED — patch restrito de anuncios
     runs-on: ubuntu-24.04
-    # Target is 5–10 min with a warm cache, NOT a guaranteed SLA.
     timeout-minutes: 8
     steps:
-      - name: Checkout da revisao solicitada
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          fetch-depth: 0
           persist-credentials: false
-
-      - name: Node 22 (cache npm)
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
           cache: npm
-
-      - name: Python 3.11
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
-
-      - name: Apenas testes unitarios rapidos (sem emulador)
+      - name: Testes rapidos e gates de preservacao
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
-          npm test
-          python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v
-          npm run build:standalone
-          git diff --exit-code -- smartedtv/standalone/smartedtv-preview.html
-          bash -n tools/build-universal-apk.sh
-          python3 -m compileall -q kodi-addon tools
-
-      - name: Java 17 para apktool e assinatura
-        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+          npm run verify
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Cache SDK build-tools
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: /usr/local/lib/android/sdk/build-tools/35.0.0
-          key: smartedtv-sdk-ubuntu24-build-tools35-v1
-
-      - name: Cache apktool fixado por SHA256
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: .cache/smartedtv-apktool
-          key: smartedtv-apktool-2.12.1-66cf4524-v1
-
-      - name: Cache APK-base imutavel (validar hash em TODA execucao)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .cache/smartedtv-base
-          key: smartedtv-base-${{ inputs.base_sha256 || 'dropbox-03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277' }}
-
-      - name: Cache chave apenas de debug (nunca producao)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+          key: smartedtv-base-dropbox-03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .cache/smartedtv-signing
           key: smartedtv-test-debug-key-v1
-
-      - name: Preparar SDK e apktool (sem NDK / Gradle / emulador)
-        shell: bash
+      - name: Inspecao somente leitura dos botoes e helpers
+        if: inputs.inspect_only && !inputs.delivery_probe
         run: |
-          set -euo pipefail
-          if [[ ! -x "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" ]]; then
-            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;$BUILD_TOOLS_VERSION"
-          fi
-          mkdir -p .cache/smartedtv-apktool
-          jar=".cache/smartedtv-apktool/apktool_${APKTOOL_VERSION}.jar"
-          if [[ ! -f "$jar" ]]; then
-            curl --fail --location --proto '=https' --proto-redir '=https' \
-              --connect-timeout 20 --max-time 120 --retry 1 \
-              "https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VERSION}/apktool_${APKTOOL_VERSION}.jar" -o "$jar"
-          fi
-          python3 - "$jar" <<'PY'
-          import hashlib, sys
-          from tools.apk_pipeline import CONFIG
-          assert hashlib.sha256(open(sys.argv[1], 'rb').read()).hexdigest() == CONFIG['apktool_sha256'], 'Apktool SHA256 mismatch'
-          PY
-          echo "APKTOOL_JAR=$GITHUB_WORKSPACE/$jar" >> "$GITHUB_ENV"
-
-      - name: Build APK universal, zipalign, assinatura e validacao
-        run: bash tools/build-universal-apk.sh
-
-      - name: Artefato — exatamente um APK, checksum e verificacoes
+          python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk --report .cache/base-identity.json
+          python3 tools/inspect_resume_contract.py .cache/smartedtv-base/base.apk
+      - name: Comparar entrega original e Clickadilla sem pixels (duas tentativas)
+        if: inputs.inspect_only && inputs.delivery_probe
+        run: |
+          python3 tools/apk_pipeline.py download .cache/smartedtv-base/base.apk --report .cache/base-identity.json
+          python3 -m pip install --disable-pip-version-check --no-deps imageio-ffmpeg==0.6.0
+          python3 tools/probe_ad_delivery.py .cache/smartedtv-base/base.apk --report .cache/delivery-probe.json
+      - name: Empacotar somente anuncios; verificar todos os outros arquivos
+        if: ${{ !inputs.inspect_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -o pipefail
+          trap 'python3 tools/report_build_diagnostics.py .cache/apk-build.log' ERR
+          bash tools/build-universal-apk.sh 2>&1 | tee .cache/apk-build.log
+      - name: APK de teste e relatorio de preservacao
+        if: ${{ !inputs.inspect_only }}
         id: artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: SMARTEDTV-universal
+          name: SMARTED-original-ads-only
           path: dist/
-          # APK is already compressed. Avoid wasting CPU recompressing 263+ MB.
           compression-level: 0
           if-no-files-found: error
           retention-days: 14
-
-      - name: Relatorios se o build falhar (nunca divulgar APK nao verificado)
+      - name: Diagnostico sem APK se falhar
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: SMARTEDTV-build-diagnostics
+          name: SMARTED-original-diagnostics
           path: |
             dist/*.json
             dist/*.txt
-            dist/*.xml
           if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Resumo
-        env:
-          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+      - name: Resumo sem alegar teste em aparelho
+        if: ${{ !inputs.inspect_only }}
         run: |
           {
-            echo '## APK verificado (assinatura de debug)'
-            echo "Fonte: \`$GITHUB_SHA\`"
-            echo "[Download do artefato (ZIP)]($ARTIFACT_URL)"
-            echo 'Assinatura, alinhamento, manifesto compilado, ABIs e conteudo verificados. Sem teste em aparelho.'
-            echo 'VAST ainda precisa de validacao real. AdMob desligado.'
-            echo '```'
-            cat dist/SMARTEDTV-universal.apk.sha256
-            echo '```'
+            echo '## SMARTED original — anuncios apenas'
+            echo 'Skin, bootstrap e manifesto binario preservados. Sem novo servico ou welcome.'
+            echo 'Teste de inicializacao/reproducao em aparelho ainda pendente.'
+            cat dist/preservation.json
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish:
-    name: Link direto de download (pre-release de teste)
-    if: inputs.publish_release
+    name: Disponibilizar build corretivo de teste
     needs: build
+    if: inputs.publish_release && !inputs.inspect_only
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions:
       contents: write
     steps:
-      - name: Baixar somente o artefato aprovado
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: SMARTEDTV-universal
+          name: SMARTED-original-ads-only
           path: dist
-
-      - name: Verificar transporte e publicar APK
+      - name: Publicar somente o artefato conferido
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        shell: bash
         run: |
           set -euo pipefail
           (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
-          tag="smartedtv-test-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
-            --title "SMARTEDTV universal — teste ${GITHUB_RUN_NUMBER}" \
-            --notes-file dist/INSTALLATION.txt \
-            dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
-            dist/signature.txt dist/AndroidManifest.xml dist/apk-validation.json \
-            dist/manifest-validation.json dist/build-info.json
-          url="$(gh release view "$tag" --json assets --jq '.assets[] | select(.name == "SMARTEDTV-universal.apk") | .url')"
-          echo "[Download direto SMARTEDTV-universal.apk]($url)" >> "$GITHUB_STEP_SUMMARY"
+          tag="smarted-original-ads-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          title="SMARTED original — VAST ${VAST_SOURCE} e diagnostico de entrega (teste)"
+          extra=()
+          if [[ "${CONFIRMED_REFERENCE}" == "true" ]]; then
+            title="SMARTED — base confirmada 9436b5e, somente tracking (teste)"
+            extra+=(dist/reference-preservation.json)
+          fi
+          if [[ "${STABILIZE_OPENINGS}" == "true" ]]; then
+            title="SMARTED — 9436b5e, ciclo por abertura e transicao nativa (teste)"
+          fi
+          if gh release view "$tag" --json targetCommitish > /tmp/smarted-release.json 2>/dev/null; then
+            test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+            test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+            gh release upload "$tag" --clobber dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 dist/preservation.json dist/source-preservation.json dist/signature.txt dist/badging.txt "${extra[@]}"
+            gh release edit "$tag" --notes-file dist/INSTALLATION.txt
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --prerelease \
+              --title "$title" \
+              --notes-file dist/INSTALLATION.txt \
+              dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 \
+              dist/preservation.json dist/source-preservation.json dist/signature.txt dist/badging.txt "${extra[@]}"
+          fi
+          gh release view "$tag" --json url --jq .url >> "$GITHUB_STEP_SUMMARY"
+
+  android:
+    if: inputs.android_probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar permissao KVM e obter o APK exato
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.android_release }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^smarted-(original-ads|vast-only|recovery|content)-[0-9]+-[0-9]+$ ]]
+          if [[ -e /dev/kvm ]]; then sudo chmod a+rw /dev/kvm; fi
+          mkdir -p .cache/android-validation
+          gh release download "$RELEASE_TAG" --pattern SMARTEDTV-universal.apk --dir .cache/android-validation
+          if [[ "$RELEASE_TAG" == smarted-content-* ]]; then
+            mkdir -p .cache/android-validation/upgrade-base
+            gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/android-validation/upgrade-base
+          fi
+      - name: Testar payload estabilizado exato antes dos ciclos Android
+        if: inputs.android_cycles
+        run: |
+          python3 - <<'PYMODULES'
+          from pathlib import Path
+          import zipfile
+          folder = Path('.cache/android-native-modules')
+          folder.mkdir(parents=True, exist_ok=True)
+          with zipfile.ZipFile('.cache/android-validation/SMARTEDTV-universal.apk') as archive:
+              for name in archive.namelist():
+                  if name.startswith('assets/addons/service.smarted.bootstrap/') and name.endswith('.py'):
+                      (folder / Path(name).name).write_bytes(archive.read(name))
+          PYMODULES
+          python3 tools/test_stabilized_openings.py --original .cache/android-native-modules
+      - name: Biblioteca para preview pequeno da evidencia visual
+        run: python3 -m pip install --disable-pip-version-check Pillow==11.3.0
+      - name: Tentar criar AVD, boot e instalar APK sem mudar ABI
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_CONTENT_CYCLES: ${{ inputs.android_cycles }}
+          ANDROID_STARTUP_TRACE: true
+        run: |
+          APK=.cache/android-validation/SMARTEDTV-universal.apk
+          if [[ -f .cache/android-validation/upgrade-base/SMARTEDTV-universal.apk ]]; then
+            export ANDROID_CONTENT_UPGRADE_TO="$PWD/$APK"
+            APK=.cache/android-validation/upgrade-base/SMARTEDTV-universal.apk
+          fi
+          python3 tools/android_validation_environment.py --prepare \
+            --apk "$APK" \
+            --report .cache/android-validation/result.json
+      - name: Guardar resultado real, inclusive limitacoes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: android-environment-result
+          path: |
+            .cache/android-validation/startup/
+            .cache/android-validation/*.json
+            .cache/android-validation/*.xml
+            .cache/android-validation/*.txt
+            .cache/android-validation/*.png
+            .cache/android-validation/*.jpg
+            .cache/android-validation/*.log
+            .cache/android-emulator.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  android_logs:
+    if: inputs.android_log_run != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Ler artefato existente sem abrir conteudo nem pedir anuncios
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.android_log_run }}
+          RELEASE_TAG: ${{ inputs.android_release }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          gh run download "$RUN_ID" --name android-environment-result --dir .cache/android-log-read
+          [[ "$RELEASE_TAG" =~ ^smarted-(original-ads|vast-only|recovery|content)-[0-9]+-[0-9]+$ ]]
+          gh release download "$RELEASE_TAG" --pattern SMARTEDTV-universal.apk --dir .cache/android-log-read
+          python3 tools/read_android_monitor_logs.py .cache/android-log-read .cache/android-log-read/SMARTEDTV-universal.apk
+
+  vast_comparison:
+    if: inputs.vast_comparison
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Comparar APKs existentes sem abrir player ou consultar VAST
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/report_vast_apk_diff.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: vast-apk-script-comparison
+          path: |
+            .cache/vast-apk-comparison/comparison.json
+            .cache/vast-apk-comparison/scripts.diff
+          retention-days: 30
+
+  publish_diagnostic:
+    if: inputs.read_publish_log != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Ler erro existente sem reconstruir nem publicar APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.read_publish_log }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          gh run view "$RUN_ID" --log-failed > .cache-publish-error.txt
+          python3 - <<'PYLOG'
+          import base64, gzip, json
+          from pathlib import Path
+          data = base64.b64encode(gzip.compress(Path('.cache-publish-error.txt').read_bytes()[-18000:])).decode()
+          for i in range(0, len(data), 3500):
+              print('::notice title=Publish diagnostic chunks::'+json.dumps({'part':i//3500,'data':data[i:i+3500]}))
+          PYLOG
+
+  recover_publication:
+    if: inputs.publish_existing_run != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Anexar somente APK auditado a prerelease ja criada
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ inputs.publish_existing_run }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+          tag="smarted-original-ads-${RUN_ID}-1"
+          source=$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID" --jq .head_sha)
+          target=$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)
+          test "$source" = "$target"
+          test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+          gh run download "$RUN_ID" --name SMARTED-original-ads-only --dir dist
+          (cd dist && sha256sum -c SMARTEDTV-universal.apk.sha256)
+          grep -F "$source" dist/INSTALLATION.txt
+          gh release upload "$tag" --clobber dist/SMARTEDTV-universal.apk dist/SMARTEDTV-universal.apk.sha256 dist/preservation.json dist/source-preservation.json dist/reference-preservation.json dist/signature.txt dist/badging.txt
+          gh release edit "$tag" --notes-file dist/INSTALLATION.txt
+
+  vast_function_lab:
+    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget' && inputs.vast_function_lab != 'history-release' && inputs.vast_function_lab != 'content-links-inspect' && inputs.vast_function_lab != 'content-links-release' && inputs.vast_function_lab != 'content-links-validate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        if: inputs.vast_function_lab == 'release'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        if: inputs.vast_function_lab == 'release'
+        with:
+          path: .cache/smartedtv-signing
+          key: smartedtv-test-debug-key-v1
+      - name: Preparar laboratorio isolado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test '${{ inputs.vast_function_lab }}' = baseline || test '${{ inputs.vast_function_lab }}' = release || test '${{ inputs.vast_function_lab }}' = selector-baseline
+          mkdir -p .cache/vast-lab/base
+          gh release download smarted-original-ads-46074593488-1 --pattern SMARTEDTV-universal.apk --dir .cache/vast-lab/base
+          echo '2b64c443f42902cb07031db1106137a59d852ae39bb8fbd8b9379b8a6d2682bc  .cache/vast-lab/base/SMARTEDTV-universal.apk' | sha256sum -c -
+          python3 -m pip install --disable-pip-version-check playwright==1.58.0 imageio-ffmpeg==0.6.0 pillow==12.1.0
+          command -v google-chrome
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run verify
+          python3 tools/test_vast_single_function.py --apk .cache/vast-lab/base/SMARTEDTV-universal.apk -v
+      - name: Evidencia ANTES de alterar funcao (baseline real ja registrado em 46078100066)
+        run: |
+          mkdir -p .cache/vast-lab/baseline
+          set -o pipefail
+          extra=()
+          if [[ '${{ inputs.vast_function_lab }}' == baseline ]]; then extra+=(--live); fi
+          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/base/SMARTEDTV-universal.apk --out .cache/vast-lab/baseline/evidence --selection "${extra[@]}" 2>&1 | tee .cache/vast-lab/lab.log
+      - name: Leitura exata dos helpers de selecao, sem alteracao
+        run: |
+          python3 - <<'PYSELECT'
+          import ast,base64,gzip,json,zipfile
+          with zipfile.ZipFile('.cache/vast-lab/base/SMARTEDTV-universal.apk') as z:
+              s=z.read('assets/addons/service.smarted.bootstrap/ads_vast.py').decode()
+          names={'_media_escolhido','tag_do_wrapper','tag_do_vmap','sem_namespace','escolher_anuncio','_urls_de_evento','_urls_de_impressao','_duracao','_segundos','_inteiro','_texto'}
+          functions={n.name:ast.get_source_segment(s,n) for n in ast.parse(s).body if isinstance(n,ast.FunctionDef) and n.name in names}
+          data=base64.b64encode(gzip.compress(json.dumps(functions).encode())).decode()
+          for i in range(0,len(data),3500):
+              print('::notice title=VAST exact selection helpers::'+json.dumps({'part':i//3500,'total':(len(data)+3499)//3500,'data':data[i:i+3500]}))
+          summary=json.load(open('.cache/vast-lab/baseline/evidence/summary.json'))
+          for a in summary['attempts'][9:]:
+              print(a['label'],a.get('selection_matches_expectation'),a.get('media'),a['receipt'])
+          PYSELECT
+      - name: Alterar SOMENTE exibir e assinar com certificado conferido
+        if: inputs.vast_function_lab == 'release'
+        run: |
+          set -o pipefail
+          bash tools/build_vast_single_function.sh 2>&1 | tee .cache/vast-lab/build.log
+      - name: Evidencia DEPOIS, tres chamadas reais e fixtures sem pixels
+        if: inputs.vast_function_lab == 'release'
+        run: |
+          set -o pipefail
+          python3 tools/vast_visual_lab.py --apk .cache/vast-lab/release/SMARTEDTV-universal.apk --out .cache/vast-lab/after/evidence --live --selection --expect-selection 2>&1 | tee .cache/vast-lab/after.log
+      - name: Regressoes do modulo completo extraido do APK novo
+        if: inputs.vast_function_lab == 'release'
+        run: |
+          set -o pipefail
+          python3 tools/test_stabilized_openings.py --original .cache/vast-lab/after/native-modules -v 2>&1 | tee .cache/vast-lab/full-module-tests.log
+      - name: Preview real da chamada live (nao prova anuncio)
+        run: |
+          python3 tools/vast_evidence_preview.py .cache/vast-lab 001
+      - name: Preview real da fixture de video
+        run: |
+          python3 tools/vast_evidence_preview.py .cache/vast-lab 004
+      - name: Preview real do ramo irmao apos VAST vazio
+        run: |
+          python3 tools/vast_evidence_preview.py .cache/vast-lab 020
+      - name: Arquivo duravel dos prints, XMLs e logs (sem APK)
+        if: inputs.vast_function_lab == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/vast-lab/previous-live .cache/vast-lab/selection-before
+          gh run download 46078100066 --name vast-visual-lab-evidence --dir .cache/vast-lab/previous-live
+          gh run download 46079223776 --name vast-visual-lab-evidence --dir .cache/vast-lab/selection-before
+          python3 tools/archive_vast_evidence.py .cache/vast-lab
+      - name: Diagnostico do laboratorio se falhar
+        if: failure()
+        run: |
+          python3 tools/report_build_diagnostics.py .cache/vast-lab/lab.log
+          python3 tools/report_build_diagnostics.py .cache/vast-lab/build.log
+          python3 tools/report_build_diagnostics.py .cache/vast-lab/after.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: vast-visual-lab-evidence
+          path: |
+            .cache/vast-lab/baseline/evidence/
+            .cache/vast-lab/after/evidence/
+            .cache/vast-lab/*.log
+          retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: inputs.vast_function_lab == 'release'
+        with:
+          name: SMARTED-vast-single-function
+          path: .cache/vast-lab/release/
+          compression-level: 0
+          retention-days: 30
+      - name: Publicar somente prerelease previamente autorizada com fonte exata
+        if: inputs.vast_function_lab == 'release' && inputs.publish_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="smarted-vast-only-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+          test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+          cd .cache/vast-lab/release
+          sha256sum -c SMARTEDTV-universal.apk.sha256
+          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt INSTALLATION.txt exibir.diff VAST-1508249-evidence.zip VAST-1508249-evidence.zip.sha256
+          gh release edit "$tag" --notes-file INSTALLATION.txt
+          gh release view "$tag" --json url --jq .url
+
+  historical_startup:
+    if: inputs.vast_function_lab == 'history-startup' || inputs.vast_function_lab == 'history-budget'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Obter os dois APKs publicados, sem modificar codigo de producao
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/history-startup/{historical,current}
+          gh release download smarted-original-ads-45992589750-1 --pattern SMARTEDTV-universal.apk --dir .cache/history-startup/historical
+          gh release download smarted-vast-only-46079704676-1 --pattern SMARTEDTV-universal.apk --dir .cache/history-startup/current
+          python3 -m pip install --disable-pip-version-check androguard==4.1.3 playwright==1.58.0 imageio-ffmpeg==0.6.0 pillow==12.1.0
+      - name: Comparacao real de entradas, funcoes VAST e intervalo
+        run: python3 tools/inspect_vast_history_startup.py compare
+      - name: Localizar os limites reais no APK, sem alterar player
+        run: python3 tools/inspect_vast_history_startup.py limits
+      - name: Replay com relogio virtual das cadeias de 6, 9 e 12 segundos, sem rede
+        run: python3 tools/compare_vast_request_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --out .cache/history-startup/request-budget-before.json
+      - name: HTTP local real com tres segundos por hop e o downloader nativo
+        run: python3 tools/compare_vast_http_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --out .cache/history-startup/request-budget-http-before.json
+      - name: Ler somente codigo de inicializacao Python
+        if: inputs.vast_function_lab == 'history-startup'
+        run: python3 tools/inspect_vast_history_startup.py startup
+      - name: Ler manifesto e bytecode nativo Splash, sem reconstruir APK
+        if: inputs.vast_function_lab == 'history-startup'
+        run: python3 tools/inspect_vast_history_startup.py dex
+      - name: Tres chamadas reais historicas com TAG NOVA controlada e fixtures
+        if: inputs.vast_function_lab == 'history-startup'
+        run: |
+          set -o pipefail
+          python3 tools/vast_visual_lab.py --apk .cache/history-startup/historical/SMARTEDTV-universal.apk --out .cache/history-startup/historical/evidence --live --selection 2>&1 | tee .cache/history-startup/historical.log
+      - name: Tres chamadas reais atuais com TAG NOVA e fixtures
+        if: inputs.vast_function_lab == 'history-startup'
+        run: |
+          set -o pipefail
+          python3 tools/vast_visual_lab.py --apk .cache/history-startup/current/SMARTEDTV-universal.apk --out .cache/history-startup/current/evidence --live --selection --expect-selection 2>&1 | tee .cache/history-startup/current.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: history-startup-baseline
+          path: |
+            .cache/history-startup/*.json
+            .cache/history-startup/*.log
+            .cache/history-startup/*/evidence/
+          retention-days: 30
+
+  history_release:
+    if: inputs.vast_function_lab == 'history-release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .cache/smartedtv-signing
+          key: smartedtv-test-debug-key-v1
+      - name: Recuperar APK atual e provas anteriores ANTES de aplicar alteracoes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/history-startup/{historical,current} .cache/history-recovery/{comparison-before,budget-before}
+          gh release download smarted-original-ads-45992589750-1 --pattern SMARTEDTV-universal.apk --dir .cache/history-startup/historical
+          gh release download smarted-vast-only-46079704676-1 --pattern SMARTEDTV-universal.apk --dir .cache/history-startup/current
+          gh run download 46082641102 --name history-startup-baseline --dir .cache/history-recovery/comparison-before
+          gh run download 46083525180 --name history-startup-baseline --dir .cache/history-recovery/budget-before
+          python3 - <<'PYGATE'
+          import json,hashlib
+          from pathlib import Path
+          from sys import path
+          path.insert(0,'tools')
+          from patch_history_recovery import BASE_SHA
+          assert hashlib.sha256(Path('.cache/history-startup/current/SMARTEDTV-universal.apk').read_bytes()).hexdigest()==BASE_SHA
+          r=json.load(open('.cache/history-recovery/budget-before/request-budget-http-before.json'))
+          assert r['historical']['selected'] and not r['current']['selected']
+          assert all(x['kind']=='controlled-real-loopback-HTTP-not-provider' for x in r.values())
+          print('Prova anterior: historico seleciona HTTP lento; atual descarta antes do player. Gate liberado.')
+          PYGATE
+          python3 -m pip install --disable-pip-version-check playwright==1.58.0 imageio-ffmpeg==0.6.0 pillow==12.1.0
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run verify
+      - name: Aplicar apenas orcamento VAST e dispatcher inicial; assinar e auditar
+        run: |
+          set -o pipefail
+          bash tools/build_history_recovery.sh 2>&1 | tee .cache/history-recovery/build.log
+      - name: Comparacao de tres versoes com relogio controlado
+        run: python3 tools/compare_vast_request_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --after .cache/history-recovery/release/SMARTEDTV-universal.apk --out .cache/history-recovery/release/budget-virtual-three-versions.json
+      - name: Comparacao de tres versoes com HTTP local REAL e downloader nativo
+        run: python3 tools/compare_vast_http_budget.py --historical .cache/history-startup/historical/SMARTEDTV-universal.apk --current .cache/history-startup/current/SMARTEDTV-universal.apk --after .cache/history-recovery/release/SMARTEDTV-universal.apk --out .cache/history-recovery/release/budget-http-three-versions.json
+      - name: Laboratorio posterior, tres chamadas reais novas e matriz completa sem pixels
+        run: |
+          set -o pipefail
+          python3 tools/vast_visual_lab.py --apk .cache/history-recovery/release/SMARTEDTV-universal.apk --out .cache/history-recovery/after/evidence --live --selection --expect-selection 2>&1 | tee .cache/history-recovery/after.log
+      - name: Regressoes do payload nativo completo do mesmo APK
+        run: |
+          set -o pipefail
+          python3 tools/test_stabilized_openings.py --original .cache/history-recovery/after/native-modules -v 2>&1 | tee .cache/history-recovery/full-module-tests.log
+      - name: Print real da consulta ao provedor
+        run: python3 tools/vast_evidence_preview.py .cache/history-recovery 001
+      - name: Print real da selecao de ramo irmao preservada
+        run: python3 tools/vast_evidence_preview.py .cache/history-recovery 020
+      - name: Arquivar evidencias completas para leitura independente
+        run: python3 tools/archive_history_recovery.py .cache/history-recovery
+      - name: Diagnostico em caso de falha
+        if: failure()
+        run: |
+          python3 tools/report_build_diagnostics.py .cache/history-recovery/build.log
+          python3 tools/report_build_diagnostics.py .cache/history-recovery/after.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: SMARTED-history-recovery
+          path: |
+            .cache/history-recovery/release/
+            .cache/history-recovery/*.log
+          compression-level: 0
+          retention-days: 30
+      - name: Publicar apenas prerelease previamente criada com fonte exata
+        if: inputs.publish_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="smarted-recovery-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+          test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+          cd .cache/history-recovery/release
+          sha256sum -c SMARTEDTV-universal.apk.sha256
+          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt INSTALLATION.txt ads_vast-recovery.diff default-recovery.diff startup-before-after.json budget-virtual-three-versions.json budget-http-three-versions.json history-recovery-evidence.zip history-recovery-evidence.zip.sha256
+          gh release edit "$tag" --notes-file INSTALLATION.txt
+          gh release view "$tag" --json url --jq .url
+
+  content_links_inspect:
+    if: inputs.vast_function_lab == 'content-links-inspect'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Download exact physically tested base, read only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/content-links/base
+          gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-links/base
+      - name: Locate exact error and content resolver code
+        run: python3 tools/inspect_content_links.py .cache/content-links/base/SMARTEDTV-universal.apk --out .cache/content-links/inspection
+      - name: Inspect only existing content addon delivery and runtime repairs
+        run: python3 tools/inspect_content_links.py delivery
+      - name: Read existing updater without modifying bootstrap
+        run: python3 tools/inspect_content_links.py repair
+      - name: Inspect content HTTP functions
+        run: python3 tools/inspect_content_links.py emit transport
+      - name: Inspect existing addon DNS behavior
+        run: python3 tools/inspect_content_links.py emit dns
+      - name: Inspect exact domain and API configuration
+        run: python3 tools/inspect_content_links.py emit domains
+      - name: Probe actual content DNS TLS HTTPS and catalog endpoints
+        run: |
+          python3 -m pip install --disable-pip-version-check requests==2.32.5
+          python3 tools/probe_content_links.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: content-links-readonly-inspection
+          path: .cache/content-links/inspection/
+          retention-days: 30
+
+  content_links_release:
+    if: inputs.vast_function_lab == 'content-links-release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .cache/smartedtv-signing
+          key: smartedtv-test-debug-key-v1
+      - name: Exact physically tested base and verification dependencies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          mkdir -p .cache/content-links/base
+          exec > >(tee .cache/content-links/setup.log) 2>&1
+          gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-links/base
+          python3 -m pip install --disable-pip-version-check -r tools/content-test-requirements.txt
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run verify
+      - name: Actual local HTTP and HTTPS, DNS fault injection, scope invariants
+        run: python3 tools/test_content_network.py -v
+      - name: Build sign and audit only content transport changes
+        run: |
+          set -o pipefail
+          bash tools/build_content_links.sh 2>&1 | tee .cache/content-links/build.log
+      - name: Real before after movie and episode source requests without player calls
+        run: |
+          set -o pipefail
+          python3 tools/validate_content_links.py --base .cache/content-links/base/SMARTEDTV-universal.apk --after .cache/content-links/release/SMARTEDTV-universal.apk --out .cache/content-links/release/content-real-before-after.json 2>&1 | tee .cache/content-links/validation.log
+      - name: Report failure honestly
+        if: failure()
+        run: |
+          test ! -f .cache/content-links/setup.log || python3 tools/report_build_diagnostics.py .cache/content-links/setup.log
+          test ! -f .cache/content-links/build.log || python3 tools/report_build_diagnostics.py .cache/content-links/build.log
+          test ! -f .cache/content-links/validation.log || python3 tools/report_build_diagnostics.py .cache/content-links/validation.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: SMARTED-content-link-recovery
+          path: |
+            .cache/content-links/release/
+            .cache/content-links/*.log
+          compression-level: 0
+          retention-days: 30
+      - name: Publish only previously authorized prerelease after all gates
+        if: inputs.publish_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="smarted-content-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+          test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+          cd .cache/content-links/release
+          sha256sum -c SMARTEDTV-universal.apk.sha256
+          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt content-functions.diff content-real-before-after.json
+          gh release view "$tag" --json url --jq .url
+
+  content_links_validate:
+    if: inputs.vast_function_lab == 'content-links-validate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Validate exact already published candidate, no new APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          mkdir -p .cache/content-validation/{base,after}
+          gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-validation/base
+          gh release download smarted-content-46094787897-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-validation/after
+          python3 -m pip install --disable-pip-version-check -r tools/content-test-requirements.txt
+          python3 tools/validate_content_links.py --base .cache/content-validation/base/SMARTEDTV-universal.apk --after .cache/content-validation/after/SMARTEDTV-universal.apk --out .cache/content-validation/revalidation.json 2>&1 | tee .cache/content-validation/log.txt
+      - name: Report actual failure
+        if: failure()
+        run: python3 tools/report_build_diagnostics.py .cache/content-validation/log.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: content-link-live-revalidation
+          path: |
+            .cache/content-validation/revalidation.json
+            .cache/content-validation/log.txt
+          retention-days: 30

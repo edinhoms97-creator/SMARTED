@@ -1,0 +1,282 @@
+{
+  "historical": {
+    "kind": "controlled-real-loopback-HTTP-not-provider",
+    "seconds_per_hop": 3.0,
+    "elapsed_seconds": 9.046,
+    "requests": [
+      {
+        "utc": "2026-11-27T23:45:05.484+00:00",
+        "requested_url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+        "timeout": 8.0,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "http_status": 200,
+        "utc_response": "2026-11-27T23:45:08.485+00:00"
+      },
+      {
+        "utc": "2026-11-27T23:45:08.499+00:00",
+        "requested_url": "https://fixture.invalid/next",
+        "timeout": 8.0,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "http_status": 200,
+        "utc_response": "2026-11-27T23:45:11.500+00:00"
+      },
+      {
+        "utc": "2026-11-27T23:45:11.514+00:00",
+        "requested_url": "https://fixture.invalid/next2",
+        "timeout": 8.0,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "http_status": 200,
+        "utc_response": "2026-11-27T23:45:14.516+00:00"
+      }
+    ],
+    "selected": true,
+    "native_ads_played": 0,
+    "receipt": {
+      "exibido": false,
+      "motivo": "selected-native-player-not-run",
+      "anuncio": "chosen"
+    },
+    "events": [],
+    "pages": {
+      "https://vast.yomeno.xyz/vast?spot_id=1508249": {
+        "xml": "<VAST version=\"3.0\"><Ad><Wrapper><Impression>https://pixels.invalid/outer</Impression><Error>https://pixels.invalid/error-outer</Error><VASTAdTagURI><![CDATA[https://fixture.invalid/next]]></VASTAdTagURI><Creatives><Creative><Linear><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-outer</Tracking></TrackingEvents></Linear></Creative></Creatives></Wrapper></Ad></VAST>",
+        "sha256": "0d1211ad758cb3d29d889c06ff8a34634e718a4efa4d1ab68dfc722b5e6a846e"
+      },
+      "https://fixture.invalid/next": {
+        "xml": "<VAST version=\"3.0\"><Ad><Wrapper><Impression>https://pixels.invalid/outer</Impression><Error>https://pixels.invalid/error-outer</Error><VASTAdTagURI><![CDATA[https://fixture.invalid/next2]]></VASTAdTagURI><Creatives><Creative><Linear><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-outer</Tracking></TrackingEvents></Linear></Creative></Creatives></Wrapper></Ad></VAST>",
+        "sha256": "7797cd9233dba5c1f7750460d43814c0e97a19b260226c319b279e95112b4609"
+      },
+      "https://fixture.invalid/next2": {
+        "xml": "<VAST version=\"3.0\"><Ad id=\"chosen\"><InLine><AdSystem>ISOLATED FIXTURE</AdSystem><AdTitle>TEST PATTERN NOT AD</AdTitle><Impression>https://pixels.invalid/chosen</Impression><Creatives><Creative id=\"chosen\"><Linear><Duration>00:00:05</Duration><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-chosen</Tracking></TrackingEvents><MediaFiles><MediaFile type=\"video/mp4\" ><![CDATA[https://fixture.invalid/creative.mp4]]></MediaFile></MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>",
+        "sha256": "eae7da4da8e03a256f8f1919153cc0039a318ba7a76aac29fc2d591454cec7a4"
+      }
+    }
+  },
+  "current": {
+    "kind": "controlled-real-loopback-HTTP-not-provider",
+    "seconds_per_hop": 3.0,
+    "elapsed_seconds": 8.021,
+    "requests": [
+      {
+        "utc": "2026-11-27T23:45:14.565+00:00",
+        "requested_url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+        "timeout": 7.999981815000012,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "http_status": 200,
+        "utc_response": "2026-11-27T23:45:17.567+00:00"
+      },
+      {
+        "utc": "2026-11-27T23:45:17.580+00:00",
+        "requested_url": "https://fixture.invalid/next",
+        "timeout": 4.985119008999959,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "http_status": 200,
+        "utc_response": "2026-11-27T23:45:20.582+00:00"
+      },
+      {
+        "utc": "2026-11-27T23:45:20.596+00:00",
+        "requested_url": "https://fixture.invalid/next2",
+        "timeout": 1.969676375000006,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "error": "TimeoutError",
+        "utc_response": "2026-11-27T23:45:22.568+00:00"
+      }
+    ],
+    "selected": false,
+    "native_ads_played": 0,
+    "receipt": {
+      "exibido": false,
+      "motivo": "falha-rede-vast",
+      "vast_attempt_id": "84c514d68651475a9987f6a97ebd9464"
+    },
+    "events": [
+      {
+        "utc": "2026-11-27T23:45:14.552+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-entry-called\", \"opening\": null, \"monotonic_ms\": 308465, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"root_url\": \"https://vast.yomeno.xyz/vast?spot_id=1508249\"}"
+      },
+      {
+        "utc": "2026-11-27T23:45:14.552+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-request\", \"opening\": null, \"monotonic_ms\": 308465, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"hop\": 1, \"wrapper\": false}"
+      },
+      {
+        "utc": "2026-11-27T23:45:17.567+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-response\", \"opening\": null, \"monotonic_ms\": 311480, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"received\": true, \"size\": 389}"
+      },
+      {
+        "utc": "2026-11-27T23:45:17.567+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-request\", \"opening\": null, \"monotonic_ms\": 311480, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"hop\": 2, \"wrapper\": true}"
+      },
+      {
+        "utc": "2026-11-27T23:45:20.583+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-response\", \"opening\": null, \"monotonic_ms\": 314495, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"received\": true, \"size\": 390}"
+      },
+      {
+        "utc": "2026-11-27T23:45:20.583+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-request\", \"opening\": null, \"monotonic_ms\": 314495, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"hop\": 3, \"wrapper\": true}"
+      },
+      {
+        "utc": "2026-11-27T23:45:22.569+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-transport-timeout\", \"opening\": null, \"monotonic_ms\": 316481, \"error\": \"TimeoutError\", \"status\": null, \"reason\": \"request-failed\"}"
+      },
+      {
+        "utc": "2026-11-27T23:45:22.569+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-response\", \"opening\": null, \"monotonic_ms\": 316481, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"received\": false, \"size\": 0}"
+      },
+      {
+        "utc": "2026-11-27T23:45:22.569+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-branch-rejected\", \"opening\": null, \"monotonic_ms\": 316481, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"reason\": \"falha-rede-vast\", \"depth\": 2}"
+      },
+      {
+        "utc": "2026-11-27T23:45:22.569+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-result\", \"opening\": null, \"monotonic_ms\": 316481, \"vast_attempt_id\": \"84c514d68651475a9987f6a97ebd9464\", \"reason\": \"falha-rede-vast\"}"
+      }
+    ],
+    "pages": {
+      "https://vast.yomeno.xyz/vast?spot_id=1508249": {
+        "xml": "<VAST version=\"3.0\"><Ad><Wrapper><Impression>https://pixels.invalid/outer</Impression><Error>https://pixels.invalid/error-outer</Error><VASTAdTagURI><![CDATA[https://fixture.invalid/next]]></VASTAdTagURI><Creatives><Creative><Linear><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-outer</Tracking></TrackingEvents></Linear></Creative></Creatives></Wrapper></Ad></VAST>",
+        "sha256": "0d1211ad758cb3d29d889c06ff8a34634e718a4efa4d1ab68dfc722b5e6a846e"
+      },
+      "https://fixture.invalid/next": {
+        "xml": "<VAST version=\"3.0\"><Ad><Wrapper><Impression>https://pixels.invalid/outer</Impression><Error>https://pixels.invalid/error-outer</Error><VASTAdTagURI><![CDATA[https://fixture.invalid/next2]]></VASTAdTagURI><Creatives><Creative><Linear><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-outer</Tracking></TrackingEvents></Linear></Creative></Creatives></Wrapper></Ad></VAST>",
+        "sha256": "7797cd9233dba5c1f7750460d43814c0e97a19b260226c319b279e95112b4609"
+      },
+      "https://fixture.invalid/next2": {
+        "xml": "<VAST version=\"3.0\"><Ad id=\"chosen\"><InLine><AdSystem>ISOLATED FIXTURE</AdSystem><AdTitle>TEST PATTERN NOT AD</AdTitle><Impression>https://pixels.invalid/chosen</Impression><Creatives><Creative id=\"chosen\"><Linear><Duration>00:00:05</Duration><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-chosen</Tracking></TrackingEvents><MediaFiles><MediaFile type=\"video/mp4\" ><![CDATA[https://fixture.invalid/creative.mp4]]></MediaFile></MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>",
+        "sha256": "eae7da4da8e03a256f8f1919153cc0039a318ba7a76aac29fc2d591454cec7a4"
+      }
+    }
+  },
+  "after": {
+    "kind": "controlled-real-loopback-HTTP-not-provider",
+    "seconds_per_hop": 3.0,
+    "elapsed_seconds": 9.045,
+    "requests": [
+      {
+        "utc": "2026-11-27T23:45:22.642+00:00",
+        "requested_url": "https://vast.yomeno.xyz/vast?spot_id=1508249",
+        "timeout": 8.0,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "http_status": 200,
+        "utc_response": "2026-11-27T23:45:25.644+00:00"
+      },
+      {
+        "utc": "2026-11-27T23:45:25.657+00:00",
+        "requested_url": "https://fixture.invalid/next",
+        "timeout": 8.0,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "http_status": 200,
+        "utc_response": "2026-11-27T23:45:28.659+00:00"
+      },
+      {
+        "utc": "2026-11-27T23:45:28.672+00:00",
+        "requested_url": "https://fixture.invalid/next2",
+        "timeout": 8.0,
+        "headers": {
+          "User-agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "Accept": "application/xml,text/xml,*/*;q=0.8",
+          "Accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Accept-encoding": "identity"
+        },
+        "http_status": 200,
+        "utc_response": "2026-11-27T23:45:31.674+00:00"
+      }
+    ],
+    "selected": true,
+    "native_ads_played": 0,
+    "receipt": {
+      "exibido": false,
+      "motivo": "selected-native-player-not-run",
+      "vast_attempt_id": "6fe220d2461046a3a7d2fd008f72e72e",
+      "tipo_midia": "video/mp4",
+      "duracao_anuncio": 5.0
+    },
+    "events": [
+      {
+        "utc": "2026-11-27T23:45:22.629+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-entry-called\", \"opening\": null, \"monotonic_ms\": 316542, \"vast_attempt_id\": \"6fe220d2461046a3a7d2fd008f72e72e\", \"root_url\": \"https://vast.yomeno.xyz/vast?spot_id=1508249\"}"
+      },
+      {
+        "utc": "2026-11-27T23:45:22.629+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-request\", \"opening\": null, \"monotonic_ms\": 316542, \"vast_attempt_id\": \"6fe220d2461046a3a7d2fd008f72e72e\", \"hop\": 1, \"wrapper\": false}"
+      },
+      {
+        "utc": "2026-11-27T23:45:25.644+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-response\", \"opening\": null, \"monotonic_ms\": 319557, \"vast_attempt_id\": \"6fe220d2461046a3a7d2fd008f72e72e\", \"received\": true, \"size\": 389}"
+      },
+      {
+        "utc": "2026-11-27T23:45:25.644+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-request\", \"opening\": null, \"monotonic_ms\": 319557, \"vast_attempt_id\": \"6fe220d2461046a3a7d2fd008f72e72e\", \"hop\": 2, \"wrapper\": true}"
+      },
+      {
+        "utc": "2026-11-27T23:45:28.659+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-response\", \"opening\": null, \"monotonic_ms\": 322572, \"vast_attempt_id\": \"6fe220d2461046a3a7d2fd008f72e72e\", \"received\": true, \"size\": 390}"
+      },
+      {
+        "utc": "2026-11-27T23:45:28.659+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-request\", \"opening\": null, \"monotonic_ms\": 322572, \"vast_attempt_id\": \"6fe220d2461046a3a7d2fd008f72e72e\", \"hop\": 3, \"wrapper\": true}"
+      },
+      {
+        "utc": "2026-11-27T23:45:31.674+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"vast-response\", \"opening\": null, \"monotonic_ms\": 325587, \"vast_attempt_id\": \"6fe220d2461046a3a7d2fd008f72e72e\", \"received\": true, \"size\": 513}"
+      },
+      {
+        "utc": "2026-11-27T23:45:31.675+00:00",
+        "native_log": "[SmartAdsOpening] {\"stage\": \"creative-selected\", \"opening\": null, \"monotonic_ms\": 325587, \"vast_attempt_id\": \"6fe220d2461046a3a7d2fd008f72e72e\"}"
+      }
+    ],
+    "pages": {
+      "https://vast.yomeno.xyz/vast?spot_id=1508249": {
+        "xml": "<VAST version=\"3.0\"><Ad><Wrapper><Impression>https://pixels.invalid/outer</Impression><Error>https://pixels.invalid/error-outer</Error><VASTAdTagURI><![CDATA[https://fixture.invalid/next]]></VASTAdTagURI><Creatives><Creative><Linear><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-outer</Tracking></TrackingEvents></Linear></Creative></Creatives></Wrapper></Ad></VAST>",
+        "sha256": "0d1211ad758cb3d29d889c06ff8a34634e718a4efa4d1ab68dfc722b5e6a846e"
+      },
+      "https://fixture.invalid/next": {
+        "xml": "<VAST version=\"3.0\"><Ad><Wrapper><Impression>https://pixels.invalid/outer</Impression><Error>https://pixels.invalid/error-outer</Error><VASTAdTagURI><![CDATA[https://fixture.invalid/next2]]></VASTAdTagURI><Creatives><Creative><Linear><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-outer</Tracking></TrackingEvents></Linear></Creative></Creatives></Wrapper></Ad></VAST>",
+        "sha256": "7797cd9233dba5c1f7750460d43814c0e97a19b260226c319b279e95112b4609"
+      },
+      "https://fixture.invalid/next2": {
+        "xml": "<VAST version=\"3.0\"><Ad id=\"chosen\"><InLine><AdSystem>ISOLATED FIXTURE</AdSystem><AdTitle>TEST PATTERN NOT AD</AdTitle><Impression>https://pixels.invalid/chosen</Impression><Creatives><Creative id=\"chosen\"><Linear><Duration>00:00:05</Duration><TrackingEvents><Tracking event=\"start\">https://pixels.invalid/start-chosen</Tracking></TrackingEvents><MediaFiles><MediaFile type=\"video/mp4\" ><![CDATA[https://fixture.invalid/creative.mp4]]></MediaFile></MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>",
+        "sha256": "eae7da4da8e03a256f8f1919153cc0039a318ba7a76aac29fc2d591454cec7a4"
+      }
+    }
+  }
+}

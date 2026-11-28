@@ -1,0 +1,36 @@
+{
+  "reviewed": true,
+  "base_dropbox_content_hash": "03c2b45efbe3256e6c11f8cc9809babe133a90b180eb007cf5908f597643e277",
+  "package": "smartedtv.full",
+  "version_name": "1.0.161",
+  "policy": "Only reviewed ads and official APK-link actions/constants in vip.py and original welcome; all original layout, class methods, startup, license/payment functions unchanged.",
+  "changes": {
+    "assets/addons/service.smarted.bootstrap/ads_vast.py": {
+      "original_sha256": "946b8b08169789c0a7f9c5f5701672484eef86b6ebcd5b564e80b3e718398c41"
+    },
+    "assets/addons/service.smarted.bootstrap/smart_ads.py": {
+      "original_sha256": "cf6315c22a2bd74304085b28bd96ede2379c1f867d2e5057acb2bdd91c79444a"
+    },
+    "assets/addons/service.smarted.bootstrap/ads_admob.py": {
+      "new_file": true,
+      "original_sha256": null
+    },
+    "assets/addons/service.smarted.bootstrap/ads_regra.py": {
+      "original_sha256": "d509fd126bfd826d46ba709d4d92ee3a8a5cf4b4f0f2e1fd7e55bb3b1e7a6bb3"
+    },
+    "assets/addons/service.smarted.bootstrap/vip.py": {
+      "original_sha256": "f219873a6557c75775a98c6a048242fc486427b61c6c09a6ca3322ae0af21d99"
+    },
+    "assets/addons/script.smartedtv.welcome/default.py": {
+      "original_sha256": "22d6b4412102f017a1ad36a3c732a9a89444f547b03909f3004831fc7b67e229"
+    },
+    "assets/addons/service.smarted.bootstrap/ads_resume.py": {
+      "new_file": true,
+      "original_sha256": null
+    },
+    "assets/addons/service.smarted.bootstrap/ads_tracking.py": {
+      "new_file": true,
+      "original_sha256": null
+    }
+  }
+}

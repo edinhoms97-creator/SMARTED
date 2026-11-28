@@ -7,6 +7,10 @@ Este repositório foi montado em 2026-11-27 a partir dos arquivos do Dropbox
 (`SMARTEDTV UNIVERSAL/SMARTEDTV.apk` e os ZIPs de código-fonte). Relatório
 completo da inspeção: [`docs/INSPECTION.md`](docs/INSPECTION.md).
 
+## Verificação rápida
+
+`npm ci --ignore-scripts --no-audit --no-fund && npm run verify` executa os mesmos gates rápidos do workflow manual, sem emulador. Base VAST 3s/5s restaurada e escopo da correção de menus: [docs/VAST_BASE_TRANSITION.md](docs/VAST_BASE_TRANSITION.md).
+
 ## Estrutura
 
 ```
@@ -43,14 +47,32 @@ python3 -m http.server 8000
 Ou abra `smartedtv/standalone/smartedtv-preview.html` direto no navegador
 (funciona offline, tudo inline).
 
-## Build APK universal sob demanda
+## APK: preservar exatamente o SMARTED original
 
-Workflow manual: [`.github/workflows/build-universal-apk.yml`](.github/workflows/build-universal-apk.yml).
-Guia de execução, cache, assinatura de teste e limitações: [`docs/BUILD_APK.md`](docs/BUILD_APK.md).
-Reempacota o Kodi-base, preservando Dex/libs; não substitui o player por uma WebView.
-O build só publica `SMARTEDTV-universal.apk` se confirmar ARM32+ARM64 reais,
-manifesto, assinatura e conteúdo. O workflow precisa existir na branch padrão
-para o primeiro disparo manual; não há builds automáticos por push.
+**O primeiro APK de teste foi retirado:** o usuário relatou travamento na tela inicial.
+Ele adicionava skin/startup indevidos. A correção usa somente o original
+`smartedtv.full` **1.0.161**, do link Dropbox abaixo.
+
+O pipeline atual permite alterações apenas nos módulos de anúncios originais
+e nos handlers do link oficial de download/compartilhamento.
+**Skin, layout, texturas, tela inicial, bootstrap, manifesto e recursos devem
+permanecer idênticos byte a byte.** Nenhuma welcome/skin nova é empacotada.
+
+**[Builds corretivos de teste — SMARTED original](https://github.com/edinhoms97-creator/SMARTED/releases)** — confira a revisão Fonte da release; o escopo atual é base 3s/5s + menus de transição.
+
+Comparação do APK assinado: **8.046 entradas idênticas ao original**;
+somente os oito caminhos autorizados de anúncios e ações/helper/constantes de link do APK
+em `vip.py` e na welcome original mudaram. Classes e XMLs de interface preservados.
+Watchdog: 3 s sem progresso abortam a peça; teto absoluto de 35 s.
+Baixar/Atualizar/Compartilhar usam o APK oficial do Dropbox, sem troca de layout.
+[Inspeção, limites e testes do watchdog](docs/VAST_WATCHDOG.md).
+Regra atual: **uma tentativa de anúncio por abertura de canal, filme ou episódio,
+sem intervalo de dois minutos**. Pause, seek, reconexão e retorno do anúncio não
+repetem a tentativa; no-fill/falha libera o conteúdo. VIP continua isento. Nenhuma skin/startup nova.
+**Ainda depende de teste de inicialização e reprodução no aparelho.** Assinatura de teste.
+
+Guia e evidências: [`docs/BUILD_APK.md`](docs/BUILD_APK.md).
+Publicação sob demanda e desligada por padrão. CI não comprova funcionamento em aparelho.
 
 ## APK original (Dropbox)
 
@@ -84,4 +106,4 @@ AdMob mobile separado e desligado: [docs/ADMOB.md](docs/ADMOB.md).
 
 `npm ci && npm test` executa os testes locais (Node + Python).
 Demo de reprodução: `smartedtv/demo-vast.html`. Validação da tag real e
-em dispositivos ainda pendente; o APK original não foi recompilado.
+em dispositivos ainda pendente. O primeiro APK de teste foi reprovado e retirado; o pipeline corretivo preserva a interface original.

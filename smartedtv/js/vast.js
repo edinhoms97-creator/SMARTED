@@ -81,21 +81,44 @@
 
   /* ---------- beacon (tracking) ---------- */
 
-  /* Fire-and-forget GET beacon. Never throws, never blocks.
-     Supports VAST macros [ERRORCODE] / [CACHEBUSTER] / [TIMESTAMP]. */
+  /* Pixels deliberately use the browser's REAL User-Agent. User-Agent is a
+     browser-controlled header: do not spoof a model or try to set it in JS. */
+  function expandMacros(url, macros) {
+    macros = macros || {};
+    var nonce = String(Math.floor(10000000 + Math.random() * 90000000));
+    var values = { CACHEBUSTING: nonce, CACHEBUSTER: nonce, RANDOM: nonce,
+      TIMESTAMP: encodeURIComponent(new Date().toISOString()) };
+    if (macros.errorCode !== undefined) values.ERRORCODE = String(macros.errorCode);
+    if (typeof navigator !== "undefined" && navigator.userAgent)
+      values.DEVICEUA = encodeURIComponent(navigator.userAgent);
+    var result = String(url || "");
+    Object.keys(values).forEach(function (name) {
+      ["\\[" + name + "\\]", "%5b" + name + "%5d", "%%" + name + "%%"].forEach(function (pattern) {
+        result = result.replace(new RegExp(pattern, "gi"), function () { return values[name]; });
+      });
+    });
+    return result;
+  }
+
+  var pendingPixels = [];
   function beacon(url, macros) {
     if (!url) return;
-    var u = String(url);
-    macros = macros || {};
-    {
-      if (macros.errorCode !== undefined) u = u.split("[ERRORCODE]").join(String(macros.errorCode));
-      u = u.split("[CACHEBUSTER]").join(String(Math.floor(Math.random() * 1e9)));
-      u = u.split("[TIMESTAMP]").join(encodeURIComponent(new Date().toISOString()));
-    }
     try {
       var img = new Image();
-      img.src = u;
-    } catch (e) { /* tracking must never break playback */ }
+      // Retain the image until load/error (or bounded cleanup), so a WebView
+      // cannot collect it while its asynchronous GET is still in flight.
+      pendingPixels.push(img);
+      var timer;
+      var release = function () {
+        clearTimeout(timer);
+        var index = pendingPixels.indexOf(img);
+        if (index >= 0) pendingPixels.splice(index, 1);
+        img.onload = img.onerror = null;
+      };
+      img.onload = img.onerror = release;
+      timer = setTimeout(release, 10000);
+      img.src = expandMacros(url, macros);
+    } catch (e) { /* a blocked pixel must never break playback */ }
   }
 
   function fireAll(urls, macros, onEvent, eventName) {
@@ -110,7 +133,12 @@
   /* getElementsByTagName-based helpers (work in browsers AND in
      older Android TV WebViews without querySelector on XML docs). */
   function findAll(root, tag) {
-    return root.getElementsByTagName ? root.getElementsByTagName(tag) : [];
+    if (!root.getElementsByTagName) return [];
+    var exact = root.getElementsByTagName(tag);
+    if (exact.length) return exact;
+    return Array.prototype.filter.call(root.getElementsByTagName("*"), function (node) {
+      return (node.localName || node.nodeName.split(":").pop()) === tag;
+    });
   }
   function findFirst(root, tag) {
     var els = findAll(root, tag);
@@ -200,6 +228,7 @@
       var linear = findFirst(adEl, "Linear");
       ads.push({
         id: adEl.getAttribute("id") || "",
+        wrapperUrl: textOf(adEl, "VASTAdTagURI") || textOf(adEl, "VASTAdTagURL"),
         sequence: parseInt(adEl.getAttribute("sequence") || "1", 10) || 1,
         adSystem: textOf(adEl, "AdSystem"),
         adTitle: textOf(adEl, "AdTitle"),
@@ -243,6 +272,39 @@
     });
   }
 
+  function fetchResolvedVast(tagUrl, timeoutMs, onEvent) {
+    var deadline = Date.now() + (timeoutMs || DEFAULT_TIMEOUT_MS);
+    var visited = [], impressions = [], tracking = {};
+    function fail(code) { fireAll(tracking.error || [], { errorCode: code }, onEvent, "error"); }
+    function load(url, depth) {
+      if (depth > 5 || visited.indexOf(url) >= 0) {
+        fail(302);
+        return Promise.resolve({ ads: [], noFill: true, reason: "wrapper-limit-or-cycle" });
+      }
+      visited.push(url);
+      var remaining = deadline - Date.now();
+      if (remaining <= 0) { fail(301); return Promise.reject(new Error("vast-timeout")); }
+      return fetchVast(expandMacros(url), remaining).then(function (xml) {
+        var parsed = parseVast(xml);
+        if (!parsed.ads.length) { fail(303); return parsed; }
+        var ad = parsed.ads[0];
+        if (ad.wrapperUrl && !ad.mediaFile) {
+          impressions = impressions.concat(ad.impressions);
+          Object.keys(ad.tracking).forEach(function (event) {
+            tracking[event] = (tracking[event] || []).concat(ad.tracking[event]);
+          });
+          return load(ad.wrapperUrl, depth + 1);
+        }
+        ad.impressions = impressions.concat(ad.impressions);
+        Object.keys(tracking).forEach(function (event) {
+          ad.tracking[event] = tracking[event].concat(ad.tracking[event] || []);
+        });
+        return parsed;
+      }, function (err) { fail(301); throw err; });
+    }
+    return load(tagUrl, 0);
+  }
+
   /* ---------- pre-roll player ---------- */
 
   function VastPlayer(opts) {
@@ -273,13 +335,7 @@
       self._finish({ outcome: "error", reason: "no-tag-url" });
       return this._playPromise;
     }
-    fetchVast(this.tagUrl, this.timeoutMs).then(function (xml) {
-      var parsed;
-      try {
-        parsed = parseVast(xml);
-      } catch (e) {
-        return self._finish({ outcome: "error", reason: "parse-failed" });
-      }
+    fetchResolvedVast(this.tagUrl, this.timeoutMs, this.onEvent).then(function (parsed) {
       if (!parsed.ads.length) {
         /* No-fill: clean fallback, no overlay ever shown. */
         return self._finish({
@@ -373,9 +429,6 @@
         }
       });
       video.addEventListener("ended", function () {
-        self._fire("firstQuartile");
-        self._fire("midpoint");
-        self._fire("thirdQuartile");
         self._fire("complete");
         self._finish({ outcome: "completed" });
       });
@@ -488,6 +541,9 @@
     parseClock: parseClock,
     chooseMediaFile: chooseMediaFile,
     fetchVast: fetchVast,
+    fetchResolvedVast: fetchResolvedVast,
+    expandMacros: expandMacros,
+    beacon: beacon,
     VastPlayer: VastPlayer,
     DEFAULT_TIMEOUT_MS: DEFAULT_TIMEOUT_MS
   };
