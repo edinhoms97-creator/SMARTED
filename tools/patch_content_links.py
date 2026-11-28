@@ -35,7 +35,7 @@ def transform(source):
     lines=source.splitlines(keepends=True);edits=[]
     for name in ('getMovieData','valide_v2'):
         node=fn(source,name)
-        assignments=[n for n in ast.walk(node) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='session' for t in n.targets) and 'create_retry_session' in ast.get_source_segment(source,n)]
+        assignments=[n for n in ast.walk(node) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='session' for t in n.targets) and isinstance(n.value,ast.IfExp) and 'create_retry_session' in ast.get_source_segment(source,n)]
         if len(assignments)!=1:raise ValueError('Unexpected session construction in '+name)
         target=assignments[0]
         if name=='getMovieData':
