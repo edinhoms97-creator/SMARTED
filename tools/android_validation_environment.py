@@ -169,7 +169,9 @@ def prepare(report, sdk, apk):
             upgrade_to = os.environ.get('ANDROID_CONTENT_UPGRADE_TO')
             if upgrade_to:
                 report['content_upgrade_base_sha256'] = report['apk_sha256']
-                report['content_profile_before_upgrade'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'ls', '-l', '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/plugin.video.BrazucaPlay.Matrix/default.py'])
+                execute([tools['adb'], 'root'], timeout=15)
+                execute([tools['adb'], 'wait-for-device'], timeout=20)
+                report['content_profile_before_upgrade'] = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'sha256sum', '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/plugin.video.BrazucaPlay.Matrix/default.py'])
                 execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'am', 'force-stop', 'smartedtv.full'])
                 report['content_upgrade_install'] = execute([tools['adb'], '-s', 'emulator-5554', 'install', '-r', '-g', upgrade_to], timeout=100)
                 if report['content_upgrade_install']['code'] != 0:
@@ -237,12 +239,20 @@ def prepare(report, sdk, apk):
                     actual = execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'sha256sum', root+'/'+name], timeout=10)
                     report['runtime_ad_module_sha256'][root+'/'+name] = actual
             if upgrade_to:
-                prefix = 'assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/'
                 profile = '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/addons/plugin.video.BrazucaPlay.Matrix/'
                 with zipfile.ZipFile(apk) as archive:
-                    report['content_expected_sha256'] = {name: hashlib.sha256(archive.read(prefix+name)).hexdigest() for name in ('default.py','content_network.py')}
+                    module_hash=hashlib.sha256(archive.read('assets/addons/service.smarted.bootstrap/content_network.py')).hexdigest()
+                report['content_expected_module_sha256']=module_hash
                 report['content_runtime_sha256'] = {name: execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'sha256sum', profile+name]) for name in ('default.py','content_network.py')}
-                report['content_upgrade_delivered'] = all(row['code']==0 and row['output'].startswith(report['content_expected_sha256'][name]) for name,row in report['content_runtime_sha256'].items())
+                raw_audit=execute([tools['adb'], '-s', 'emulator-5554', 'shell', 'cat', profile+'smarted-content-delivery.json'])
+                report['content_delivery_audit']=raw_audit
+                try:
+                    audit=json.loads(raw_audit['output'])
+                    report['content_upgrade_delivered']=(report['content_runtime_sha256']['content_network.py']['output'].startswith(module_hash)
+                        and report['content_runtime_sha256']['default.py']['output'].startswith(audit['after_sha256'])
+                        and audit['all_other_decoded_bytes_preserved'] is True
+                        and audit['functions']==['getMovieData','valide_v2'])
+                except (ValueError,KeyError):report['content_upgrade_delivered']=False
             native_log = '/storage/emulated/0/Android/data/smartedtv.full/files/.kodi/temp/kodi.log'
             contents = subprocess.run([tools['adb'], '-s', 'emulator-5554', 'exec-out', 'cat', native_log], capture_output=True, timeout=30)
             if contents.returncode == 0:

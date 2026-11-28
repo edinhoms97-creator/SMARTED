@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 npm test
 python3 tools/test_content_network.py
+python3 tools/test_content_patch.py
 bash -n tools/build_content_links.sh
 python3 -m py_compile tools/patch_content_links.py tools/validate_content_links.py android-build/content-links/content_network.py
 python3 -m unittest discover -s tools -p 'test_apk_pipeline.py' -v

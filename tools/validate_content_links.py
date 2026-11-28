@@ -2,7 +2,7 @@
 """Exact original/patched content functions with REAL HTTP; no player/ad calls.
 Native DNS on runner != user's cellular DNS. Fault-injected DNS is separate.
 """
-import argparse,ast,base64,hashlib,json,re,socket,sys,time,types,zipfile
+import argparse,ast,base64,hashlib,importlib.util,json,re,socket,sys,time,types,zipfile
 from pathlib import Path
 from urllib.parse import urlparse,urljoin
 import urllib.parse as urllib
@@ -53,13 +53,24 @@ def main():
     # Test new module from the actual output APK, not an unrelated source copy.
     module_dir=a.out.parent/'modules';module_dir.mkdir(parents=True,exist_ok=True)
     with zipfile.ZipFile(a.after) as z:
-        from patch_content_links import NEW
-        (module_dir/'content_network.py').write_bytes(z.read(NEW))
+        from patch_content_links import MODULE,DELIVERY
+        (module_dir/'content_network.py').write_bytes(z.read(MODULE))
+        (module_dir/'content_link_patch.py').write_bytes(z.read(DELIVERY))
     sys.path.insert(0,str(module_dir))
     report=dict(kind='real-HTTP-exact-function-extraction-not-Android-playback',native_plays=0,versions={})
     discovered=None
     for role,apk in (('before',a.base),('after',a.after)):
-        with zipfile.ZipFile(apk) as z:source,_=unpack(z.read(ENTRY).decode())
+        with zipfile.ZipFile(apk) as z:raw=z.read(ENTRY)
+        if role=='after':
+            # Apply the exact shipped, local-only installer to a copy of the
+            # installed addon. Native upgrade audit independently checks reality.
+            import content_link_patch
+            addon=a.out.parent/'effective-profile'/'plugin.video.BrazucaPlay.Matrix'
+            addon.mkdir(parents=True,exist_ok=True);(addon/'default.py').write_bytes(raw)
+            logs=[]
+            if not content_link_patch.install(addon,logs):raise RuntimeError(str(logs))
+            raw=(addon/'default.py').read_bytes()
+        source,_=unpack(raw.decode())
         env,trace,dialogs=environment(source,a.out.parent)
         if discovered is None:
             home=env['getMovieData']('https://'+env['OVERFLIXTV_HOST'])

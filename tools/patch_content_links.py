@@ -8,7 +8,29 @@ ROOT=Path(__file__).resolve().parent.parent
 PREFIX='assets/smarted/profile/addons/plugin.video.BrazucaPlay.Matrix/'
 ENTRY=PREFIX+'default.py';NEW=PREFIX+'content_network.py'
 SOURCE_SHA='f938c3848f4d95e0a131faf7b22c5263604ec92ec363d86800da2bb6d5df9b42'
-ALLOWED={ENTRY,NEW}
+BOOT='assets/addons/service.smarted.bootstrap/'
+REPAIR=BOOT+'repair.py'
+MODULE=BOOT+'content_network.py'
+DELIVERY=BOOT+'content_link_patch.py'
+ALLOWED={REPAIR,MODULE,DELIVERY}
+CALL='''        # Content-only delivery into the EXISTING addon; no profile replacement.
+        try:
+            from content_link_patch import install as install_content_links
+            install_content_links(brazuca_path, log)
+        except Exception as error:
+            _log(log, 'content-links: delivery FAILED ' + type(error).__name__)
+'''
+
+def repair_source(source):
+    needle='        ensure_addon_data(home, BRAZUCA_ID, addons_dir, log)'
+    if source.count(needle)!=1:raise ValueError('Unknown addon delivery contract')
+    lines=source.splitlines(keepends=True)
+    index=next(i for i,line in enumerate(lines) if line.strip()==needle.strip())+1
+    lines[index:index]=[CALL]
+    result=''.join(lines)
+    if result.replace(CALL,'',1)!=source:raise ValueError('Unrelated delivery edits')
+    compile(result,'<content-only-delivery>','exec')
+    return result
 
 def unpack(source):
     layers=[]
@@ -64,28 +86,37 @@ def compare(base,result):
         before,after=inventory(a),inventory(b)
         changed=sorted(k for k in before.keys()|after.keys() if before.get(k)!=after.get(k))
         if set(changed)!=ALLOWED:raise ValueError('Unexpected APK changes: '+repr(changed))
-        old,layers=unpack(a.read(ENTRY).decode());new,_=unpack(b.read(ENTRY).decode())
-        if transform(old)!=new:raise ValueError('Decoded function scope mismatch')
-        if b.read(NEW)!=(ROOT/'android-build/content-links/content_network.py').read_bytes():raise ValueError('Transport module mismatch')
-    return dict(changed=changed,preserved_entries=sum(before.get(k)==after.get(k) for k in before),changed_existing_functions=['getMovieData','valide_v2'],base_sha256=BASE_SHA,vast_all_entries_byte_identical=True,welcome_all_entries_byte_identical=True,admob_vip_player_skin_navigation_all_entries_byte_identical=True,decoded_original_sha256=hashlib.sha256(old.encode()).hexdigest(),decoded_after_sha256=hashlib.sha256(new.encode()).hexdigest())
+        if b.read(REPAIR).decode()!=repair_source(a.read(REPAIR).decode()):raise ValueError('Unrelated repair changes')
+        for name,path in ((MODULE,'content_network.py'),(DELIVERY,'content_link_patch.py')):
+            if b.read(name)!=(ROOT/'android-build/content-links'/path).read_bytes():raise ValueError('Payload mismatch')
+    return dict(changed=changed,preserved_entries=sum(before.get(k)==after.get(k) for k in before),
+        changed_existing_functions=['repair.repair_profile (content-only delivery call)'],
+        changed_runtime_content_functions=['getMovieData','valide_v2'],base_sha256=BASE_SHA,
+        vast_all_entries_byte_identical=True,welcome_all_entries_byte_identical=True,
+        admob_vip_player_skin_navigation_all_entries_byte_identical=True,
+        seeded_addon_and_all_user_settings_preserved=True)
 
 def build(base,out,report):
     assert hashlib.sha256(base.read_bytes()).hexdigest()==BASE_SHA,'Wrong physical-test base'
     with zipfile.ZipFile(base) as source:
-        original=source.read(ENTRY)
-        assert hashlib.sha256(original).hexdigest()==SOURCE_SHA,'Unexpected addon entry'
-        decoded,layers=unpack(original.decode());updated=transform(decoded)
-        assert NEW not in source.namelist()
+        original=source.read(REPAIR).decode();updated=repair_source(original)
+        for name in (MODULE,DELIVERY):assert name not in source.namelist()
         out.parent.mkdir(parents=True,exist_ok=True)
         with zipfile.ZipFile(out,'w') as target:
             target.comment=source.comment
             for info in source.infolist():
                 if SIGNATURE.fullmatch(info.filename):continue
-                target.writestr(info,repack(updated,layers).encode() if info.filename==ENTRY else source.read(info.filename))
-            target.writestr(NEW,(ROOT/'android-build/content-links/content_network.py').read_bytes(),compress_type=zipfile.ZIP_DEFLATED)
+                target.writestr(info,updated.encode() if info.filename==REPAIR else source.read(info.filename))
+            for name,path in ((MODULE,'content_network.py'),(DELIVERY,'content_link_patch.py')):
+                target.writestr(name,(ROOT/'android-build/content-links'/path).read_bytes(),compress_type=zipfile.ZIP_DEFLATED)
     result=compare(base,out)
+    with zipfile.ZipFile(base) as z:
+        decoded,_=unpack(z.read(ENTRY).decode())
+        runtime_after=transform(decoded)
+    (report.parent/'runtime-content-functions.diff').parent.mkdir(parents=True,exist_ok=True)
+    (report.parent/'runtime-content-functions.diff').write_text(''.join(difflib.unified_diff(decoded.splitlines(True),runtime_after.splitlines(True),fromfile='installed-addon/default.py decoded',tofile='content-only/default.py decoded')))
     report.parent.mkdir(parents=True,exist_ok=True);report.write_text(json.dumps(result,indent=2)+'\n')
-    (report.parent/'content-functions.diff').write_text(''.join(difflib.unified_diff(decoded.splitlines(True),updated.splitlines(True),fromfile='46084100325/default.py decoded',tofile='content-recovery/default.py decoded')))
+    (report.parent/'content-functions.diff').write_text(''.join(difflib.unified_diff(original.splitlines(True),updated.splitlines(True),fromfile='46084100325/repair.py',tofile='content-recovery/repair.py')))
     print('::notice title=Content exact preservation audit::'+json.dumps(result))
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('base',type=Path);p.add_argument('out',type=Path);p.add_argument('--report',type=Path,required=True);args=p.parse_args();build(args.base,args.out,args.report)

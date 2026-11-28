@@ -788,7 +788,7 @@ jobs:
           test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
           cd .cache/content-links/release
           sha256sum -c SMARTEDTV-universal.apk.sha256
-          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt content-functions.diff content-real-before-after.json
+          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt content-functions.diff runtime-content-functions.diff content-real-before-after.json
           gh release view "$tag" --json url --jq .url
 
   content_links_validate:
