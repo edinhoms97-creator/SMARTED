@@ -62,13 +62,48 @@ jobs:
         run: |
           cd .cache/work/decoded
           CLICKADILLA="https://vast.yomeno.xyz/vast?spot_id=1508180"
-          find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.html" -o -name "*.xml" -o -name "*.json" -o -name "*.txt" \) -exec grep -l -i "hilltop" {} \; 2>/dev/null | while read f; do
-            echo "Replacing HilltopAds URL in: $f"
-            # Replace full URLs containing hilltop (case insensitive)
-            sed -i 's|https\?://[^"'"'"' <>\\]*hilltop[^"'"'"' <>\\]*|'"$CLICKADILLA"'|gI' "$f"
-            # Replace bare hilltopads domain references
-            sed -i 's|[A-Za-z0-9._-]*hilltopads\.[A-Za-z0-9._/-]*|'"$CLICKADILLA"'|gI' "$f"
-          done
+          python3 << 'PYREPLACE'
+          import os, re
+          CLICKADILLA = "https://vast.yomeno.xyz/vast?spot_id=1508180"
+          exts = {".py", ".js", ".html", ".xml", ".json", ".txt", ".cfg", ".ini"}
+          replaced = 0
+          for root, dirs, files in os.walk("."):
+              for fname in files:
+                  fpath = os.path.join(root, fname)
+                  ext = os.path.splitext(fname)[1].lower()
+                  if ext not in exts:
+                      continue
+                  try:
+                      size = os.path.getsize(fpath)
+                      if size > 10*1024*1024:
+                          continue
+                      with open(fpath, "rb") as f:
+                          data = f.read()
+                      if b"hilltop" not in data.lower():
+                          continue
+                      for enc in ("utf-8", "latin-1"):
+                          try:
+                              text = data.decode(enc)
+                              used_enc = enc
+                              break
+                          except:
+                              continue
+                      else:
+                          continue
+                      original = text
+                      # Replace any URL containing hilltop
+                      text = re.sub(r'https?://[^"' <>\]\}]*hilltop[^"' <>\]\}]*', CLICKADILLA, text, flags=re.IGNORECASE)
+                      # Replace any domain with hilltopads
+                      text = re.sub(r'[A-Za-z0-9._-]*hilltopads\.[A-Za-z0-9._/-]+[^"' <>\]\}]*', CLICKADILLA, text, flags=re.IGNORECASE)
+                      if text != original:
+                          with open(fpath, "w", encoding=used_enc, errors="replace") as f:
+                              f.write(text)
+                          print(f"Replaced in: {fpath}")
+                          replaced += 1
+                  except Exception as e:
+                      pass
+          print(f"Total files modified: {replaced}")
+          PYREPLACE
 
       - name: Verify - no HilltopAds, ClickAdilla present, skin/UI intact
         run: |
