@@ -61,6 +61,14 @@ def main():
                 except ValueError:report['http'][-1]['json_error']=True
             if r is not None:
                 report['http'].append(dict(kind='detail-parser-hints',url=url,snippets=[r.text[max(0,m.start()-100):m.end()+400] for m in list(re.finditer(r'playerData|servers_dub|servers_leg|csrfKey|player_data|videobox',r.text,re.I))[:12]],episode_links=list(dict.fromkeys(urljoin(url,x) for x in re.findall(r'href=[\"\x27]([^\"\x27]+)',r.text) if re.search(r'/episod|/episode',x)))[:5],scripts=re.findall(r'<script[^>]+src=[\"\x27]([^\"\x27]+)',r.text)[-12:]))
+    import logging,random
+    codec=(OUT/'plugin.video.BrazucaPlay.Matrix-codec.py.decoded').read_text()
+    dns_cls=next(n for n in ast.parse(codec).body if isinstance(n,ast.ClassDef) and n.name=='DNSOverride')
+    env=dict(socket=socket,time=time,logging=logging,random=random,struct=struct,re=re)
+    exec(compile(ast.Module(body=[dns_cls],type_ignores=[]),'<actual-addon-dns-class>','exec'),env)
+    dns=env['DNSOverride'].__new__(env['DNSOverride']);dns.PY2=False;dns.cache={};dns.dns_servers=['1.1.1.1','8.8.8.8','9.9.9.9']
+    start=time.monotonic();ip=dns.resolve(hosts[0])
+    report['actual_addon_udp_dns']=dict(host=hosts[0],ip=ip,elapsed=round(time.monotonic()-start,3),system_dns_still=report['hosts'][hosts[0]].get('system_dns'))
     (OUT/'network-before.json').write_text(json.dumps(report,indent=2)+'\n')
     transfer('Content real network diagnosis',report)
 if __name__=='__main__':main()
