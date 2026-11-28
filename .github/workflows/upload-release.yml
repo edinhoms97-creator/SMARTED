@@ -2,15 +2,9 @@ name: Upload APK to Release
 
 on:
   workflow_dispatch:
-    inputs:
-      dropbox_url:
-        description: 'Dropbox temporary download URL'
-        required: true
-        default: ''
   push:
-    paths:
-      - '.github/workflows/upload-release.yml'
-      - 'tools/replace_vast.py'
+    branches:
+      - arena/180d028f-smarted
 
 permissions:
   contents: write
@@ -20,92 +14,59 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - uses: actions/setup-java@v5
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
 
-      - name: Download original APK from Dropbox
-        run: |
-          DROPBOX_URL="${{ github.event.inputs.dropbox_url }}"
-          if [ -z "$DROPBOX_URL" ]; then echo "No Dropbox URL"; exit 0; fi
-          echo "Downloading APK..."
-          curl -L --max-time 300 -o SMARTEDTV-original.apk "$DROPBOX_URL"
-          echo "Size: $(stat -c%s SMARTEDTV-original.apk) bytes"
-          echo "SHA256: $(sha256sum SMARTEDTV-original.apk | awk '{print $1}')"
+      - name: Download APK
+        run: bash ${{ github.workspace }}/tools/download_apk.sh
 
-      - name: Extract APK
+      - name: Extract
         run: |
-          mkdir -p extracted && cd extracted && unzip -q -o ../SMARTEDTV-original.apk
-          echo "Extracted $(find . -type f | wc -l) files"
+          mkdir -p extracted && cd extracted
+          unzip -q -o ../SMARTEDTV-original.apk
+          echo "Files: $(find . -type f | wc -l)"
 
-      - name: Before: List files containing hilltop
+      - name: Before - hilltop refs
         run: |
           cd extracted
-          echo "=== BEFORE REPLACEMENT ==="
-          echo "Text files with 'hilltop':"
-          BINARY_EXTS="so dex class png jpg jpeg gif webp mp4 mp3 ogg wav ttf otf woff woff2 arsc db bin"
-          for f in $(grep -rli "hilltop" . 2>/dev/null); do
-            EXT="${f##*.}"; EXT_LOWER=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
-            IS_BINARY=0
-            for be in $BINARY_EXTS; do [ "$EXT_LOWER" = "$be" ] && IS_BINARY=1 && break; done
-            FSIZE=$(stat -c%s "$f" 2>/dev/null || echo 0)
-            if [ "$IS_BINARY" = "0" ] && [ "$FSIZE" -lt 10485760 ]; then
-              echo "  TXT: $f ($FSIZE bytes)"
-              grep -in "hilltop" "$f" | head -3
-            else
-              echo "  BIN: $f ($FSIZE bytes)"
-            fi
+          echo "=== BEFORE ==="
+          grep -rli "hilltop" . 2>/dev/null | while read f; do
+            echo "  $f"; grep -in "hilltop" "$f" 2>/dev/null | head -2
           done
 
-      - name: Replace HilltopAds URLs
+      - name: Replace VAST URLs
         run: |
           cd extracted
-          python3 $GITHUB_WORKSPACE/tools/replace_vast.py .
+          python3 ${{ github.workspace }}/tools/replace_vast.py .
 
-      - name: After: List remaining files
+      - name: After - hilltop refs
         run: |
           cd extracted
-          echo "=== AFTER REPLACEMENT ==="
-          echo "Files still containing 'hilltop':"
-          BINARY_EXTS="so dex class png jpg jpeg gif webp mp4 mp3 ogg wav ttf otf woff woff2 arsc db bin"
-          TXT_REMAINING=0
-          for f in $(grep -rli "hilltop" . 2>/dev/null); do
-            EXT="${f##*.}"; EXT_LOWER=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
-            IS_BINARY=0
-            for be in $BINARY_EXTS; do [ "$EXT_LOWER" = "$be" ] && IS_BINARY=1 && break; done
-            FSIZE=$(stat -c%s "$f" 2>/dev/null || echo 0)
-            if [ "$IS_BINARY" = "0" ] && [ "$FSIZE" -lt 10485760 ]; then
-              echo "  TXT REMAINING: $f"
-              grep -in "hilltop" "$f" | head -3
-              TXT_REMAINING=$((TXT_REMAINING+1))
-            else
-              echo "  BIN (ok): $f"
-            fi
+          echo "=== AFTER ==="
+          grep -rli "hilltop" . 2>/dev/null | while read f; do
+            echo "  $f"; grep -in "hilltop" "$f" 2>/dev/null | head -2
           done
           echo ""
-          echo "ClickAdilla found in:"
-          grep -rli "vast.yomeno.xyz" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" . 2>/dev/null | head -10
-          echo ""
-          echo "Text files remaining: $TXT_REMAINING"
+          echo "=== ClickAdilla ==="
+          grep -rli "vast.yomeno" --include="*.py" --include="*.js" --include="*.html" . 2>/dev/null
 
-      - name: Repackage APK
+      - name: Repackage
         run: |
           cd extracted
           zip -r -q -n ".so:.dex" ../SMARTEDTV-new-unsigned.apk .
           cd ..
           echo "Unsigned: $(stat -c%s SMARTEDTV-new-unsigned.apk) bytes"
 
-      - name: Zipalign and sign
+      - name: Sign
         run: |
           keytool -genkey -v -keystore /tmp/debug.keystore -alias debug \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass android -keypass android \
-            -dname "CN=SMARTEDTV, OU=SMARTEDTV, O=SMARTEDTV, L=SP, S=SP, C=BR" 2>&1 | tail -1
+            -dname "CN=SMARTEDTV" 2>&1 | tail -1
           if command -v zipalign &>/dev/null; then
             zipalign -f -p 4 SMARTEDTV-new-unsigned.apk SMARTEDTV-aligned.apk
           else
@@ -122,8 +83,7 @@ jobs:
           echo "Final: $(stat -c%s SMARTEDTV-universal.apk) bytes"
           echo "SHA256: $(sha256sum SMARTEDTV-universal.apk | awk '{print $1}')"
 
-      - name: Upload to Release
-        run: |
-          gh release upload vast-fix-1508180 SMARTEDTV-universal.apk --clobber
+      - name: Upload
+        run: gh release upload vast-fix-1508180 SMARTEDTV-universal.apk --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
