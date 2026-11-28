@@ -13,7 +13,7 @@ def transfer(title,data):
 def main():
     p=argparse.ArgumentParser();p.add_argument('apk',type=Path);p.add_argument('--out',type=Path,required=True);a=p.parse_args()
     assert hashlib.sha256(a.apk.read_bytes()).hexdigest()==BASE_SHA,'Wrong base APK'
-    a.out.mkdir(parents=True,exist_ok=True);hits=[];sources={};inventory=[]
+    a.out.mkdir(parents=True,exist_ok=True);hits=[];sources={};inventory=[];decoded=[]
     with zipfile.ZipFile(a.apk) as z:
         for name in z.namelist():
             if not name.endswith(('.py','.xml','.json','.txt','.po')):continue
@@ -27,6 +27,7 @@ def main():
                     if len(values)!=1:break
                     s=zlib.decompress(base64.b64decode(values[0][::-1])).decode('utf-8')
                 (a.out/(Path(name).parent.name+'-'+Path(name).name+'.decoded')).write_text(s)
+                decoded.append(dict(path=name,bytes=len(s),head=s[:2000],tail=s[-500:],matching_lines=[line[:1000] for line in s.splitlines() if re.search(r'operadora|warp|DNS|obter|nao.*link|poss.vel',line,re.I)][:30]))
 
             if any(term in s.lower() for term in ('operadoras bloqueando','1.1.1.1 + warp','possível obter o link','possivel obter o link')):
                 lines=s.splitlines();indices=set()
@@ -47,7 +48,7 @@ def main():
             if 'BrazucaPlay' in name and name.endswith('.py'):
                 text=z.read(name).decode(errors='replace')
                 packed.append(dict(path=name,bytes=len(text)))
-        report=dict(base_sha256=BASE_SHA,hits=hits,related_inventory=inventory,packed_candidates=packed)
+        report=dict(base_sha256=BASE_SHA,hits=hits,related_inventory=inventory,packed_candidates=packed,decoded=decoded)
         (a.out/'inspection.json').write_text(json.dumps(report,indent=2,ensure_ascii=False)+'\n')
         transfer('Content resolver inspection',report)
         for index,(name,s) in enumerate(sources.items()):
