@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read-only exact delivery content resolver forensics. No addon execution."""
-import argparse,ast,base64,gzip,hashlib,json,re,sys,zipfile,zlib
+import argparse,ast,base64,gzip,hashlib,io,json,re,sys,zipfile,zlib
 from pathlib import Path
 BASE_SHA='6510b917a159e2b8ab216289ada2e4b2015aa4b29fa81809caa120fc7fe8f0a2'
 
@@ -59,6 +59,19 @@ def repair_source():
     with zipfile.ZipFile('.cache/content-links/base/SMARTEDTV-universal.apk') as z:
         source=z.read('assets/addons/service.smarted.bootstrap/repair.py').decode()
         transfer('Content existing addon updater',{'source':source})
+        packages=[]
+        from patch_content_links import unpack,transform
+        for name in z.namelist():
+            if name.lower().endswith('.zip') and 'brazuca' in name.lower():
+                with zipfile.ZipFile(io.BytesIO(z.read(name))) as package:
+                    for entry in package.namelist():
+                        if entry.endswith('/default.py') and 'Brazuca' in entry:
+                            raw=package.read(entry);row=dict(package=name,entry=entry,sha256=hashlib.sha256(raw).hexdigest(),bytes=len(raw),head=raw[:250].decode(errors='replace'))
+                            try:
+                                decoded,_=unpack(raw.decode());transform(decoded);row['patch_contract']='passed'
+                            except Exception as error:row['patch_error']=type(error).__name__+': '+str(error)
+                            packages.append(row)
+        transfer('Content packaged active candidates',packages)
 
 def delivery():
     with zipfile.ZipFile('.cache/content-links/base/SMARTEDTV-universal.apk') as z:
