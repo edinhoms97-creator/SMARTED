@@ -50,80 +50,35 @@ jobs:
 
       - name: Find HilltopAds URLs in original APK
         run: |
-          echo "=== HilltopAds references found in ORIGINAL APK ==="
           cd .cache/work/decoded
-          find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.html" -o -name "*.xml" -o -name "*.json" -o -name "*.txt" \) -exec grep -l -i "hilltop" {} \; 2>/dev/null | while read f; do
-            echo "FILE: $f"
-            grep -in "hilltop" "$f" 2>/dev/null | head -5
-            echo ""
+          echo "=== HilltopAds references in ORIGINAL APK ==="
+          grep -rli "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null | while read f; do
+            echo "  $f:"
+            grep -in "hilltop" "$f" | head -3
           done
 
       - name: Replace ONLY HilltopAds URLs with ClickAdilla
-        run: |
-          cd .cache/work/decoded
-          CLICKADILLA="https://vast.yomeno.xyz/vast?spot_id=1508180"
-          python3 << 'PYREPLACE'
-          import os, re
-          CLICKADILLA = "https://vast.yomeno.xyz/vast?spot_id=1508180"
-          exts = {".py", ".js", ".html", ".xml", ".json", ".txt", ".cfg", ".ini"}
-          replaced = 0
-          for root, dirs, files in os.walk("."):
-              for fname in files:
-                  fpath = os.path.join(root, fname)
-                  ext = os.path.splitext(fname)[1].lower()
-                  if ext not in exts:
-                      continue
-                  try:
-                      size = os.path.getsize(fpath)
-                      if size > 10*1024*1024:
-                          continue
-                      with open(fpath, "rb") as f:
-                          data = f.read()
-                      if b"hilltop" not in data.lower():
-                          continue
-                      for enc in ("utf-8", "latin-1"):
-                          try:
-                              text = data.decode(enc)
-                              used_enc = enc
-                              break
-                          except:
-                              continue
-                      else:
-                          continue
-                      original = text
-                      # Replace any URL containing hilltop
-                      text = re.sub(r'https?://[^"' <>\]\}]*hilltop[^"' <>\]\}]*', CLICKADILLA, text, flags=re.IGNORECASE)
-                      # Replace any domain with hilltopads
-                      text = re.sub(r'[A-Za-z0-9._-]*hilltopads\.[A-Za-z0-9._/-]+[^"' <>\]\}]*', CLICKADILLA, text, flags=re.IGNORECASE)
-                      if text != original:
-                          with open(fpath, "w", encoding=used_enc, errors="replace") as f:
-                              f.write(text)
-                          print(f"Replaced in: {fpath}")
-                          replaced += 1
-                  except Exception as e:
-                      pass
-          print(f"Total files modified: {replaced}")
-          PYREPLACE
+        run: python3 ${{ github.workspace }}/tools/replace_vast_url.py .cache/work/decoded
 
-      - name: Verify - no HilltopAds, ClickAdilla present, skin/UI intact
+      - name: Verify replacement and skin/UI integrity
         run: |
           cd .cache/work/decoded
-          echo "=== After replacement check ==="
-          echo "Text files still containing 'hilltop':"
-          HILLTOP_COUNT=0
-          find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.html" -o -name "*.xml" -o -name "*.json" -o -name "*.txt" \) -exec grep -l -i "hilltop" {} \; 2>/dev/null | while read f; do
-            echo "  FOUND: $f"
-            grep -in "hilltop" "$f" | head -3
-          done
+          echo "=== After replacement ==="
+          REMAINING=$(grep -rli "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null)
+          if [ -n "$REMAINING" ]; then
+            echo "STILL HAS HILLTOP:"
+            echo "$REMAINING"
+            exit 1
+          fi
+          echo "No HilltopAds references remain"
           echo ""
-          echo "Files now containing ClickAdilla:"
-          grep -rli "vast.yomeno.xyz" --include="*.py" --include="*.js" --include="*.html" . 2>/dev/null | head -10
+          echo "ClickAdilla found in:"
+          grep -rli "vast.yomeno.xyz" --include="*.py" --include="*.js" --include="*.html" . 2>/dev/null
           echo ""
-          echo "=== Skin/UI integrity check ==="
-          echo "Skin files: $(find assets/addons/skin.estilo.personalizado -type f 2>/dev/null | wc -l)"
-          echo "Web interface files: $(find assets/smartedtv -type f 2>/dev/null | wc -l)"
-          echo "Service addon files: $(find assets/addons/service.smartedtv.startup -type f 2>/dev/null | wc -l)"
-          echo "Welcome addon files: $(find assets/addons/script.smartedtv.welcome -type f 2>/dev/null | wc -l)"
+          echo "Skin/UI file counts (should match original):"
+          echo "  Skin: $(find assets/addons/skin.estilo.personalizado -type f 2>/dev/null | wc -l) files"
+          echo "  Web UI: $(find assets/smartedtv -type f 2>/dev/null | wc -l) files"
+          echo "  Service: $(find assets/addons/service.smartedtv.startup -type f 2>/dev/null | wc -l) files"
 
       - name: Rebuild APK
         run: java -Xmx2g -jar $APKTOOL b .cache/work/decoded -o .cache/work/unsigned.apk
@@ -144,23 +99,21 @@ jobs:
 
       - name: Verify APK
         run: |
-          $TOOLS/apksigner verify --verbose dist/SMARTEDTV-universal.apk 2>&1 | tail -5
+          $TOOLS/apksigner verify --verbose dist/SMARTEDTV-universal.apk 2>&1 | tail -3
           echo ""
           echo "=== VAST URL check ==="
-          unzip -p dist/SMARTEDTV-universal.apk assets/addons/script.smartedtv.welcome/vast.py 2>/dev/null | grep -i "VAST_TAG" | head -3
-          unzip -p dist/SMARTEDTV-universal.apk assets/smartedtv/js/config.js 2>/dev/null | grep -i "vastTagUrl" | head -3
+          unzip -p dist/SMARTEDTV-universal.apk assets/addons/script.smartedtv.welcome/vast.py | grep VAST_TAG
+          unzip -p dist/SMARTEDTV-universal.apk assets/smartedtv/js/config.js | grep vastTagUrl
           echo ""
-          echo "=== Final HilltopAds check ==="
-          mkdir -p /tmp/apk_check && cd /tmp/apk_check
+          echo "=== Final HilltopAds check in APK ==="
+          mkdir -p /tmp/apkverify && cd /tmp/apkverify
           unzip -q -o $GITHUB_WORKSPACE/dist/SMARTEDTV-universal.apk
-          HILLTOP_FILES=$(grep -rli "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" --include="*.txt" . 2>/dev/null)
-          if [ -z "$HILLTOP_FILES" ]; then
-            echo "SUCCESS: No HilltopAds references in APK text files"
-          else
-            echo "FAILED: HilltopAds still found in:"
-            echo "$HILLTOP_FILES"
+          if grep -rqi "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" . 2>/dev/null; then
+            echo "FAILED: HilltopAds still found"
+            grep -rli "hilltop" --include="*.py" --include="*.js" --include="*.html" .
             exit 1
           fi
+          echo "SUCCESS: No HilltopAds, APK is clean"
 
       - name: Upload to Release
         run: gh release upload vast-fix-1508180 dist/SMARTEDTV-universal.apk --clobber
