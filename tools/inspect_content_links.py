@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read-only exact delivery content resolver forensics. No addon execution."""
-import argparse,ast,base64,gzip,hashlib,json,re,zipfile,zlib
+import argparse,ast,base64,gzip,hashlib,json,re,sys,zipfile,zlib
 from pathlib import Path
 BASE_SHA='6510b917a159e2b8ab216289ada2e4b2015aa4b29fa81809caa120fc7fe8f0a2'
 
@@ -54,5 +54,18 @@ def main():
         for index,(name,s) in enumerate(sources.items()):
             (a.out/('source-'+str(index)+'.json')).write_text(json.dumps(dict(path=name,source=s),ensure_ascii=False))
             # Split source by line boundaries, retaining exact string reconstruction.
-            for part in range(0,len(s),18000):transfer('Content source '+str(index)+' segment '+str(part//18000),dict(path=name,offset=part,source=s[part:part+18000]))
-if __name__=='__main__':main()
+            for part in range(0,min(len(s),18000),18000):transfer('Content source '+str(index)+' segment '+str(part//18000),dict(path=name,offset=part,source=s[part:part+18000]))
+def emit(kind):
+    folder=Path('.cache/content-links/inspection')
+    filename='plugin.video.BrazucaPlay.Matrix-'+('codec.py' if kind=='dns' else 'default.py')+'.decoded'
+    source=(folder/filename).read_text();tree=ast.parse(source)
+    wanted={'transport':{'getMovieData','resolver_api','overflix_domain','valide_v2'},'dns':{'DNSOverride'},'domains':set()}[kind]
+    result={'kind':kind,'functions':{n.name:ast.get_source_segment(source,n) for n in tree.body if isinstance(n,(ast.FunctionDef,ast.ClassDef)) and n.name in wanted}}
+    if kind=='domains':
+        result['assignments']=[ast.unparse(n)[:2000] for n in tree.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and any(k in t.id.upper() for k in ('HOST','DOMAIN','API','URL')) for t in n.targets)]
+        result['functions']={n.name:ast.get_source_segment(source,n) for n in tree.body if isinstance(n,ast.FunctionDef) and any(k in n.name.lower() for k in ('domain','api')) and len(ast.get_source_segment(source,n))<12000}
+    (folder/(kind+'.json')).write_text(json.dumps(result,indent=2)+'\n')
+    transfer('Content '+kind,result)
+if __name__=='__main__':
+    if len(sys.argv)>1 and sys.argv[1]=='emit':emit(sys.argv[2])
+    else:main()
