@@ -19,15 +19,20 @@ def main():
             if not name.endswith(('.py','.xml','.json','.txt','.po')):continue
             b=z.read(name)
             s=b.decode('utf-8',errors='replace')
-            if any(term in s.lower() for term in ('operadoras bloqueando','warp','possível obter o link','possivel obter o link')):
+            if any(term in s.lower() for term in ('operadoras bloqueando','1.1.1.1 + warp','possível obter o link','possivel obter o link')):
                 lines=s.splitlines();indices=set()
                 for i,line in enumerate(lines):
-                    if any(t in line.lower() for t in ('operadoras bloqueando','warp','obter o link')):indices.update(range(max(0,i-35),min(len(lines),i+20)))
+                    if any(t in line.lower() for t in ('operadoras bloqueando','1.1.1.1 + warp','obter o link')):indices.update(range(max(0,i-35),min(len(lines),i+20)))
                 hits.append(dict(path=name,bytes=len(b),sha256=hashlib.sha256(b).hexdigest(),excerpt='\n'.join(f'{i+1}: {lines[i]}' for i in sorted(indices))))
                 sources[name]=s
             if name.endswith('.py') and any(t in name.lower() for t in ('brazuca','resolver','resolveurl','dns','source','client','cloudflare')):
                 inventory.append(dict(path=name,bytes=len(b)))
-        report=dict(base_sha256=BASE_SHA,hits=hits,related_inventory=inventory)
+        packed=[]
+        for name in z.namelist():
+            if 'BrazucaPlay' in name and name.endswith('.py'):
+                text=z.read(name).decode(errors='replace')
+                packed.append(dict(path=name,bytes=len(text),head=text[:2500],tail=text[-500:]))
+        report=dict(base_sha256=BASE_SHA,hits=hits,related_inventory=inventory,packed_candidates=packed)
         (a.out/'inspection.json').write_text(json.dumps(report,indent=2,ensure_ascii=False)+'\n')
         transfer('Content resolver inspection',report)
         for index,(name,s) in enumerate(sources.items()):
