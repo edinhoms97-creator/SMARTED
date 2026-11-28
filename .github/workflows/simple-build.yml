@@ -2,16 +2,18 @@ name: Simple APK Build
 
 on:
   workflow_dispatch: {}
-  push:
-    branches:
-      - arena/180d028f-smarted
 
 permissions:
   contents: write
 
+env:
+  ANDROID_HOME: /usr/local/lib/android/sdk
+  BUILD_TOOLS_VERSION: '35.0.0'
+  APKTOOL_VERSION: '2.12.1'
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -21,16 +23,25 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install tools
+      - name: Install build tools and apktool
         run: |
-          yes | sdkmanager "build-tools;35.0.0" 2>&1 | tail -3
+          set -e
+          if [[ ! -x "$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner" ]]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;$BUILD_TOOLS_VERSION"
+          fi
           mkdir -p .cache
-          curl -sL "https://github.com/iBotPeaches/Apktool/releases/download/v2.12.1/apktool_2.12.1.jar" -o .cache/apktool.jar
+          jar=".cache/apktool.jar"
+          if [[ ! -f "$jar" ]]; then
+            curl --fail --location -o "$jar" "https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VERSION}/apktool_${APKTOOL_VERSION}.jar"
+          fi
+          ls -la "$jar"
+          echo "APKTOOL=$PWD/$jar" >> $GITHUB_ENV
+          echo "TOOLS=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION" >> $GITHUB_ENV
 
-      - name: Download base APK
+      - name: Download base APK from Dropbox
         run: |
           mkdir -p .cache/base dist
           curl -L --max-time 300 -o .cache/base/base.apk "https://www.dropbox.com/scl/fi/ixfw289m0sibcyfyrxf9g/SMARTEDTV.apk?rlkey=z59708sngkysw0c1ntmmur6lv&st=okcfec6i&dl=1"
@@ -39,23 +50,22 @@ jobs:
           test "$SIZE" = "263222483"
 
       - name: Decode APK
-        run: java -Xmx2g -jar .cache/apktool.jar d -f -s .cache/base/base.apk -o .cache/work/decoded
+        run: java -Xmx2g -jar $APKTOOL d -f -s .cache/base/base.apk -o .cache/work/decoded
 
       - name: Replace addon files
         run: python3 tools/replace_addons.py .cache/work/decoded
 
       - name: Rebuild APK
-        run: java -Xmx2g -jar .cache/apktool.jar b .cache/work/decoded -o .cache/work/unsigned.apk
+        run: java -Xmx2g -jar $APKTOOL b .cache/work/decoded -o .cache/work/unsigned.apk
 
       - name: Zipalign and sign
         run: |
-          BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/35.0.0
-          $BUILD_TOOLS/zipalign -P 16 -f 4 .cache/work/unsigned.apk .cache/work/aligned.apk
+          $TOOLS/zipalign -P 16 -f 4 .cache/work/unsigned.apk .cache/work/aligned.apk
           keytool -genkey -v -keystore .cache/debug.keystore -alias debug \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass android -keypass android \
             -dname "CN=SMARTEDTV" -noprompt 2>&1 | tail -1
-          $BUILD_TOOLS/apksigner sign --ks .cache/debug.keystore --ks-pass pass:android \
+          $TOOLS/apksigner sign --ks .cache/debug.keystore --ks-pass pass:android \
             --key-pass pass:android --ks-key-alias debug \
             --v1-signing-enabled true --v2-signing-enabled true \
             --out dist/SMARTEDTV-universal.apk .cache/work/aligned.apk
@@ -64,8 +74,7 @@ jobs:
 
       - name: Verify APK
         run: |
-          BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/35.0.0
-          $BUILD_TOOLS/apksigner verify --verbose dist/SMARTEDTV-universal.apk 2>&1 | tail -3
+          $TOOLS/apksigner verify --verbose dist/SMARTEDTV-universal.apk 2>&1 | tail -3
           unzip -p dist/SMARTEDTV-universal.apk assets/addons/script.smartedtv.welcome/vast.py | grep VAST_TAG
           unzip -p dist/SMARTEDTV-universal.apk assets/smartedtv/js/config.js | grep vastTagUrl
 
