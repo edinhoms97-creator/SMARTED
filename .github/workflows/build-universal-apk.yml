@@ -375,7 +375,7 @@ jobs:
           gh release edit "$tag" --notes-file dist/INSTALLATION.txt
 
   vast_function_lab:
-    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget' && inputs.vast_function_lab != 'history-release' && inputs.vast_function_lab != 'content-links-inspect'
+    if: inputs.vast_function_lab != '' && inputs.vast_function_lab != 'history-startup' && inputs.vast_function_lab != 'history-budget' && inputs.vast_function_lab != 'history-release' && inputs.vast_function_lab != 'content-links-inspect' && inputs.vast_function_lab != 'content-links-release'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -701,3 +701,75 @@ jobs:
           name: content-links-readonly-inspection
           path: .cache/content-links/inspection/
           retention-days: 30
+
+  content_links_release:
+    if: inputs.vast_function_lab == 'content-links-release'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .cache/smartedtv-signing
+          key: smartedtv-test-debug-key-v1
+      - name: Exact physically tested base and verification dependencies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .cache/content-links/base
+          gh release download smarted-recovery-46084100325-1 --pattern SMARTEDTV-universal.apk --dir .cache/content-links/base
+          python3 -m pip install --disable-pip-version-check -r tools/content-test-requirements.txt
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run verify
+      - name: Actual local HTTP and HTTPS, DNS fault injection, scope invariants
+        run: python3 tools/test_content_network.py -v
+      - name: Build sign and audit only content transport changes
+        run: |
+          set -o pipefail
+          bash tools/build_content_links.sh 2>&1 | tee .cache/content-links/build.log
+      - name: Real before after movie and episode source requests without player calls
+        run: |
+          set -o pipefail
+          python3 tools/validate_content_links.py --base .cache/content-links/base/SMARTEDTV-universal.apk --after .cache/content-links/release/SMARTEDTV-universal.apk --out .cache/content-links/release/content-real-before-after.json 2>&1 | tee .cache/content-links/validation.log
+      - name: Report failure honestly
+        if: failure()
+        run: |
+          test ! -f .cache/content-links/build.log || python3 tools/report_build_diagnostics.py .cache/content-links/build.log
+          test ! -f .cache/content-links/validation.log || python3 tools/report_build_diagnostics.py .cache/content-links/validation.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: SMARTED-content-link-recovery
+          path: |
+            .cache/content-links/release/
+            .cache/content-links/*.log
+          compression-level: 0
+          retention-days: 30
+      - name: Publish only previously authorized prerelease after all gates
+        if: inputs.publish_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="smarted-content-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test "$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)" = "$GITHUB_SHA"
+          test "$(gh release view "$tag" --json isPrerelease --jq .isPrerelease)" = true
+          cd .cache/content-links/release
+          sha256sum -c SMARTEDTV-universal.apk.sha256
+          gh release upload "$tag" SMARTEDTV-universal.apk SMARTEDTV-universal.apk.sha256 source-preservation.json preservation.json signature.txt badging.txt content-functions.diff content-real-before-after.json
+          gh release view "$tag" --json url --jq .url
