@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read-only exact delivery content resolver forensics. No addon execution."""
-import argparse,base64,gzip,hashlib,json,re,zipfile
+import argparse,ast,base64,gzip,hashlib,json,re,zipfile,zlib
 from pathlib import Path
 BASE_SHA='6510b917a159e2b8ab216289ada2e4b2015aa4b29fa81809caa120fc7fe8f0a2'
 
@@ -19,19 +19,34 @@ def main():
             if not name.endswith(('.py','.xml','.json','.txt','.po')):continue
             b=z.read(name)
             s=b.decode('utf-8',errors='replace')
+            if name.endswith('.py') and s.startswith('#encoded by Kodi'):
+                for _ in range(5):
+                    if not s.startswith('#encoded by Kodi'):break
+                    tree=ast.parse(s)
+                    values=[n.value for n in ast.walk(tree) if isinstance(n,ast.Constant) and isinstance(n.value,bytes)]
+                    if len(values)!=1:break
+                    s=zlib.decompress(base64.b64decode(values[0][::-1])).decode('utf-8')
+                (a.out/(Path(name).parent.name+'-'+Path(name).name+'.decoded')).write_text(s)
+
             if any(term in s.lower() for term in ('operadoras bloqueando','1.1.1.1 + warp','possível obter o link','possivel obter o link')):
                 lines=s.splitlines();indices=set()
                 for i,line in enumerate(lines):
                     if any(t in line.lower() for t in ('operadoras bloqueando','1.1.1.1 + warp','obter o link')):indices.update(range(max(0,i-35),min(len(lines),i+20)))
                 hits.append(dict(path=name,bytes=len(b),sha256=hashlib.sha256(b).hexdigest(),excerpt='\n'.join(f'{i+1}: {lines[i]}' for i in sorted(indices))))
-                sources[name]=s
+                tree=ast.parse(s) if name.endswith('.py') else None
+                contexts={}
+                if tree:
+                    for n in tree.body:
+                        if isinstance(n,(ast.FunctionDef,ast.ClassDef)) and any(t in ast.get_source_segment(s,n).lower() for t in ('operadoras bloqueando','obter o link','warp')):
+                            contexts[n.name]=ast.get_source_segment(s,n)
+                sources[name]=json.dumps(dict(path=name,imports=[ast.unparse(n) for n in tree.body if isinstance(n,(ast.Import,ast.ImportFrom))] if tree else [],contexts=contexts,functions=[n.name for n in tree.body if isinstance(n,(ast.FunctionDef,ast.ClassDef))] if tree else []),ensure_ascii=False)
             if name.endswith('.py') and any(t in name.lower() for t in ('brazuca','resolver','resolveurl','dns','source','client','cloudflare')):
                 inventory.append(dict(path=name,bytes=len(b)))
         packed=[]
         for name in z.namelist():
             if 'BrazucaPlay' in name and name.endswith('.py'):
                 text=z.read(name).decode(errors='replace')
-                packed.append(dict(path=name,bytes=len(text),head=text[:2500],tail=text[-500:]))
+                packed.append(dict(path=name,bytes=len(text)))
         report=dict(base_sha256=BASE_SHA,hits=hits,related_inventory=inventory,packed_candidates=packed)
         (a.out/'inspection.json').write_text(json.dumps(report,indent=2,ensure_ascii=False)+'\n')
         transfer('Content resolver inspection',report)
