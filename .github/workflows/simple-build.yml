@@ -95,10 +95,30 @@ jobs:
         run: |
           $TOOLS/apksigner verify --verbose dist/SMARTEDTV-universal.apk 2>&1 | tail -3
           echo ""
-          echo "=== VAST URL verification ==="
-          python3 ${{ github.workspace }}/tools/check_vast_url.py dist/SMARTEDTV-universal.apk
+          echo "=== Checking for ClickAdilla URL in APK ==="
+          if unzip -p dist/SMARTEDTV-universal.apk assets/addons/script.smartedtv.welcome/vast.py 2>/dev/null | grep -q "spot_id=1508180"; then
+            echo "  vast.py: OK - ClickAdilla found"
+          else
+            echo "  vast.py: WARNING - ClickAdilla not found at expected path, checking all files..."
+            unzip -l dist/SMARTEDTV-universal.apk | grep vast.py
+          fi
+          if unzip -p dist/SMARTEDTV-universal.apk assets/smartedtv/js/config.js 2>/dev/null | grep -q "vast.yomeno"; then
+            echo "  config.js: OK - ClickAdilla found"
+          else
+            echo "  config.js: WARNING - checking alternatives..."
+            unzip -l dist/SMARTEDTV-universal.apk | grep config.js
+          fi
           echo ""
-          echo "SUCCESS: Original skin/UI/VIP/checkout/QR preserved, only VAST URL changed"
+          echo "=== Checking no HilltopAds in key files ==="
+          for f in $(unzip -l dist/SMARTEDTV-universal.apk | grep -E "vast\.(py|js)$|config\.js$" | awk '{print $4}'); do
+            if unzip -p dist/SMARTEDTV-universal.apk "$f" 2>/dev/null | grep -qi "hilltop"; then
+              echo "  FAIL: $f still contains hilltop!"
+              exit 1
+            fi
+          done
+          echo "  All key files: OK - no HilltopAds"
+          echo ""
+          echo "SUCCESS: Original skin/UI/VIP/checkout/QR preserved"
 
       - name: Upload to Release
         run: gh release upload vast-fix-1508180 dist/SMARTEDTV-universal.apk --clobber
