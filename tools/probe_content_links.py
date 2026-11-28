@@ -21,10 +21,10 @@ def main():
     hosts=[constants['OVERFLIXTV_HOST'],'api.geekantenado.online','geekantenado.fly.dev']
     session=requests.Session();session.headers['User-Agent']=constants.get('useragent','Mozilla/5.0')
     session.headers['Accept-Encoding']='gzip, deflate'
-    def fetch(url,kind):
+    def fetch(url,kind,headers=None):
         start=time.monotonic();row=dict(url=url,kind=kind)
         try:
-            r=session.get(url,timeout=(8,15));row.update(status=r.status_code,final_url=r.url,elapsed=round(time.monotonic()-start,3),content_type=r.headers.get('Content-Type'),bytes=len(r.content),body_prefix=r.text[:1400],redirects=[dict(status=x.status_code,url=x.url) for x in r.history])
+            r=session.get(url,timeout=(8,15),headers=headers);row.update(status=r.status_code,final_url=r.url,elapsed=round(time.monotonic()-start,3),content_type=r.headers.get('Content-Type'),bytes=len(r.content),body_prefix=r.text[:1400],redirects=[dict(status=x.status_code,url=x.url) for x in r.history])
             (OUT/('http-'+str(len(report['http']))+'.txt')).write_text(r.text)
             report['http'].append(row);return r
         except Exception as e:row.update(error=type(e).__name__,details=str(e)[:800],elapsed=round(time.monotonic()-start,3));report['http'].append(row)
@@ -53,7 +53,13 @@ def main():
             r=fetch(url,'existing-catalog-detail')
             video_id=url.rstrip('/').split('-')[-1]
             endpoint='https://'+urlsplit(url).netloc+'/index.php?app=videobox&module=video&controller=view&do=playerData&id='+video_id
-            fetch(endpoint,'exact-playerData-endpoint')
+            fetch(endpoint,'playerData-without-ajax-headers')
+            result=fetch(endpoint,'original-ajax-playerData',headers={'X-Requested-With':'XMLHttpRequest','Referer':url})
+            if result is not None:
+                try:report['http'][-1]['json_keys']=list(result.json())
+                except ValueError:report['http'][-1]['json_error']=True
+            if r is not None:
+                report['http'].append(dict(kind='detail-parser-hints',url=url,snippets=[r.text[max(0,m.start()-100):m.end()+400] for m in list(re.finditer(r'playerData|servers_dub|servers_leg|csrfKey|player_data|videobox',r.text,re.I))[:12]],scripts=re.findall(r'<script[^>]+src=[\"\x27]([^\"\x27]+)',r.text)[-12:]))
     (OUT/'network-before.json').write_text(json.dumps(report,indent=2)+'\n')
     transfer('Content real network diagnosis',report)
 if __name__=='__main__':main()
