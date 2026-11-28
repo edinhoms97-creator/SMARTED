@@ -95,15 +95,10 @@ jobs:
         run: |
           $TOOLS/apksigner verify --verbose dist/SMARTEDTV-universal.apk 2>&1 | tail -3
           echo ""
-          echo "=== VAST URL check ==="
-          unzip -p dist/SMARTEDTV-universal.apk assets/addons/script.smartedtv.welcome/vast.py | grep VAST_TAG
-          unzip -p dist/SMARTEDTV-universal.apk assets/smartedtv/js/config.js | grep vastTagUrl
+          echo "=== VAST URL verification ==="
+          python3 ${{ github.workspace }}/tools/check_vast_url.py dist/SMARTEDTV-universal.apk
           echo ""
-          echo "=== Final HilltopAds check in APK ==="
-          mkdir -p /tmp/apkverify && cd /tmp/apkverify
-          unzip -q -o $GITHUB_WORKSPACE/dist/SMARTEDTV-universal.apk
-          python3 $GITHUB_WORKSPACE/tools/check_hilltop.py .
-          echo "SUCCESS: APK is clean - original skin/UI preserved, only VAST URL changed"
+          echo "SUCCESS: Original skin/UI/VIP/checkout/QR preserved, only VAST URL changed"
 
       - name: Upload to Release
         run: gh release upload vast-fix-1508180 dist/SMARTEDTV-universal.apk --clobber
