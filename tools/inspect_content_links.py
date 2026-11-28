@@ -20,8 +20,8 @@ def main():
             b=z.read(name)
             s=b.decode('utf-8',errors='replace')
             if name.endswith('.py') and s.startswith('#encoded by Kodi'):
-                for _ in range(5):
-                    if not s.startswith('#encoded by Kodi'):break
+                for _ in range(50):
+                    if not (s.startswith('#encoded by Kodi') or s.startswith("exec((_)(b'")):break
                     tree=ast.parse(s)
                     values=[n.value for n in ast.walk(tree) if isinstance(n,ast.Constant) and isinstance(n.value,bytes)]
                     if len(values)!=1:break
