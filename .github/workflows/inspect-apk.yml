@@ -1,0 +1,70 @@
+name: Inspect APK from Dropbox
+
+on:
+  workflow_dispatch:
+    inputs:
+      dropbox_url:
+        description: 'Dropbox temporary download URL for SMARTEDTV.apk'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download original APK from Dropbox
+        run: |
+          DROPBOX_URL="${{ github.event.inputs.dropbox_url }}"
+          echo "Downloading APK from Dropbox..."
+          curl -L --max-time 300 -o SMARTEDTV-original.apk "$DROPBOX_URL"
+          echo "Size: $(stat -c%s SMARTEDTV-original.apk) bytes"
+          echo "SHA256: $(sha256sum SMARTEDTV-original.apk | awk '{print $1}')"
+
+      - name: Inspect APK contents
+        run: |
+          echo "=== APK directory structure (top 3 levels) ==="
+          unzip -l SMARTEDTV-original.apk | head -80
+          echo ""
+          echo "=== Total files ==="
+          unzip -l SMARTEDTV-original.apk | tail -5
+
+      - name: Search for ad-related URLs in all text files
+        run: |
+          mkdir -p extracted
+          cd extracted
+          unzip -q -o ../SMARTEDTV-original.apk
+          echo ""
+          echo "=== Files containing 'vast' (case insensitive) ==="
+          grep -rli "vast" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" --include="*.txt" --include="*.cfg" --include="*.ini" --include="*.properties" . 2>/dev/null | head -20
+          echo ""
+          echo "=== Files containing 'hilltop' (case insensitive) ==="
+          grep -rli "hilltop" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" --include="*.txt" --include="*.cfg" --include="*.ini" . 2>/dev/null | head -20
+          echo ""
+          echo "=== Files containing 'clickadilla' or 'yomeno' ==="
+          grep -rli "clickadilla\|yomeno" --include="*.py" --include="*.js" --include="*.html" --include="*.xml" --include="*.json" --include="*.txt" . 2>/dev/null | head -20
+          echo ""
+          echo "=== All URLs in .py and .js files (looking for ad servers) ==="
+          grep -rhoP 'https?://[^"'"'"' <>\\]+' --include="*.py" --include="*.js" --include="*.html" . 2>/dev/null | sort -u | head -40
+          echo ""
+          echo "=== Addon directories ==="
+          find . -path "*/addons/*" -name "addon.xml" -maxdepth 6 2>/dev/null | head -20
+          echo ""
+          echo "=== Looking for script.smartedtv* directories ==="
+          find . -name "script.smartedtv*" -type d 2>/dev/null
+          find . -name "service.smartedtv*" -type d 2>/dev/null
+          echo ""
+          echo "=== Looking for smartedtv web content ==="
+          find . -name "vast.js" -o -name "vast.py" -o -name "config.js" 2>/dev/null | head -20
+
+      - name: Dump VAST config files
+        run: |
+          cd extracted
+          echo "=== Vast.py content (if found) ==="
+          find . -name "vast.py" -exec echo "--- {} ---" \; -exec cat {} \; 2>/dev/null
+          echo ""
+          echo "=== Config.js content (if found) ==="
+          find . -name "config.js" -exec echo "--- {} ---" \; -exec grep -n -A1 -B1 "vast\|ad\|hilltop\|clickadilla\|yomeno\|spot" {} \; 2>/dev/null
