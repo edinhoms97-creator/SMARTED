@@ -1,0 +1,50 @@
+name: Upload APK to Release
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'release-parts/**'
+      - '.github/workflows/upload-release.yml'
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reassemble APK
+        run: |
+          cat release-parts/SMARTEDTV-universal.apk.part.* > SMARTEDTV-universal.apk
+          echo "Size: $(stat -c%s SMARTEDTV-universal.apk)"
+          echo "Expected: 259710320"
+
+      - name: Verify SHA256
+        run: |
+          SHA=$(sha256sum SMARTEDTV-universal.apk | awk '{print $1}')
+          echo "Got: $SHA"
+          echo "Expected: 4a497269ac7f1a9475e299fd39af3b8d688a3f5b145cc256b08d1b25f6efddb4"
+          if [ "$SHA" != "4a497269ac7f1a9475e299fd39af3b8d688a3f5b145cc256b08d1b25f6efddb4" ]; then
+            echo "SHA256 MISMATCH!"
+            exit 1
+          fi
+          echo "SHA256 OK"
+
+      - name: Upload to Release
+        run: |
+          gh release upload vast-fix-1508180 SMARTEDTV-universal.apk --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup parts
+        run: |
+          rm -rf release-parts/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A release-parts/
+          git diff --staged --quiet || git commit -m "chore: remove APK parts after successful upload"
+          git push || echo "Push failed (non-critical)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
